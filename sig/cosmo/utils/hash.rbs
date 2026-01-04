@@ -1,0 +1,7 @@
+module Cosmo
+  module Utils
+    module Hash
+      def symbolize_keys!: (::Hash[untyped, untyped]) -> ::Hash[Symbol, untyped]
+    end
+  end
+end

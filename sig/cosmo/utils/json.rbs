@@ -1,0 +1,8 @@
+module Cosmo
+  module Utils
+    module Json
+      def parse: -> untyped?
+      def dump: -> ::String?
+    end
+  end
+end

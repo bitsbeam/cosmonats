@@ -1,0 +1,22 @@
+module Cosmo
+  module Job
+    module ClassMethods
+      @default_options: untyped
+      @options: Hash[Symbol, String | Integer | bool]
+
+      def default_options: -> untyped
+
+      def options: -> untyped
+
+      def perform: (*untyped, async: bool, **::Hash[Symbol, untyped]) -> String
+
+      def perform_async: -> String
+
+      def perform_at : (Integer) -> String
+
+      def perform_in: -> String
+
+      def perform_sync: -> untyped
+    end
+  end
+end

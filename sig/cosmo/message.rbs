@@ -1,0 +1,29 @@
+module Cosmo
+  class Message
+    DEFAULTS: { stream: Symbol, retry: Integer, dead: bool }
+
+    @args: Array[untyped]
+    @at: Integer?
+    @class_name: String
+    @options: Hash[Symbol, untyped]
+    @subject: String
+
+    attr_reader jid: String
+
+    def initialize: (String, Array[untyped], Hash[Symbol, untyped]?) -> void
+
+    def stream: (?target: bool?) -> Symbol
+
+    def subject: (?target: bool?) -> Array[String | Symbol]
+
+    def as_json: -> { jid: String, class: String, args: Array[untyped], retry: Integer }
+
+    def to_json: -> String
+
+    def to_args: -> [String, String, Hash[Symbol, untyped]]
+
+    private
+
+    def validate!: -> void
+  end
+end

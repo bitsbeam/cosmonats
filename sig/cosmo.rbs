@@ -1,0 +1,3 @@
+module Cosmo
+  VERSION: String
+end

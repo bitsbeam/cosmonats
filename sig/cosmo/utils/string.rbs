@@ -1,0 +1,9 @@
+module Cosmo
+  module Utils
+    module String
+      def safe_constantize: -> Object
+
+      def underscore: -> ::String
+    end
+  end
+end

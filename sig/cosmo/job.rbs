@@ -1,0 +1,11 @@
+module Cosmo
+  module Job
+    DEFAULT_OPTIONS: Hash[Symbol, String | Integer | bool]
+
+    def self.included: -> untyped
+
+    def jid: -> String
+
+    def perform: -> untyped
+  end
+end

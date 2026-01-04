@@ -1,0 +1,69 @@
+timeout: 25
+max_retries: &max_retries 3
+concurrency: &concurrency 1
+
+consumers:
+  jobs:
+    critical:
+      <<: &config
+        ack_policy: explicit      # each individual message must be acknowledged
+        max_deliver: *max_retries # max number of times a message delivery will be attempted
+        max_ack_pending: 3        # maximum number of messages w/o ack
+        ack_wait: 60              # duration server waits for ack of message once it's delivered
+        subject: jobs.%{name}.>
+      priority: 50
+    high:
+      <<: *config
+      priority: 30
+    default:
+      <<: *config
+      priority: 15
+    low:
+      <<: *config
+      priority: 5
+    scheduled:
+      <<: *config
+      max_deliver: 1
+      max_ack_pending: 100
+      ack_wait: 10
+
+streams:
+  critical:
+    <<: &config
+      storage: file
+      retention: workqueue
+      duplicate_window: 120 # 2m
+      discard: old
+      allow_direct: true
+      subjects:
+        - jobs.%{name}.>
+    description: Very critical priority jobs
+  high:
+    <<: *config
+    description: Higher priority jobs
+  default:
+    <<: *config
+    description: Default priority jobs
+  low:
+    <<: *config
+    description: Lower priority jobs
+  scheduled:
+    <<: *config
+    description: Scheduled jobs
+  dead:
+    <<: *config
+    retention: limits
+    max_msgs: 10000
+    max_age: 604800 # 7d
+    description: Broken jobs (DLQ)
+
+development:
+  verbose: false
+  concurrency: 1
+
+staging:
+  verbose: true
+  concurrency: 3
+
+production:
+  concurrency: 3
