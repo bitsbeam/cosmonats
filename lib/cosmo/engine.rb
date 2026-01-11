@@ -5,7 +5,11 @@ require "concurrent-ruby"
 module Cosmo
   class Engine
     def self.run
-      new.run
+      instance.run
+    end
+
+    def self.instance
+      @instance ||= new
     end
 
     def initialize
@@ -20,6 +24,10 @@ module Cosmo
 
       signal = handler.wait
       puts "Shutting down... (#{signal} received)"
+      shutdown
+    end
+
+    def shutdown
       @running.make_false
       @pool.shutdown
       @pool.wait_for_termination(Config[:timeout])
