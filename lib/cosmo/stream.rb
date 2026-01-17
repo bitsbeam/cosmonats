@@ -54,6 +54,10 @@ module Cosmo
       raise NotImplementedError, "#{self.class}#process_one must be implemented"
     end
 
+    def logger
+      Logger.instance
+    end
+
     def publish
       # TODO: impl
     end

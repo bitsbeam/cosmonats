@@ -50,10 +50,9 @@ module Cosmo
             rescue NATS::Timeout
               # No messages, continue
             rescue StandardError => e
-              puts "#{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+              Logger.debug e
             rescue Exception => e # rubocop:disable Lint/RescueException, Lint/DuplicateBranch
-              # Unexpected error!
-              puts "#{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+              Logger.debug e # Unexpected error!
             end
 
             break unless @running.true?
@@ -62,9 +61,28 @@ module Cosmo
       end
 
       def process(processor, messages)
+        metadata = messages.last.metadata
         serializer = processor.class.default_options.dig(:publisher, :serializer)
         messages = messages.map { |it| Message.new(it, serializer:) }
+
+        Logger.with(
+          seq_stream: metadata.sequence.stream,
+          seq_consumer: metadata.sequence.consumer,
+          num_pending: metadata.num_pending,
+          timestamp: metadata.timestamp
+        ) { Logger.info "start" }
+
+        sw = Utils::Stopwatch.new
         processor.process(messages)
+        Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
+      rescue StandardError => e
+        Logger.debug e
+        Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
+      rescue Exception => e # rubocop:disable Lint/RescueException
+        Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
+        raise
+      ensure
+        Thread.current[:cosmo_elapsed] = nil
       end
 
       def setup_configs

@@ -8,7 +8,7 @@ module Cosmo
       end
 
       def initialize(*signals)
-        @queue = SizedQueue.new(1)
+        @queue = Queue.new
         signals.each { |s| ::Signal.trap(s) { @queue.push(s) } }
       end
 

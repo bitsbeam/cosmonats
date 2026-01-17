@@ -20,10 +20,11 @@ module Cosmo
 
     def run(processors = [Job::Processor, Stream::Processor])
       handler = Utils::Signal.trap(:INT, :TERM)
+      Logger.info "Starting processing, hit Ctrl-C to stop"
       @processors = processors.map { it.run(@pool, @running) }
 
       signal = handler.wait
-      puts "Shutting down... (#{signal} received)"
+      Logger.info "Shutting down... (#{signal} received)"
       shutdown
     end
 

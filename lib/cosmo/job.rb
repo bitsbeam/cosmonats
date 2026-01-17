@@ -54,12 +54,14 @@ module Cosmo
       end
     end
 
+    attr_reader :jid
+
     def perform(...)
       raise NotImplementedError, "#{self.class}#perform must be implemented"
     end
 
-    def jid
-      Thread.current[:cosmo_jid]
+    def logger
+      Logger.instance
     end
   end
 end

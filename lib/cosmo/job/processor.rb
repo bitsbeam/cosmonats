@@ -47,10 +47,9 @@ module Cosmo
             rescue NATS::Timeout
               # No messages, continue
             rescue StandardError => e
-              puts "#{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+              Logger.debug e
             rescue Exception => e # rubocop:disable Lint/RescueException, Lint/DuplicateBranch
-              # Unexpected error!
-              puts "#{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+              Logger.debug e # Unexpected error!
             end
 
             break unless @running.true?
@@ -88,41 +87,53 @@ module Cosmo
       end
 
       def process(message)
-        puts "#perform start #{message.inspect}"
+        Logger.debug "received message #{message.inspect}"
         data = Utils::Json.parse(message.data)
-        raise ArgumentError, "malformed payload" unless data
+        Logger.debug ArgumentError.new("malformed payload") and return unless data
 
         worker_class = Utils::String.safe_constantize(data[:class])
-        raise ArgumentError, "#{data[:class]} class not found" unless worker_class
+        Logger.debug ArgumentError.new("#{data[:class]} class not found") and return unless worker_class
 
-        Thread.current[:cosmo_jid] = data[:jid]
-        worker_class.new.perform(*data[:args])
-        message.ack
-      rescue StandardError => e
-        handle_failure(message, data, e)
+        begin
+          Logger.with(jid: data[:jid])
+          Logger.info "start"
+          sw = Utils::Stopwatch.new
+          instance = worker_class.new
+          instance.jid = data[:jid]
+          instance.perform(*data[:args])
+          message.ack
+          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
+        rescue StandardError => e
+          Logger.debug e
+          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
+          handle_failure(message, data)
+        rescue Exception # rubocop:disable Lint/RescueException
+          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
+          raise
+        end
       ensure
-        Thread.current[:cosmo_jid] = nil
-        puts "#perform end #{message.inspect}"
+        Logger.without(:jid)
+        Logger.debug "processed message #{message.inspect}"
       end
 
-      def handle_failure(message, data, error)
-        puts "Error happened for #{data.inspect} with #{error.class}: #{error.message}\n#{error.backtrace.join("\n")}"
+      def handle_failure(message, data)
         current_attempt = message.metadata.num_delivered
         max_retries = data[:retry].to_i + 1
 
-        if current_attempt >= max_retries
-          if data[:dead]
-            Client.instance.publish("jobs.dead.#{Utils::String.underscore(data[:class])}", message.data)
-            message.ack
-          else
-            message.term
-          end
-          puts "Job #{data[:jid]} failed permanently with #{error.class}: #{error.message}"
-        else
-          # NATS will auto-retry based on max_deliver
-          # NATS handles retry automatically with exponential backoff
+        if current_attempt < max_retries
+          # NATS will auto-retry based on max_deliver with exponential backoff
           delay_ns = ((current_attempt**4) + 15) * 1_000_000_000
           message.nak(delay: delay_ns)
+          return
+        end
+
+        if data[:dead]
+          Client.instance.publish("jobs.dead.#{Utils::String.underscore(data[:class])}", message.data)
+          message.ack
+          Logger.debug "job moved #{data[:jid]} to DLQ"
+        else
+          message.term
+          Logger.debug "job dropped #{data[:jid]}"
         end
       end
     end
