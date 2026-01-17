@@ -9,8 +9,8 @@ Gem::Specification.new do |s|
   s.authors       = ["Dmitry Vorotilin"]
   s.email         = ["d.vorotilin@gmail.com"]
   s.homepage      = "https://github.com/bitsbeam/cosmonauts"
-  s.summary       = "Lightning-fast background processing"
-  s.description   = "Background processing at warp speed for Ruby"
+  s.summary       = "Lightweight background and stream processing"
+  s.description   = "Lightweight background and stream processing for Ruby"
   s.license       = "LGPL-3.0"
   s.bindir        = "bin"
   s.executables   = ["cosmo"]
