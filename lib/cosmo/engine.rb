@@ -31,7 +31,9 @@ module Cosmo
     def shutdown
       @running.make_false
       @pool.shutdown
+      Logger.info "Pausing to allow jobs to finish..."
       @pool.wait_for_termination(Config[:timeout])
+      Logger.info "Bye!"
     end
   end
 end
