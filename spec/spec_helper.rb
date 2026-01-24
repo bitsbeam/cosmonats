@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 require "cosmonauts"
+require "support/global_helpers"
 
 RSpec.configure do |config|
+  config.include_context "Global helpers"
+
   # Enable flags like --only-failures and --next-failure
   config.example_status_persistence_file_path = ".rspec_status"
 

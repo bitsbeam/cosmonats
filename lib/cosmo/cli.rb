@@ -6,7 +6,11 @@ require "optparse"
 module Cosmo
   class CLI # rubocop:disable Metrics/ClassLength
     def self.run
-      new.run
+      instance.run
+    end
+
+    def self.instance
+      @instance ||= new
     end
 
     def run

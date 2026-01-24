@@ -12,7 +12,7 @@ module Cosmo
 
     def initialize: () -> void
 
-    def publish: (::String subject, untyped data, ?serializer: Module?, **untyped options) -> bool
+    def publish: (::String subject, untyped data, ?serializer: Module?, **untyped options) -> untyped
 
     def publish_job: (Job::Data data) -> ::String
 

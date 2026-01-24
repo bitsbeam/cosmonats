@@ -1,0 +1,29 @@
+configs:
+  nats_config:
+    content: |
+      server_name: nats-1
+
+      port: 4222
+
+      monitor_port: 8222
+      
+      jetstream {
+        max_mem:1G
+      }
+
+services:
+  nats:
+    image: nats:alpine
+    command: ["--config", "/etc/nats/nats-server.conf", "-js", "-sd", "/var/lib/nats/data", "-DV"]
+    configs:
+      - source: nats_config
+        target: /etc/nats/nats-server.conf
+    ports:
+      - '4222:4222'
+      - '6222:6222'
+      - '8222:8222'
+    volumes:
+      - nats:/var/lib/nats/data
+
+volumes:
+  nats:

@@ -21,7 +21,6 @@ module Cosmo
     def publish(subject, data, serializer: nil, **options) # rubocop:disable Naming/PredicateMethod
       payload = (serializer || Stream::Serializer).serialize(data)
       @client.publish(subject, payload, **options)
-      true
     end
 
     def publish_job(data)

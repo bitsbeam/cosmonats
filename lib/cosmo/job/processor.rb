@@ -74,10 +74,16 @@ module Cosmo
         message = messages.first
         Logger.debug "received messages #{messages.inspect}"
         data = Utils::Json.parse(message.data)
-        Logger.debug ArgumentError.new("malformed payload") and return unless data
+        unless data
+          Logger.debug ArgumentError.new("malformed payload")
+          return
+        end
 
         worker_class = Utils::String.safe_constantize(data[:class])
-        Logger.debug ArgumentError.new("#{data[:class]} class not found") and return unless worker_class
+        unless worker_class
+          Logger.debug ArgumentError.new("#{data[:class]} class not found")
+          return
+        end
 
         begin
           sw = stopwatch

@@ -1,13 +1,13 @@
 module Cosmo
   class Client
     self.@instance: Client
-    @client: untyped
-    @stream: untyped
+    @nc: untyped
+    @js: untyped
 
     def self.instance: () -> Client
 
-    attr_reader client: untyped
-    attr_reader stream: untyped
+    attr_reader nc: untyped
+    attr_reader js: untyped
 
     def initialize: (?nats_url: ::String) -> void
 
@@ -18,5 +18,13 @@ module Cosmo
     def stream_info: (::String | Symbol name) -> untyped
 
     def create_stream: (::String | Symbol name, Hash[Symbol, untyped] config) -> untyped
+
+    def delete_stream: (::String | Symbol name, Hash[Symbol, untyped] params) -> untyped
+
+    def list_streams: -> Array[::String]
+
+    def get_message: (::String | Symbol name, Integer seq) -> NATS::JetStream::API::RawStreamMsg
+
+    def close: -> void
   end
 end

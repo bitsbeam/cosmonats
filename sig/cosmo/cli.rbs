@@ -1,6 +1,10 @@
 module Cosmo
   class CLI
+    self.@instance: CLI
+
     def self.run: () -> void
+
+    def self.instance: -> CLI
 
     def self.banner: () -> ::String
 
