@@ -19,6 +19,20 @@ module Cosmo
       def term: () -> void
 
       def data: () -> untyped
+
+      def metadata: () -> untyped
+
+      def stream_sequence: () -> Integer
+
+      def consumer_sequence: () -> Integer
+
+      def timestamp: () -> Time
+
+      def num_delivered: () -> Integer
+
+      def num_pending: () -> Integer
+
+      def in_progress: () -> void
     end
   end
 end

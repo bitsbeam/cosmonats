@@ -47,15 +47,26 @@ module Cosmo
     end
 
     def process(messages)
-      messages.each { process_one(it) }
+      messages.each do |message|
+        Thread.current[:cosmo_message] = message
+        process_one
+      ensure
+        Thread.current[:cosmo_message] = nil
+      end
     end
+    alias process_many process
+    alias process_batch process
 
-    def process_one(...)
+    def process_one
       raise NotImplementedError, "#{self.class}#process_one must be implemented"
     end
 
     def logger
       Logger.instance
+    end
+
+    def message
+      Thread.current[:cosmo_message]
     end
 
     def publish(data, subject, **options)

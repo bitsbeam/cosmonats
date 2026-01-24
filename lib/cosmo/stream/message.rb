@@ -7,7 +7,8 @@ module Cosmo
     class Message
       extend Forwardable
 
-      delegate %i[subject reply header ack nack term] => :@msg
+      delegate %i[subject reply header metadata ack nack term in_progress] => :@msg
+      delegate %i[timestamp num_delivered num_pending] => :metadata
 
       def initialize(msg, serializer: nil)
         @msg = msg
@@ -16,6 +17,14 @@ module Cosmo
 
       def data
         @serializer.deserialize(@msg.data)
+      end
+
+      def stream_sequence
+        metadata.sequence.stream
+      end
+
+      def consumer_sequence
+        metadata.sequence.consumer
       end
     end
   end

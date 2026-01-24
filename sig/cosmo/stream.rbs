@@ -23,9 +23,15 @@ module Cosmo
 
     def process: (Array[Message] messages) -> void
 
-    def process_one: (*untyped) -> void
+    def process_batch: (Array[Message] messages) -> void
+
+    def process_many: (Array[Message] messages) -> void
+
+    def process_one: () -> void
 
     def logger: () -> untyped
+
+    def message: () -> Message?
 
     def publish: (untyped data, ::String subject, **untyped options) -> bool
   end

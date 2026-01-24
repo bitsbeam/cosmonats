@@ -318,14 +318,7 @@ class ClicksProcessor
     }
   )
 
-  def process(messages)
-    # Process batch of messages
-    messages.each do |message|
-      process_one(message)
-    end
-  end
-
-  def process_one(message)
+  def process_one
     data = message.data
     logger.info "Processing click: #{data.inspect}"
     
@@ -365,7 +358,7 @@ class DataPipeline
     stream: :pipeline,
     consumer_name: 'pipeline-consumer',
     batch_size: 50,
-    start_position: :last,  # Start from last message
+    start_position: :last, # Start from last message
     consumer: {
       ack_policy: "explicit",
       max_deliver: 5,
@@ -375,13 +368,22 @@ class DataPipeline
     },
     publisher: {
       subject: "data.processed.%{name}",
-      serializer: CustomSerializer  # Optional custom serializer
+      serializer: CustomSerializer # Optional custom serializer
     }
   )
 
-  def process_one(message)
+  # Override `process` method and start handling batches
+  def process(messages)
+    messages.each do |message|
+      transform(message)
+    end
+  end
+  
+  private
+
+  def transform(message)
     # Transform data
-    transformed = transform(message.data)
+    transformed = custom_logic(message.data)
     
     # Publish to next stage
     publish(transformed, subject: 'data.processed.stage2')
@@ -395,7 +397,7 @@ end
 #### Message Acknowledgment Strategies
 
 ```ruby
-def process_one(message)
+def process_one
   # Success - acknowledge
   message.ack
   
@@ -639,7 +641,7 @@ class FailureHandler
     }
   )
 
-  def process_one(message)
+  def process_one
     job_data = message.data
     
     # Alert operations
@@ -995,7 +997,7 @@ class ImageProcessor
     }
   )
 
-  def process_one(message)
+  def process_one
     image_data = message.data
     
     # Process image
@@ -1100,7 +1102,7 @@ class WebhookProcessor
     }
   )
 
-  def process_one(message)
+  def process_one
     webhook_data = message.data
     
     # Validate signature
