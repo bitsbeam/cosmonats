@@ -2,6 +2,6 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
-require "cosmonauts"
+require "cosmonats"
 
 Cosmo::CLI.run

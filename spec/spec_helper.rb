@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "cosmonauts"
+require "cosmonats"
 require "support/global_helpers"
 
 RSpec.configure do |config|

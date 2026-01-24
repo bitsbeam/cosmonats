@@ -1,11 +1,11 @@
-# 🚀 Cosmonauts - lightweight background and stream processing
+# 🚀 Cosmonats - lightweight background and stream processing
 
 It is a Ruby background job and stream processing framework powered by NATS JetStream.
 It provides a familiar API for job queues while adding powerful stream processing capabilities,
 solving the scalability limitations of Redis and database-backed queues through true horizontal scaling and
 disk-backed persistence.
 
-![logo.png](logo.png)
+![logo.svg](logo.svg)
 
 ---
 
@@ -28,7 +28,7 @@ disk-backed persistence.
 ---
 
 ## 🎯 Why?
-Among many others, why creating another? Cosmonauts is a background processing framework for Ruby, powered by **[NATS](https://nats.io/)**.
+Among many others, why creating another? Cosmonats is a background processing framework for Ruby, powered by **[NATS](https://nats.io/)**.
 It's designed to solve the fundamental scaling problems that plague Redis/DB-based job queues and at the same time to provide both job and stream
 processing capabilities.
 
@@ -59,7 +59,7 @@ processing capabilities.
 
 ### The Solution
 
-Built on **NATS**, `cosmonauts` provides:
+Built on **NATS**, `cosmonats` provides:
 
 ✅ **True horizontal scaling** - Distribute streams across cluster nodes  
 ✅ **Disk-backed persistence** - TB-scale queues with memory cache   
@@ -95,7 +95,7 @@ Built on **NATS**, `cosmonauts` provides:
 
 ```ruby
 # Gemfile
-gem "cosmonauts"
+gem "cosmonats"
 ```
 
 **Requirements:** Ruby 3.1.0+, NATS Server ([installation guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
@@ -523,6 +523,6 @@ end
 
 **Made with ❤️ for Ruby**
 
-*Blast off Cosmonauts! 🚀*
+*Blast off Cosmonats! 🚀*
 
 </div>
