@@ -7,8 +7,6 @@ disk-backed persistence.
 
 ![logo.svg](logo.svg)
 
----
-
 ## 📖 Index
 
 - [Why?](#-why)
