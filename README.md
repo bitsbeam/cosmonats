@@ -1,11 +1,11 @@
-<div align="center">
+# 🚀 Cosmonauts - lightweight background and stream processing
 
-# 🚀 Cosmonauts
-
-**Lightweight background and stream processing for Ruby**
+It is a Ruby background job and stream processing framework powered by NATS JetStream.
+It provides a familiar API for job queues while adding powerful stream processing capabilities,
+solving the scalability limitations of Redis and database-backed queues through true horizontal scaling and
+disk-backed persistence.
 
 ![logo.png](logo.png)
-</div>
 
 ---
 
@@ -43,7 +43,7 @@ processing capabilities.
 
 **Note:** Alternatives like Dragonfly solve the threading bottleneck but still face memory/scaling limitations.
 
-### The Problem with Database-Backed Queues at Scale
+### The Problem with RDBMS at Scale
 
 - **Database contention** - Polling queries compete with application queries for resources
 - **Connection pool pressure** - Workers consume database connections, starving the application
@@ -93,20 +93,12 @@ Built on **NATS**, `cosmonauts` provides:
 
 ## 📦 Installation
 
-Add to your `Gemfile`:
-
 ```ruby
+# Gemfile
 gem "cosmonauts"
 ```
 
-### Prerequisites
-
-- **Ruby 3.1.0+**
-- **NATS Server**
-
-### Install NATS Server
-
-https://docs.nats.io/running-a-nats-service/introduction/installation
+**Requirements:** Ruby 3.1.0+, NATS Server ([installation guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
 
 ---
 
@@ -115,7 +107,6 @@ https://docs.nats.io/running-a-nats-service/introduction/installation
 ### 1. Create a Job
 
 ```ruby
-# app/jobs/send_email_job.rb
 class SendEmailJob
   include Cosmo::Job
 
@@ -125,7 +116,6 @@ class SendEmailJob
   def perform(user_id, email_type)
     user = User.find(user_id)
     UserMailer.send(email_type, user).deliver_now
-    logger.info "Email sent to user #{user_id}"
   end
 end
 ```
@@ -133,96 +123,40 @@ end
 ### 2. Enqueue Jobs
 
 ```ruby
-# Enqueue immediately
-SendEmailJob.perform_async(123, 'welcome')
-
-# Schedule for later
-SendEmailJob.perform_in(1.hour, 123, 'reminder')
-SendEmailJob.perform_at(Time.now + 24.hours, 123, 'follow_up')
-
-# Synchronous execution (for testing)
-SendEmailJob.perform_sync(123, 'test')
+SendEmailJob.perform_async(123, 'welcome')           # Immediately
+SendEmailJob.perform_in(1.hour, 123, 'reminder')     # Delayed
+SendEmailJob.perform_at(1.day.from_now, 123, 'test') # Scheduled
 ```
 
-### 3. Create Configuration
+### 3. Configure (config/cosmo.yml)
 
 ```yaml
-# config/cosmo.yml
-timeout: 25
-max_retries: &max_retries 3
-concurrency: &concurrency 1
+concurrency: 10
+max_retries: 3
 
 consumers:
   jobs:
-    critical:
-      <<: &config
-        ack_policy: explicit      # each individual message must be acknowledged
-        max_deliver: *max_retries # max number of times a message delivery will be attempted
-        max_ack_pending: 3        # maximum number of messages w/o ack
-        ack_wait: 60              # duration server waits for ack of message once it's delivered
-        subject: jobs.%{name}.>
-      priority: 50
-    high:
-      <<: *config
-      priority: 30
     default:
-      <<: *config
-      priority: 15
-    low:
-      <<: *config
-      priority: 5
-    scheduled:
-      <<: *config
-      max_deliver: 1
-      max_ack_pending: 100
-      ack_wait: 10
+      ack_policy: explicit
+      max_deliver: 3
+      max_ack_pending: 3
+      ack_wait: 60
 
 streams:
-  critical:
-    <<: &config
-      storage: file
-      retention: workqueue
-      duplicate_window: 120 # 2m
-      discard: old
-      allow_direct: true
-      subjects:
-        - jobs.%{name}.>
-    description: Very critical priority jobs
-  high:
-    <<: *config
-    description: Higher priority jobs
   default:
-    <<: *config
-    description: Default priority jobs
-  low:
-    <<: *config
-    description: Lower priority jobs
-  scheduled:
-    <<: *config
-    description: Scheduled jobs
-  dead:
-    <<: *config
-    retention: limits
-    max_msgs: 10000
-    max_age: 604800 # 7d
-    description: Broken jobs (DLQ)
+    storage: file
+    retention: workqueue
+    subjects: ["jobs.default.>"]
 ```
 
-### 4. Setup Streams
+### 4. Setup & Run
 
 ```bash
-# Create streams in NATS
+# Setup streams
 cosmo -C config/cosmo.yml --setup
-```
 
-### 5. Start Processing
-
-```bash
-# Start job processor
-cosmo -C config/cosmo.yml -c 10 jobs
-
-# Or with auto-require
-cosmo -C config/cosmo.yml -r ./app/jobs -c 10 jobs
+# Start processing
+cosmo -C config/cosmo.yml -c 10 -r ./app/jobs jobs
 ```
 
 ---
@@ -231,77 +165,36 @@ cosmo -C config/cosmo.yml -r ./app/jobs -c 10 jobs
 
 ### Jobs
 
-Jobs are simple background tasks. They follow a familiar pattern:
-
-#### Basic Job
+Simple background tasks with a familiar API:
 
 ```ruby
-class ReportGeneratorJob
+class ReportJob
   include Cosmo::Job
-
-  def perform(report_id)
-    report = Report.find(report_id)
-    report.generate!
-  end
-end
-
-# Enqueue
-ReportGeneratorJob.perform_async(42)
-```
-
-#### Job Options
-
-```ruby
-class CriticalJob
-  include Cosmo::Job
-
+  
   options(
-    stream: :critical,  # Which stream to use
-    retry: 5,          # Number of retry attempts
-    dead: true         # Send to dead queue after max retries
+    stream: :critical,  # Stream name
+    retry: 5,           # Retry attempts
+    dead: true          # Use dead letter queue
   )
 
-  def perform(*args)
-    # Your logic here
-  end
-end
-```
-
-#### Scheduled Jobs
-
-```ruby
-# Execute in 30 minutes
-CleanupJob.perform_in(30.minutes, resource_id)
-
-# Execute at specific time
-ReminderJob.perform_at(Time.parse('2026-01-25 10:00:00'), user_id)
-```
-
-#### Job Lifecycle
-
-```ruby
-class ComplexJob
-  include Cosmo::Job
-
-  def perform(data)
-    logger.info "Starting job #{jid}"  # jid = unique job ID
-    
-    # Your processing logic
-    process_data(data)
-    
-    logger.info "Job completed"
+  def perform(report_id)
+    logger.info "Processing report #{report_id}"
+    Report.find(report_id).generate!
   rescue StandardError => e
-    logger.error "Job failed: #{e.message}"
-    raise  # Will trigger retry mechanism
+    logger.error "Failed: #{e.message}"
+    raise  # Triggers retry
   end
 end
+
+# Usage
+ReportJob.perform_async(42)                              # Enqueue now
+ReportJob.perform_in(30.minutes, 42)                     # Delayed
+ReportJob.perform_at(Time.parse('2026-01-25 10:00'), 42) # Scheduled
 ```
 
 ### Streams
 
-Streams enable continuous processing of event data, ideal for real-time analytics, ETL pipelines, and event-driven architectures.
-
-#### Basic Stream
+Real-time event processing with powerful features:
 
 ```ruby
 class ClicksProcessor
@@ -310,6 +203,7 @@ class ClicksProcessor
   options(
     stream: :clickstream,
     batch_size: 100,
+    start_position: :last,  # :first, :last, :new, or timestamp
     consumer: {
       ack_policy: "explicit",
       max_deliver: 3,
@@ -318,176 +212,67 @@ class ClicksProcessor
     }
   )
 
+  # Process one message
   def process_one
     data = message.data
-    logger.info "Processing click: #{data.inspect}"
-    
-    # Your processing logic
     Analytics.track_click(data)
-    
-    # Acknowledge successful processing
-    message.ack
+    message.ack  # Success
+  end
+  
+  # OR process batch
+  def process(messages)
+    Analytics.track_click(messages.map(&:data))
+    messages.each(&:ack)
   end
 end
-```
 
-#### Publishing to Streams
-
-```ruby
-# Publish single message
+# Publishing
 ClicksProcessor.publish(
-  { user_id: 123, page: '/home', timestamp: Time.now },
+  { user_id: 123, page: '/home' },
   subject: 'events.clicks.homepage'
 )
 
-# Using publisher directly
-Cosmo::Publisher.publish(
-  'events.clicks.product',
-  { user_id: 456, product_id: 789 },
-  stream: :clickstream
-)
-```
-
-#### Stream Configuration
-
-```ruby
-class DataPipeline
-  include Cosmo::Stream
-
-  options(
-    stream: :pipeline,
-    consumer_name: 'pipeline-consumer',
-    batch_size: 50,
-    start_position: :last, # Start from last message
-    consumer: {
-      ack_policy: "explicit",
-      max_deliver: 5,
-      max_ack_pending: 50,
-      ack_wait: 30,
-      subjects: ["data.raw.>"]
-    },
-    publisher: {
-      subject: "data.processed.%{name}",
-      serializer: CustomSerializer # Optional custom serializer
-    }
-  )
-
-  # Override `process` method and start handling batches
-  def process(messages)
-    messages.each do |message|
-      transform(message)
-    end
-  end
-  
-  private
-
-  def transform(message)
-    # Transform data
-    transformed = custom_logic(message.data)
-    
-    # Publish to next stage
-    publish(transformed, subject: 'data.processed.stage2')
-    
-    # Acknowledge original message
-    message.ack
-  end
-end
-```
-
-#### Message Acknowledgment Strategies
-
-```ruby
-def process_one
-  # Success - acknowledge
-  message.ack
-  
-  # Temporary failure - requeue (will retry)
-  message.nack(delay: 5_000_000_000)  # 5-second delay (in nanoseconds)
-  
-  # Permanent failure - terminate (won't retry)
-  message.term
-end
-```
-
-#### Stream Replay
-
-```ruby
-# Start from beginning
-options start_position: :first
-
-# Start from last message
-options start_position: :last
-
-# Start from specific time
-options start_position: '2026-01-20T10:00:00Z'
-options start_position: 10.minutes.ago
-
-# Start from new messages only
-options start_position: :new
+# Message acknowledgment strategies
+message.ack                          # Success
+message.nack(delay: 5_000_000_000)   # Retry (5 seconds in nanoseconds)
+message.term                         # Permanent failure, no retry
 ```
 
 ### Configuration
 
-#### File-Based Configuration
-
+**File-based (config/cosmo.yml):**
 ```yaml
-# config/cosmo.yml
-timeout: 25          # Shutdown timeout in seconds
-concurrency: 10      # Number of worker threads
-max_retries: 3       # Default max retries
+timeout: 25     # Shutdown timeout in seconds
+concurrency: 10 # Number of worker threads
+max_retries: 3  # Default max retries
 
 consumers:
   streams:
     - class: MyStream
-      consumer_name: my-consumer
       batch_size: 50
-      stream: my_stream
       consumer:
         ack_policy: explicit
-        max_deliver: 1
-        max_ack_pending: 3
-        ack_wait: 30
-        subjects:
-          - "%{name}.>"
-      publisher:
-        subject: "%{name}.default"
-        serializer:
+        max_deliver: 3
+        subjects: ["events.>"]
 
 streams:
   my_stream:
-    storage: file        # file or memory
-    retention: limits    # append only stream
-    max_age: 86400       # 1d
-    duplicate_window: 60 # 1m
-    discard: old         # Discard old messages when full
-    allow_direct: true
-    subjects:
-      - my_stream.>
-    description: My cool stream
+    storage: file         # or memory
+    retention: workqueue  # or limits
+    max_age: 86400       # 1d in seconds
+    subjects: ["events.>"]
 ```
 
-#### Programmatic Configuration
-
+**Programmatic:**
 ```ruby
-# config/initializers/cosmo.rb
 Cosmo::Config.set(:concurrency, 20)
-Cosmo::Config.set(:timeout, 30)
-Cosmo::Config.set(:streams, :custom, {
-  storage: 'file',
-  retention: 'workqueue',
-  subjects: ['custom.>']
-})
+Cosmo::Config.set(:streams, :custom, { storage: 'file', subjects: ['custom.>'] })
 ```
 
-#### Environment Variables
-
+**Environment variables:**
 ```bash
-# NATS connection
 export NATS_URL=nats://localhost:4222
-
-# Processor tuning
 export COSMO_JOBS_FETCH_TIMEOUT=0.1
-export COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT=5
 export COSMO_STREAMS_FETCH_TIMEOUT=0.1
 ```
 
@@ -495,372 +280,131 @@ export COSMO_STREAMS_FETCH_TIMEOUT=0.1
 
 ## 🔧 Advanced Usage
 
-### Priority Queues
-
-Configure different priorities with weighted polling:
-
+**Priority Queues:**
 ```ruby
-# Jobs
 class UrgentJob
   include Cosmo::Job
-  options stream: :critical
+  options stream: :critical  # priority: 50 in config
 end
 
-class NormalJob
-  include Cosmo::Job
-  options stream: :default
-end
-
-class BackgroundJob
-  include Cosmo::Job
-  options stream: :low
-end
-```
-
-```yaml
 # config/cosmo.yml
 consumers:
   jobs:
     critical:
-      priority: 50    # Polled 50x more frequently
-      subject: jobs.critical.>
+      priority: 50  # Polled more frequently
     default:
       priority: 15
-      subject: jobs.default.>
-    low:
-      priority: 5
-      subject: jobs.low.>
 ```
 
-### Custom Serializers
-
-Implement custom serialization for better performance:
-
+**Custom Serializers:**
 ```ruby
-# lib/message_pack_serializer.rb
-require "msgpack"
-
 module MessagePackSerializer
-  module_function
-
-  def serialize(data)
+  def self.serialize(data)
     MessagePack.pack(data)
   end
-
-  def deserialize(payload)
+  
+  def self.deserialize(payload)
     MessagePack.unpack(payload)
   end
 end
 
 class FastStream
   include Cosmo::Stream
-
-  options(
-    publisher: {
-      subject: 'fast.data',
-      serializer: MessagePackSerializer
-    }
-  )
+  options publisher: { serializer: MessagePackSerializer }
 end
 ```
 
-### Error Handling
-
+**Error Handling:**
 ```ruby
 class ResilientJob
   include Cosmo::Job
-
   options retry: 5, dead: true
 
   def perform(data)
     process_data(data)
   rescue RetryableError => e
-    logger.warn "Retryable error: #{e.message}"
+    logger.warn "Retryable: #{e.message}"
     raise  # Will retry
   rescue FatalError => e
-    logger.error "Fatal error: #{e.message}"
-    # Don't raise - won't retry, marked as done
+    logger.error "Fatal: #{e.message}"
+    # Don't raise - won't retry
   end
 end
 ```
 
-### Testing
-
+**Testing:**
 ```ruby
-# test/jobs/send_email_job_test.rb
-require 'test_helper'
+# Synchronous execution
+SendEmailJob.perform_sync(123, 'test')
 
-class SendEmailJobTest < Minitest::Test
-  def test_perform
-    # Synchronous execution for testing
-    assert_nothing_raised do
-      SendEmailJob.perform_sync(123, 'welcome')
-    end
-  end
-
-  def test_enqueue
-    # Test job creation
-    jid = SendEmailJob.perform_async(123, 'welcome')
-    assert_kind_of String, jid
-  end
-end
-```
-
-### Batching
-
-Process multiple messages efficiently:
-
-```ruby
-class BatchProcessor
-  include Cosmo::Stream
-
-  options batch_size: 100
-
-  def process(messages)
-    # Bulk process for efficiency
-    data = messages.map(&:data)
-    Database.bulk_insert(data)
-    
-    # Bulk acknowledge
-    messages.each(&:ack)
-  end
-end
-```
-
-### Dead Letter Queue
-
-Handle permanently failed jobs:
-
-```ruby
-class FailureHandler
-  include Cosmo::Stream
-
-  options(
-    consumer: {
-      subjects: ['jobs.*.dead']
-    }
-  )
-
-  def process_one
-    job_data = message.data
-    
-    # Alert operations
-    Alerting.notify_failed_job(job_data)
-    
-    # Store for investigation
-    FailedJob.create!(
-      jid: job_data[:jid],
-      class_name: job_data[:class],
-      args: job_data[:args],
-      error: message.header['X-Error']
-    )
-    
-    message.ack
-  end
-end
+# Test job creation
+jid = SendEmailJob.perform_async(123, 'welcome')
+assert_kind_of String, jid
 ```
 
 ---
 
 ## 🖥️ CLI Reference
 
-### Basic Commands
-
 ```bash
-# Display help
-cosmo --help
-
-# Show version
-cosmo --version
-
 # Setup streams
 cosmo -C config/cosmo.yml --setup
+
+# Run processors
+cosmo -C config/cosmo.yml -c 20 -r ./app/jobs jobs     # Jobs only
+cosmo -C config/cosmo.yml -c 20 streams                # Streams only
+cosmo -C config/cosmo.yml -c 20                        # Both
 ```
 
-### Running Processors
-
-```bash
-# Process jobs only
-cosmo -C config/cosmo.yml jobs
-
-# Process streams only
-cosmo -C config/cosmo.yml streams
-
-# Process both (default)
-cosmo -C config/cosmo.yml
-
-# With concurrency
-cosmo -C config/cosmo.yml -c 20 jobs
-
-# With auto-require
-cosmo -C config/cosmo.yml -r ./app/jobs -c 10 jobs
-
-# Custom shutdown timeout
-cosmo -C config/cosmo.yml -t 60 jobs
-```
-
-### Flags
+**Common Flags:**
 
 | Flag | Description | Example |
 |------|-------------|---------|
-| `-c, --concurrency INT` | Number of worker threads | `-c 20` |
-| `-r, --require PATH` | Path to files/directory to require | `-r ./app/jobs` |
-| `-t, --timeout NUM` | Shutdown timeout in seconds | `-t 60` |
-| `-C, --config PATH` | Path to config file | `-C config/cosmo.yml` |
-| `-S, --setup` | Create/update streams and exit | `--setup` |
-| `-v, --version` | Print version | `--version` |
-
-### Commands
-
-- **`jobs`** - Run job processors only
-- **`streams`** - Run stream processors only
-- *(no command)* - Run all processors
+| `-C, --config PATH` | Config file path | `-C config/cosmo.yml` |
+| `-c, --concurrency INT` | Worker threads | `-c 20` |
+| `-r, --require PATH` | Auto-require directory | `-r ./app/jobs` |
+| `-t, --timeout NUM` | Shutdown timeout (sec) | `-t 60` |
+| `-S, --setup` | Setup streams & exit | `--setup` |
 
 ---
 
 ## 🚢 Deployment
 
-### Production Setup
-
-#### 1. NATS Cluster
-
+**NATS Cluster:**
 ```bash
-# nats-server-1.conf
+# nats-server.conf
 port: 4222
-http_port: 8222
-
 jetstream {
   store_dir: /var/lib/nats
-  max_mem: 1G
   max_file: 10G
 }
-
 cluster {
   name: cosmo-cluster
   listen: 0.0.0.0:6222
-  routes: [
-    nats://nats-2:6222
-    nats://nats-3:6222
-  ]
+  routes: [nats://nats-2:6222, nats://nats-3:6222]
 }
 ```
 
-Start cluster:
-```bash
-nats-server -c nats-server-1.conf
-nats-server -c nats-server-2.conf
-nats-server -c nats-server-3.conf
-```
-
-#### 2. Docker Setup
-
-```dockerfile
-# Dockerfile
-FROM ruby:3.2-alpine
-
-RUN apk add --no-cache build-base
-
-WORKDIR /app
-COPY Gemfile Gemfile.lock ./
-RUN bundle install
-
-COPY . .
-
-CMD ["bundle", "exec", "cosmo", "-C", "config/cosmo.yml", "-c", "20", "jobs"]
-```
-
+**Docker Compose:**
 ```yaml
-# docker-compose.yml
-version: '3.8'
-
 services:
-  nats-1:
+  nats:
     image: nats:latest
     command: -js -c /etc/nats/nats-server.conf
     volumes:
-      - ./nats-1.conf:/etc/nats/nats-server.conf
-      - nats1-data:/var/lib/nats
-    ports:
-      - "4222:4222"
-      - "8222:8222"
-
-  nats-2:
-    image: nats:latest
-    command: -js -c /etc/nats/nats-server.conf
-    volumes:
-      - ./nats-2.conf:/etc/nats/nats-server.conf
-      - nats2-data:/var/lib/nats
-
-  nats-3:
-    image: nats:latest
-    command: -js -c /etc/nats/nats-server.conf
-    volumes:
-      - ./nats-3.conf:/etc/nats/nats-server.conf
-      - nats3-data:/var/lib/nats
-
+      - ./nats.conf:/etc/nats/nats-server.conf
+      - nats-data:/var/lib/nats
+  
   worker:
     build: .
     environment:
-      NATS_URL: nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222
-    depends_on:
-      - nats-1
-      - nats-2
-      - nats-3
+      NATS_URL: nats://nats:4222
+    command: bundle exec cosmo -C config/cosmo.yml -c 20 jobs
     deploy:
       replicas: 3
-
-volumes:
-  nats1-data:
-  nats2-data:
-  nats3-data:
 ```
 
-#### 3. Kubernetes Deployment
-
-```yaml
-# k8s/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: cosmo-workers
-spec:
-  replicas: 5
-  selector:
-    matchLabels:
-      app: cosmo-worker
-  template:
-    metadata:
-      labels:
-        app: cosmo-worker
-    spec:
-      containers:
-      - name: worker
-        image: myapp/cosmo-worker:latest
-        env:
-        - name: NATS_URL
-          value: "nats://nats-cluster:4222"
-        - name: RAILS_ENV
-          value: "production"
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "500m"
-          limits:
-            memory: "512Mi"
-            cpu: "1000m"
-        command:
-        - bundle
-        - exec
-        - cosmo
-        - -C
-        - config/cosmo.yml
-        - -c
-        - "20"
-        - jobs
-```
-
-### Systemd Service
-
+**Systemd Service:**
 ```ini
 # /etc/systemd/system/cosmo.service
 [Unit]
@@ -895,60 +439,24 @@ sudo systemctl status cosmo
 
 ## 📊 Monitoring
 
-### Logging
-
-Cosmonauts provides structured logging with context:
-
-```ruby
-# Logs include:
-# - timestamp
-# - severity
-# - pid (process ID)
-# - tid (thread ID)
-# - jid (job ID for jobs)
-# - elapsed time
-# - stream metadata
-
-# Example output:
-# 2026-01-23T10:15:30.123Z INFO pid=12345 tid=abc123 jid=def456: start
-# 2026-01-23T10:15:32.456Z INFO pid=12345 tid=abc123 jid=def456 elapsed=2.333: done
+**Structured Logging:**
+```
+2026-01-23T10:15:30.123Z INFO pid=12345 tid=abc jid=def: start
+2026-01-23T10:15:32.456Z INFO pid=12345 tid=abc jid=def elapsed=2.333: done
 ```
 
-### Metrics
-
-Access NATS JetStream metrics:
-
+**Stream Metrics:**
 ```ruby
-# Get stream info
 client = Cosmo::Client.instance
 info = client.stream_info('default')
 
-puts info.state.messages     # Total messages
-puts info.state.bytes         # Total bytes
-puts info.state.first_seq     # First sequence
-puts info.state.last_seq      # Last sequence
-puts info.state.consumer_count # Number of consumers
+info.state.messages       # Total messages
+info.state.bytes          # Total bytes
+info.state.consumer_count # Number of consumers
 ```
 
-### Prometheus Integration
-
-NATS Server exposes Prometheus metrics on port 8222:
-
-```yaml
-# nats-server.conf
-http_port: 8222
-
-# Prometheus scrape config
-scrape_configs:
-  - job_name: 'nats'
-    static_configs:
-      - targets: ['nats-server:8222']
-```
-
-Key metrics:
+**Prometheus:** NATS exposes metrics at `:8222/metrics`
 - `jetstream_server_store_msgs` - Messages in stream
-- `jetstream_server_store_bytes` - Bytes in stream
-- `jetstream_server_api_total` - API calls
 - `jetstream_consumer_delivered_msgs` - Delivered messages
 - `jetstream_consumer_ack_pending` - Pending acknowledgments
 
@@ -956,176 +464,55 @@ Key metrics:
 
 ## 💼 Examples
 
-### Example 1: Email Queue
-
+**Email Queue:**
 ```ruby
-# app/jobs/email_job.rb
 class EmailJob
   include Cosmo::Job
-  
   options stream: :default, retry: 3
 
   def perform(user_id, template)
     user = User.find(user_id)
     EmailService.send(user.email, template)
-    logger.info "Email sent to #{user.email}"
   end
 end
 
-# Usage
 EmailJob.perform_async(123, 'welcome')
 EmailJob.perform_in(1.day, 123, 'followup')
 ```
 
-### Example 2: Image Processing Pipeline
-
+**Image Processing Pipeline:**
 ```ruby
-# app/streams/image_processor.rb
 class ImageProcessor
   include Cosmo::Stream
-
   options(
     stream: :images,
-    batch_size: 10,
-    consumer: {
-      ack_policy: 'explicit',
-      max_deliver: 3,
-      subjects: ['images.uploaded.>']
-    },
-    publisher: {
-      subject: 'images.processed.%{name}'
-    }
+    consumer: { subjects: ['images.uploaded.>'] }
   )
 
   def process_one
-    image_data = message.data
-    
-    # Process image
-    processed = ImageService.process(
-      image_data['url'],
-      sizes: ['thumbnail', 'medium', 'large']
-    )
-    
-    # Publish to next stage
+    processed = ImageService.process(message.data['url'])
     publish(processed, subject: 'images.processed.optimized')
-    
     message.ack
-  rescue StandardError => e
-    logger.error "Image processing failed: #{e.message}"
-    message.nack(delay: 30_000_000_000) # Retry in 30 seconds
+  rescue => e
+    logger.error "Processing failed: #{e.message}"
+    message.nack(delay: 30_000_000_000)
   end
 end
 
-# Usage
-ImageProcessor.publish(
-  { url: 'https://example.com/image.jpg', user_id: 123 },
-  subject: 'images.uploaded.user'
-)
+ImageProcessor.publish({ url: 'https://example.com/image.jpg' }, subject: 'images.uploaded.user')
 ```
 
-### Example 3: Real-Time Analytics
-
+**Real-Time Analytics:**
 ```ruby
-# app/streams/analytics_aggregator.rb
 class AnalyticsAggregator
   include Cosmo::Stream
-
-  options(
-    stream: :analytics,
-    batch_size: 1000,
-    start_position: :new,
-    consumer: {
-      ack_policy: 'explicit',
-      max_deliver: 1,
-      subjects: ['events.*.>']
-    }
-  )
+  options batch_size: 1000, consumer: { subjects: ['events.*.>'] }
 
   def process(messages)
-    # Batch process for efficiency
     events = messages.map(&:data)
-    
-    # Aggregate by type
-    aggregates = events.group_by { |e| e['event_type'] }
-                       .transform_values(&:count)
-    
-    # Store aggregates
+    aggregates = events.group_by { |e| e['type'] }.transform_values(&:count)
     Analytics.bulk_insert(aggregates)
-    
-    # Bulk acknowledge
     messages.each(&:ack)
-    
-    logger.info "Processed #{messages.count} events"
-  end
-end
-```
-
-### Example 4: Scheduled Reports
-
-```ruby
-# app/jobs/daily_report_job.rb
-class DailyReportJob
-  include Cosmo::Job
-
-  options stream: :low, retry: 2
-
-  def perform(report_type, recipient_email)
-    report = ReportGenerator.generate(report_type, Date.today)
-    ReportMailer.send_report(recipient_email, report).deliver_now
-    logger.info "Daily report sent to #{recipient_email}"
-  end
-end
-
-# Schedule daily at 9 AM
-def schedule_daily_reports
-  User.find_each do |user|
-    next_run = Time.now.change(hour: 9, min: 0) + 1.day
-    DailyReportJob.perform_at(next_run, 'daily', user.email)
-  end
-end
-```
-
-### Example 5: Webhook Processor
-
-```ruby
-# app/streams/webhook_processor.rb
-class WebhookProcessor
-  include Cosmo::Stream
-
-  options(
-    stream: :webhooks,
-    batch_size: 50,
-    consumer: {
-      ack_policy: 'explicit',
-      max_deliver: 5,
-      subjects: ['webhooks.incoming.>']
-    }
-  )
-
-  def process_one
-    webhook_data = message.data
-    
-    # Validate signature
-    unless valid_signature?(webhook_data)
-      logger.warn "Invalid webhook signature"
-      message.term
-      return
-    end
-    
-    # Process webhook
-    WebhookHandler.handle(webhook_data)
-    
-    message.ack
-  rescue WebhookError => e
-    logger.error "Webhook error: #{e.message}"
-    message.nack(delay: 60_000_000_000) # Retry in 1 minute
-  end
-  
-  private
-  
-  def valid_signature?(data)
-    # Implement signature validation
-    true
   end
 end
 ```
