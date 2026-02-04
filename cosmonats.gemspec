@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.bindir        = "bin"
   s.executables   = ["cosmo"]
   s.require_paths = ["lib"]
-  s.files         = Dir["lib/**/*", "LICENSE.txt", "README.md"]
+  s.files         = Dir["bin/cosmo", "lib/**/*", "sig/**/*", "LICENSE.txt", "README.md"]
   s.metadata = {
     "homepage_uri" => "https://github.com/bitsbeam/cosmonats",
     "bug_tracker_uri" => "https://github.com/bitsbeam/cosmonats/issues",
