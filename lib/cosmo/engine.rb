@@ -27,8 +27,12 @@ module Cosmo
       handler = Utils::Signal.trap(:INT, :TERM)
       Logger.info "Starting processing, hit Ctrl-C to stop"
 
-      @processors = type && PROCESSORS.key?(type.to_sym) ? [PROCESSORS[type.to_sym]] : PROCESSORS.values
-      @processors = @processors.map { _1.run(@pool, @running) }
+      processor_classes = type && PROCESSORS.key?(type.to_sym) ? [PROCESSORS[type.to_sym]] : PROCESSORS.values
+      @processors = processor_classes.map { _1.run(@pool, @running) }
+      if @running.false?
+        Logger.warn "Shutting down... (No processors are running)"
+        return
+      end
 
       signal = handler.wait
       Logger.info "Shutting down... (#{signal} received)"
