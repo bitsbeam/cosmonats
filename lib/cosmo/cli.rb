@@ -17,6 +17,7 @@ module Cosmo
       flags, command, _options = parse
       load_config(flags[:config_file])
       puts self.class.banner
+      boot_application
       require_files(flags[:require])
       Engine.run(command)
     end
@@ -57,6 +58,14 @@ module Cosmo
       else
         require File.expand_path(path)
       end
+    end
+
+    def boot_application
+      path = File.expand_path("config/environment.rb")
+      return unless File.exist?(path)
+
+      require "rails"
+      require path
     end
 
     def flags_parser(flags) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
