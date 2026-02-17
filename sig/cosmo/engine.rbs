@@ -14,7 +14,7 @@ module Cosmo
 
     def initialize: () -> void
 
-    def run: (::String? type) -> void
+    def run: (::String? type, Hash[Symbol, untyped] options) -> void
 
     def shutdown: () -> void
   end

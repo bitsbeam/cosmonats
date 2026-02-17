@@ -3,7 +3,8 @@
 RSpec.describe Cosmo::Job::Processor do
   let(:pool) { instance_double(Cosmo::Utils::ThreadPool) }
   let(:running) { Concurrent::AtomicBoolean.new }
-  let(:processor) { described_class.new(pool, running) }
+  let(:options) { {} }
+  let(:processor) { described_class.new(pool, running, options) }
   let(:client) { instance_double(Cosmo::Client) }
   let(:consumer) { double("consumer") }
 

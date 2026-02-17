@@ -14,12 +14,12 @@ module Cosmo
     end
 
     def run
-      flags, command, _options = parse
+      flags, command, options = parse
       load_config(flags[:config_file])
       puts self.class.banner
       boot_application
-      require_files(flags[:require])
-      Engine.run(command)
+      require_path(flags[:require])
+      Engine.run(command, options)
     end
 
     private
@@ -49,23 +49,23 @@ module Cosmo
       Config.load(path)
     end
 
-    def require_files(path)
-      return unless path
+    def boot_application
+      boot_path = File.expand_path("config/boot.rb")
+      require boot_path if File.exist?(boot_path)
 
-      if File.directory?(path)
-        files = Dir[File.expand_path("#{path}/*.rb")]
-        files.each { |f| require f }
-      else
-        require File.expand_path(path)
-      end
+      environment_path = File.expand_path("config/environment.rb")
+      require environment_path if File.exist?(environment_path)
     end
 
-    def boot_application
-      path = File.expand_path("config/environment.rb")
-      return unless File.exist?(path)
+    def require_path(path)
+      if path
+        require_files(path)
+        return # If a path is provided don't load default dirs.
+      end
 
-      require "rails"
-      require path
+      # Load files from app/streams if they exist.
+      # Streams are always eagerly loaded since they register classes to process events.
+      require_files("app/streams") if File.directory?("app/streams")
     end
 
     def flags_parser(flags) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
@@ -137,20 +137,28 @@ module Cosmo
       when "streams"
         OptionParser.new do |o|
           o.banner = "Usage: cosmo streams [options]"
+          o.separator ""
+          o.separator "  [m] many processors can be specified, in that case single options [1] are ignored"
+          o.separator "  [1] options work only for a single processor"
+          o.separator ""
 
-          o.on "--stream NAME", "Specify stream name" do |arg|
+          o.on "--processors NAMES", "[m] Specify processors names with comma" do |arg|
+            options[:processors] = arg.split(",")
+          end
+
+          o.on "--stream NAME", "[1] Specify stream name" do |arg|
             options[:stream] = arg
           end
 
-          o.on "--subject NAME", "Specify subject name" do |arg|
+          o.on "--subject NAME", "[1] Specify subject name" do |arg|
             options[:subject] = arg
           end
 
-          o.on "--consumer_name NAME", "Specify consumer name" do |arg|
+          o.on "--consumer_name NAME", "[1] Specify consumer name" do |arg|
             options[:consumer_name] = arg
           end
 
-          o.on "--batch_size NUM", Integer, "Number of messages in the batch" do |arg|
+          o.on "--batch_size NUM", Integer, "[1] Number of messages in the batch" do |arg|
             options[:batch_size] = arg
           end
         end
@@ -163,6 +171,18 @@ module Cosmo
           end
         end
       end
+    end
+
+    def require_files(path)
+      path = File.expand_path(path)
+
+      if File.directory?(path)
+        files = Dir["#{path}/**/*.rb"]
+        files.each { |f| require f }
+        return
+      end
+
+      require path
     end
 
     # rubocop:disable Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier

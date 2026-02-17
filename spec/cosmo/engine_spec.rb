@@ -49,24 +49,25 @@ RSpec.describe Cosmo::Engine do
 
     it "traps signals" do
       expect(Cosmo::Utils::Signal).to receive(:trap).with(:INT, :TERM)
-      expect { engine.run("jobs") }.to output(anything).to_stdout
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
     it "runs specific processor type" do
-      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything)
-      expect { engine.run("jobs") }.to output(anything).to_stdout
+      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {})
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
     it "runs all processors when type is nil" do
-      expect(Cosmo::Job::Processor).to receive(:run)
-      expect(Cosmo::Stream::Processor).to receive(:run)
-      expect { engine.run(nil) }.to output(anything).to_stdout
+      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {})
+      expect(Cosmo::Stream::Processor).to receive(:run).with(pool, anything, {})
+      expect { engine.run(nil, {}) }.to output(anything).to_stdout
     end
 
     it "waits for signal and shuts down" do
-      expect(signal_handler).to receive(:wait)
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      expect(signal_handler).to receive(:wait).and_return("INT")
       expect(engine).to receive(:shutdown)
-      expect { engine.run("jobs") }.to output(anything).to_stdout
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
   end
 

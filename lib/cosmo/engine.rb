@@ -23,12 +23,12 @@ module Cosmo
       @running = Concurrent::AtomicBoolean.new
     end
 
-    def run(type)
+    def run(type, options)
       handler = Utils::Signal.trap(:INT, :TERM)
       Logger.info "Starting processing, hit Ctrl-C to stop"
 
       processor_classes = type && PROCESSORS.key?(type.to_sym) ? [PROCESSORS[type.to_sym]] : PROCESSORS.values
-      @processors = processor_classes.map { _1.run(@pool, @running) }
+      @processors = processor_classes.map { _1.run(@pool, @running, options) }
       if @running.false?
         Logger.warn "Shutting down... (No processors are running)"
         return

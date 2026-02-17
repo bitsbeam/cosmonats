@@ -28,13 +28,15 @@ RSpec.describe Cosmo::CLI do
   describe "#run" do
     before do
       allow(ARGV).to receive(:shift).and_return("jobs")
+      allow(cli).to receive(:boot_application)
+      allow(cli).to receive(:require_path)
     end
 
     it "parses flags and runs engine" do
       ARGV.replace([])
       expect(cli).to receive(:load_config).with(anything)
-      expect(cli).to receive(:require_files).with(nil)
-      expect(Cosmo::Engine).to receive(:run).with("jobs")
+      expect(cli).to receive(:require_path).with(nil)
+      expect(Cosmo::Engine).to receive(:run).with("jobs", {})
 
       # Suppress banner output
       expect { cli.run }.to output(anything).to_stdout
@@ -93,7 +95,7 @@ RSpec.describe Cosmo::CLI do
     it "requires directory of files" do
       dir = File.expand_path("../../fixtures", __dir__)
       allow(File).to receive(:directory?).with(dir).and_return(true)
-      allow(Dir).to receive(:[]).with("#{dir}/*.rb").and_return(["#{dir}/file1.rb", "#{dir}/file2.rb"])
+      allow(Dir).to receive(:[]).with("#{dir}/**/*.rb").and_return(["#{dir}/file1.rb", "#{dir}/file2.rb"])
       expect(cli).to receive(:require).with("#{dir}/file1.rb")
       expect(cli).to receive(:require).with("#{dir}/file2.rb")
       cli.send(:require_files, dir)
@@ -101,14 +103,60 @@ RSpec.describe Cosmo::CLI do
 
     it "requires single file" do
       file = "/path/to/file.rb"
-      allow(File).to receive(:directory?).with(file).and_return(false)
+      allow(File).to receive(:directory?).with(File.expand_path(file)).and_return(false)
       expect(cli).to receive(:require).with(File.expand_path(file))
       cli.send(:require_files, file)
     end
 
     it "does nothing when path is nil" do
       expect(cli).not_to receive(:require)
-      cli.send(:require_files, nil)
+      cli.send(:require_path, nil)
+    end
+  end
+
+  describe "#boot_application (private)" do
+    it "requires config/boot.rb when it exists" do
+      boot_path = File.expand_path("config/boot.rb")
+      environment_path = File.expand_path("config/environment.rb")
+      allow(File).to receive(:exist?).with(boot_path).and_return(true)
+      allow(File).to receive(:exist?).with(environment_path).and_return(false)
+      expect(cli).to receive(:require).with(boot_path)
+      cli.send(:boot_application)
+    end
+
+    it "requires config/environment.rb when it exists" do
+      boot_path = File.expand_path("config/boot.rb")
+      environment_path = File.expand_path("config/environment.rb")
+      allow(File).to receive(:exist?).with(boot_path).and_return(false)
+      allow(File).to receive(:exist?).with(environment_path).and_return(true)
+      expect(cli).to receive(:require).with(environment_path)
+      cli.send(:boot_application)
+    end
+
+    it "does nothing when files don't exist" do
+      allow(File).to receive(:exist?).and_return(false)
+      expect(cli).not_to receive(:require)
+      cli.send(:boot_application)
+    end
+  end
+
+  describe "#require_path (private)" do
+    it "requires provided path and skips default directories" do
+      expect(cli).to receive(:require_files).with("/path/to/file.rb")
+      expect(File).not_to receive(:directory?).with("app/streams")
+      cli.send(:require_path, "/path/to/file.rb")
+    end
+
+    it "requires app/streams directory by default when it exists" do
+      allow(File).to receive(:directory?).with("app/streams").and_return(true)
+      expect(cli).to receive(:require_files).with("app/streams")
+      cli.send(:require_path, nil)
+    end
+
+    it "does nothing when no path provided and app/streams doesn't exist" do
+      allow(File).to receive(:directory?).with("app/streams").and_return(false)
+      expect(cli).not_to receive(:require_files)
+      cli.send(:require_path, nil)
     end
   end
 
@@ -123,6 +171,13 @@ RSpec.describe Cosmo::CLI do
       options = {}
       parser = cli.send(:options_parser, "streams", options)
       expect(parser).to be_a(OptionParser)
+    end
+
+    it "parses --processors flag for streams command" do
+      options = {}
+      parser = cli.send(:options_parser, "streams", options)
+      parser.parse!(%w[--processors ProcessorOne,ProcessorTwo])
+      expect(options[:processors]).to eq(%w[ProcessorOne ProcessorTwo])
     end
 
     it "returns parser for actions command" do

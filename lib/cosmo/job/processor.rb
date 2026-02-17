@@ -3,7 +3,7 @@
 module Cosmo
   module Job
     class Processor < ::Cosmo::Processor
-      def initialize(pool, running)
+      def initialize(pool, running, options)
         super
         @weights = []
       end

@@ -3,7 +3,8 @@
 RSpec.describe Cosmo::Stream::Processor do
   let(:pool) { instance_double(Cosmo::Utils::ThreadPool) }
   let(:running) { Concurrent::AtomicBoolean.new }
-  let(:processor) { described_class.new(pool, running) }
+  let(:options) { {} }
+  let(:processor) { described_class.new(pool, running, options) }
   let(:client) { instance_double(Cosmo::Client) }
 
   before do
@@ -104,12 +105,21 @@ RSpec.describe Cosmo::Stream::Processor do
       end
     end
 
+    let(:another_stream_class) do
+      Class.new do
+        include Cosmo::Stream
+
+        def process_one; end
+      end
+    end
+
     before do
       stub_const("TestStreamClass", stream_class)
+      stub_const("AnotherStreamClass", another_stream_class)
       allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return([
                                                                                     { stream: "configured_stream", class: "TestStreamClass" }
                                                                                   ])
-      allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([stream_class])
+      allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([stream_class, another_stream_class])
     end
 
     it "merges config from Config and system streams" do
@@ -123,6 +133,18 @@ RSpec.describe Cosmo::Stream::Processor do
                                                                                     { stream: "invalid", class: "NonExistentClass" }
                                                                                   ])
       expect { processor.send(:setup_configs) }.not_to raise_error
+    end
+
+    it "filters configs by processor names when processors option is provided" do
+      processor_with_filter = described_class.new(pool, running, { processors: ["TestStreamClass"] })
+      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return([{ stream: "configured_stream", class: "TestStreamClass" }])
+      allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([stream_class, another_stream_class])
+
+      processor_with_filter.send(:setup_configs)
+      configs = processor_with_filter.instance_variable_get(:@configs)
+
+      expect(configs.values.map { |c| c[:class] }).to include(stream_class)
+      expect(configs.values.map { |c| c[:class] }).not_to include(another_stream_class)
     end
   end
 
@@ -179,6 +201,55 @@ RSpec.describe Cosmo::Stream::Processor do
       processor.send(:setup_consumers)
       consumers = processor.instance_variable_get(:@consumers)
       expect(consumers[:test_stream]).to eq(consumer)
+    end
+  end
+
+  describe "#static_config (private)" do
+    let(:stream_class) do
+      Class.new do
+        include Cosmo::Stream
+
+        def process_one; end
+      end
+    end
+
+    it "returns config from Config.dig(:consumers, :streams)" do
+      stub_const("TestStreamClass", stream_class)
+      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return([
+                                                                                    { stream: "configured_stream", class: "TestStreamClass" }
+                                                                                  ])
+
+      config = processor.send(:static_config)
+      expect(config).to have_key(:configured_stream)
+      expect(config[:configured_stream][:class]).to eq(stream_class)
+    end
+
+    it "skips invalid class names" do
+      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return([
+                                                                                    { stream: "invalid", class: "NonExistentClass" }
+                                                                                  ])
+
+      config = processor.send(:static_config)
+      expect(config).to be_empty
+    end
+  end
+
+  describe "#dynamic_config (private)" do
+    let(:stream_class) do
+      Class.new do
+        include Cosmo::Stream
+
+        def process_one; end
+      end
+    end
+
+    it "returns config from Config.system[:streams]" do
+      allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([stream_class])
+      allow(stream_class).to receive(:default_options).and_return({ stream: :test_stream })
+
+      config = processor.send(:dynamic_config)
+      expect(config).to have_key(:test_stream)
+      expect(config[:test_stream][:class]).to eq(stream_class)
     end
   end
 end

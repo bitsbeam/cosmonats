@@ -3,12 +3,13 @@
 RSpec.describe Cosmo::Processor do
   let(:pool) { instance_double(Cosmo::Utils::ThreadPool) }
   let(:running) { Concurrent::AtomicBoolean.new }
-  let(:processor) { described_class.new(pool, running) }
+  let(:options) { {} }
+  let(:processor) { described_class.new(pool, running, options) }
 
   describe ".run" do
     it "creates new instance and runs it" do
       allow_any_instance_of(described_class).to receive(:run)
-      result = described_class.run(pool, running)
+      result = described_class.run(pool, running, options)
       expect(result).to be_a(described_class)
     end
   end
@@ -21,6 +22,10 @@ RSpec.describe Cosmo::Processor do
 
     it "initializes empty consumers hash" do
       expect(processor.instance_variable_get(:@consumers)).to eq({})
+    end
+
+    it "stores options" do
+      expect(processor.instance_variable_get(:@options)).to eq(options)
     end
   end
 

@@ -3,7 +3,7 @@
 module Cosmo
   module Stream
     class Processor < ::Cosmo::Processor
-      def initialize(pool, running)
+      def initialize(pool, running, options)
         super
         @configs = {}
         @processors = {}
@@ -63,18 +63,10 @@ module Cosmo
         raise
       end
 
-      def setup_configs # rubocop:disable Metrics/AbcSize
-        @configs.merge!(
-          Config.dig(:consumers, :streams).to_h do |config|
-            klass = Utils::String.safe_constantize(config[:class])
-            [config[:stream].to_sym, klass ? config.merge(class: klass) : nil]
-          end.compact
-        )
-        @configs.merge!(
-          Config.system[:streams].to_h do |klass|
-            [klass.default_options[:stream].to_sym, klass.default_options.merge(class: klass)]
-          end
-        )
+      def setup_configs
+        configs = static_config.merge(dynamic_config)
+        configs = configs.select { |_, c| @options[:processors].include?(c[:class].name) } if @options[:processors]
+        @configs.merge!(configs)
       end
 
       def setup_processors
@@ -87,6 +79,20 @@ module Cosmo
           deliver_policy = Config.deliver_policy(config[:start_position])
           config, consumer_name = config.values_at(:consumer, :consumer_name)
           @consumers[stream_name] = client.subscribe(subjects, consumer_name, config.merge(deliver_policy))
+        end
+      end
+
+      def static_config
+        Config.dig(:consumers, :streams)&.filter_map do |config|
+          next unless (klass = Utils::String.safe_constantize(config[:class]))
+
+          [config[:stream].to_sym, config.merge(class: klass)]
+        end.to_h
+      end
+
+      def dynamic_config
+        Config.system[:streams].to_h do |klass|
+          [klass.default_options[:stream].to_sym, klass.default_options.merge(class: klass)]
         end
       end
     end

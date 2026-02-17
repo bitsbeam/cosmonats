@@ -21,6 +21,10 @@ module Cosmo
       def setup_processors: () -> void
 
       def setup_consumers: () -> void
+
+      def static_config: -> Hash[Symbol, untyped]
+
+      def dynamic_config: -> Hash[Symbol, untyped]
     end
   end
 end

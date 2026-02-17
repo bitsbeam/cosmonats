@@ -6,9 +6,10 @@ module Cosmo
       new(...).tap(&:run)
     end
 
-    def initialize(pool, running)
+    def initialize(pool, running, options)
       @pool = pool
       @running = running
+      @options = options
       @consumers = {}
     end
 

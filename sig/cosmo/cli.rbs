@@ -16,7 +16,11 @@ module Cosmo
 
     def load_config: (::String? path) -> void
 
-    def require_files: (::String? path) -> void
+    def boot_application: () -> void
+
+    def require_path: (::String? path) -> void
+
+    def require_files: (::String path) -> void
 
     def flags_parser: (Hash[Symbol, untyped] flags) -> untyped
 

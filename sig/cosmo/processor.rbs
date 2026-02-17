@@ -3,10 +3,11 @@ module Cosmo
     @pool: Utils::ThreadPool
     @running: untyped
     @consumers: Hash[Symbol, untyped]
+    @options: Hash[Symbol, untyped]
 
     def self.run: (*untyped) -> Processor
 
-    def initialize: (Utils::ThreadPool pool, untyped running) -> void
+    def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options) -> void
 
     def run: () -> void
 
