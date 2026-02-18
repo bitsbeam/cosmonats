@@ -97,6 +97,7 @@ module Cosmo
 
         o.on "-S", "--setup", "Load config, create streams and exit" do
           load_config(flags[:config_file])
+          boot_application
 
           Config[:streams].each do |name, config|
             Client.instance.stream_info(name)
