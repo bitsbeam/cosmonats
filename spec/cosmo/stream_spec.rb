@@ -5,6 +5,8 @@ RSpec.describe Cosmo::Stream do
     Class.new do
       include Cosmo::Stream
 
+      options stream: :test_stream
+
       def process_one
         # Implementation
       end
@@ -93,7 +95,12 @@ RSpec.describe Cosmo::Stream do
 
     describe "#register" do
       it "adds stream to Config.system[:streams]" do
-        test_class = Class.new { include Cosmo::Stream }
+        test_class = Class.new do
+          include Cosmo::Stream
+
+          options stream: :test
+        end
+
         expect(Cosmo::Config.system[:streams]).to include(test_class)
       end
 

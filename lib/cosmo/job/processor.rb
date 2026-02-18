@@ -27,7 +27,7 @@ module Cosmo
         end
       end
 
-      def work_loop
+      def work_loop # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/AbcSize
         while running?
           @weights.shuffle.each do |stream_name|
             break unless running?
@@ -48,7 +48,7 @@ module Cosmo
         end
       end
 
-      def schedule_loop # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+      def schedule_loop # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/AbcSize
         while running?
           break unless running?
 

@@ -19,7 +19,7 @@ module Cosmo
         setup_consumers
       end
 
-      def work_loop
+      def work_loop # rubocop:disable Metrics/CyclomaticComplexity
         while running?
           @consumers.each do |(subscription, config, processor)|
             break unless running?
