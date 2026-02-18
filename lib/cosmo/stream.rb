@@ -14,7 +14,7 @@ module Cosmo
 
     module ClassMethods
       def options(stream: nil, consumer_name: nil, batch_size: nil, start_position: nil, consumer: nil, publisher: nil) # rubocop:disable Metrics/ParameterLists
-        default_options.merge!({ stream: stream, consumer_name: consumer_name, batch_size:, start_position:, consumer:, publisher: }.compact)
+        default_options.merge!({ stream:, consumer_name:, batch_size:, start_position:, consumer:, publisher: }.compact)
       end
 
       def publish(data, subject: nil, **options)

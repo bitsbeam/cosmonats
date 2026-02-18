@@ -10,7 +10,7 @@ module Cosmo
       @pool = pool
       @running = running
       @options = options
-      @consumers = {}
+      @consumers = []
     end
 
     def run
@@ -39,9 +39,8 @@ module Cosmo
       @running.true?
     end
 
-    def fetch_messages(stream_name, batch_size:, timeout:)
-      messages = @consumers[stream_name].fetch(batch_size, timeout:)
-      block_given? ? yield(messages) : process(stream_name, messages)
+    def fetch_messages(subscription, batch_size:, timeout:)
+      subscription.fetch(batch_size, timeout:)
     rescue NATS::Timeout
       # No messages, continue
     end

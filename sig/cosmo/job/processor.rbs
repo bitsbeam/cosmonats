@@ -3,7 +3,7 @@ module Cosmo
     class Processor < ::Cosmo::Processor
       @weights: Array[Symbol]
 
-      def initialize: (Utils::ThreadPool pool, untyped running) -> void
+      def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options) -> void
 
       private
 

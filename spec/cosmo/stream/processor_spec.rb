@@ -23,7 +23,6 @@ RSpec.describe Cosmo::Stream::Processor do
   describe "#setup (private)" do
     it "calls setup methods in order" do
       expect(processor).to receive(:setup_configs).ordered
-      expect(processor).to receive(:setup_processors).ordered
       expect(processor).to receive(:setup_consumers).ordered
       processor.send(:setup)
     end
@@ -31,8 +30,10 @@ RSpec.describe Cosmo::Stream::Processor do
 
   describe "#work_loop (private)" do
     before do
-      processor.instance_variable_set(:@consumers, { test_stream: double("consumer") })
-      processor.instance_variable_set(:@configs, { test_stream: { batch_size: 10 } })
+      consumer = double("consumer")
+      config = { batch_size: 10 }
+      stream_processor = double("stream_processor")
+      processor.instance_variable_set(:@consumers, [[consumer, config, stream_processor]])
       allow(pool).to receive(:post).and_yield
       allow(processor).to receive(:fetch_messages)
     end
@@ -61,7 +62,6 @@ RSpec.describe Cosmo::Stream::Processor do
     before do
       allow(nats_message).to receive(:metadata).and_return(metadata)
       allow(nats_message).to receive(:data).and_return('{"key":"value"}')
-      processor.instance_variable_set(:@processors, { test_stream: stream_processor })
       allow(stream_processor).to receive(:process)
       allow(Cosmo::Logger).to receive(:with).and_yield
       allow(Cosmo::Logger).to receive(:info)
@@ -70,14 +70,14 @@ RSpec.describe Cosmo::Stream::Processor do
 
     it "processes messages with stream processor" do
       expect(stream_processor).to receive(:process)
-      processor.send(:process, :test_stream, [nats_message])
+      processor.send(:process, [nats_message], stream_processor)
     end
 
     it "wraps messages in Stream::Message objects" do
       expect(stream_processor).to receive(:process) do |messages|
         expect(messages.first).to be_a(Cosmo::Stream::Message)
       end
-      processor.send(:process, :test_stream, [nats_message])
+      processor.send(:process, [nats_message], stream_processor)
     end
 
     it "logs processing with metadata" do
@@ -86,13 +86,13 @@ RSpec.describe Cosmo::Stream::Processor do
                                                      seq_consumer: 50,
                                                      num_pending: 5
                                                    ))
-      processor.send(:process, :test_stream, [nats_message])
+      processor.send(:process, [nats_message], stream_processor)
     end
 
     it "handles StandardError gracefully" do
       allow(stream_processor).to receive(:process).and_raise(StandardError, "Processing failed")
       expect(Cosmo::Logger).to receive(:debug).with(kind_of(StandardError))
-      expect { processor.send(:process, :test_stream, [nats_message]) }.not_to raise_error
+      expect { processor.send(:process, [nats_message], stream_processor) }.not_to raise_error
     end
   end
 
@@ -125,7 +125,8 @@ RSpec.describe Cosmo::Stream::Processor do
     it "merges config from Config and system streams" do
       processor.send(:setup_configs)
       configs = processor.instance_variable_get(:@configs)
-      expect(configs).to have_key(:configured_stream)
+      expect(configs).to be_an(Array)
+      expect(configs.map { |c| c[:class] }).to include(stream_class)
     end
 
     it "skips invalid class names" do
@@ -143,47 +144,32 @@ RSpec.describe Cosmo::Stream::Processor do
       processor_with_filter.send(:setup_configs)
       configs = processor_with_filter.instance_variable_get(:@configs)
 
-      expect(configs.values.map { |c| c[:class] }).to include(stream_class)
-      expect(configs.values.map { |c| c[:class] }).not_to include(another_stream_class)
-    end
-  end
-
-  describe "#setup_processors (private)" do
-    let(:stream_class) do
-      Class.new do
-        attr_accessor :initialized
-
-        def initialize
-          @initialized = true
-        end
-      end
-    end
-
-    before do
-      processor.instance_variable_set(:@configs, { test: { class: stream_class } })
-    end
-
-    it "instantiates processor for each stream" do
-      processor.send(:setup_processors)
-      processors = processor.instance_variable_get(:@processors)
-      expect(processors[:test]).to be_a(stream_class)
-      expect(processors[:test].initialized).to be true
+      expect(configs.map { |c| c[:class] }).to include(stream_class)
+      expect(configs.map { |c| c[:class] }).not_to include(another_stream_class)
     end
   end
 
   describe "#setup_consumers (private)" do
     let(:consumer) { double("consumer") }
     let(:deliver_policy) { { deliver_policy: "all" } }
+    let(:stream_class) do
+      Class.new do
+        include Cosmo::Stream
+
+        def process_one; end
+      end
+    end
 
     before do
-      processor.instance_variable_set(:@configs, {
-                                        test_stream: {
+      processor.instance_variable_set(:@configs, [
+                                        {
                                           stream_name: :test_stream,
                                           consumer_name: "consumer-test",
+                                          class: stream_class,
                                           consumer: { ack_policy: "explicit", subjects: ["test.>"] },
                                           start_position: nil
                                         }
-                                      })
+                                      ])
       allow(Cosmo::Config).to receive(:deliver_policy).and_return(deliver_policy)
       allow(client).to receive(:subscribe).and_return(consumer)
     end
@@ -197,10 +183,14 @@ RSpec.describe Cosmo::Stream::Processor do
       processor.send(:setup_consumers)
     end
 
-    it "stores consumers by stream name" do
+    it "stores consumers as array of tuples" do
       processor.send(:setup_consumers)
       consumers = processor.instance_variable_get(:@consumers)
-      expect(consumers[:test_stream]).to eq(consumer)
+      expect(consumers).to be_an(Array)
+      expect(consumers.length).to eq(1)
+      expect(consumers.first[0]).to eq(consumer) # subscription
+      expect(consumers.first[1]).to be_a(Hash) # config
+      expect(consumers.first[2]).to be_an_instance_of(stream_class) # processor instance
     end
   end
 
@@ -220,8 +210,8 @@ RSpec.describe Cosmo::Stream::Processor do
                                                                                   ])
 
       config = processor.send(:static_config)
-      expect(config).to have_key(:configured_stream)
-      expect(config[:configured_stream][:class]).to eq(stream_class)
+      expect(config).to be_an(Array)
+      expect(config.first[:class]).to eq(stream_class)
     end
 
     it "skips invalid class names" do
@@ -248,8 +238,8 @@ RSpec.describe Cosmo::Stream::Processor do
       allow(stream_class).to receive(:default_options).and_return({ stream: :test_stream })
 
       config = processor.send(:dynamic_config)
-      expect(config).to have_key(:test_stream)
-      expect(config[:test_stream][:class]).to eq(stream_class)
+      expect(config).to be_an(Array)
+      expect(config.first[:class]).to eq(stream_class)
     end
   end
 end

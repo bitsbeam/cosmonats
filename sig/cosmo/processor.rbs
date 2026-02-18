@@ -2,7 +2,7 @@ module Cosmo
   class Processor
     @pool: Utils::ThreadPool
     @running: untyped
-    @consumers: Hash[Symbol, untyped]
+    @consumers: Array[untyped]
     @options: Hash[Symbol, untyped]
 
     def self.run: (*untyped) -> Processor
@@ -21,7 +21,7 @@ module Cosmo
 
     def running?: () -> bool
 
-    def fetch_messages: (Symbol stream_name, batch_size: Integer, timeout: Float) ?{ (Array[untyped]) -> void } -> void
+    def fetch_messages: (untyped subscription, batch_size: Integer, timeout: Float) ?{ (Array[untyped]) -> void } -> void
 
     def client: () -> Client
 

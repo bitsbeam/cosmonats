@@ -5,8 +5,7 @@ module Cosmo
     class Processor < ::Cosmo::Processor
       def initialize(pool, running, options)
         super
-        @configs = {}
-        @processors = {}
+        @configs = []
       end
 
       private
@@ -17,19 +16,20 @@ module Cosmo
 
       def setup
         setup_configs
-        setup_processors
         setup_consumers
       end
 
       def work_loop
         while running?
-          @consumers.each_key do |stream_name|
+          @consumers.each do |(subscription, config, processor)|
             break unless running?
 
             begin
-              batch_size = @configs[stream_name][:batch_size]
               timeout = ENV.fetch("COSMO_STREAMS_FETCH_TIMEOUT", 0.1).to_f
-              @pool.post { fetch_messages(stream_name, batch_size:, timeout:) }
+              @pool.post do
+                messages = fetch_messages(subscription, batch_size: config[:batch_size], timeout:)
+                process(messages, processor) if messages&.any?
+              end
             rescue Concurrent::RejectedExecutionError
               break # pool doesn't accept new jobs, we are shutting down
             end
@@ -39,9 +39,8 @@ module Cosmo
         end
       end
 
-      def process(stream_name, messages) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      def process(messages, processor) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         metadata = messages.last.metadata
-        processor = @processors[stream_name]
         serializer = processor.class.default_options.dig(:publisher, :serializer)
         messages = messages.map { Message.new(_1, serializer:) }
 
@@ -64,21 +63,21 @@ module Cosmo
       end
 
       def setup_configs
-        configs = static_config.merge(dynamic_config)
-        configs = configs.select { |_, c| @options[:processors].include?(c[:class].name) } if @options[:processors]
-        @configs.merge!(configs)
-      end
+        @configs = static_config + dynamic_config
+        return unless @options[:processors]
 
-      def setup_processors
-        @configs.each { |s, c| @processors[s] = c[:class].new }
+        pattern = Regexp.new(@options[:processors].map { "\\b#{_1}\\b" }.join("|"))
+        @configs.select! { _1[:class].name.match?(pattern) }
       end
 
       def setup_consumers
-        @configs.each do |stream_name, config|
+        @configs.each do |config|
+          processor = config[:class].new
           subjects = config.dig(:consumer, :subjects)
           deliver_policy = Config.deliver_policy(config[:start_position])
-          config, consumer_name = config.values_at(:consumer, :consumer_name)
-          @consumers[stream_name] = client.subscribe(subjects, consumer_name, config.merge(deliver_policy))
+          consumer_config, consumer_name = config.values_at(:consumer, :consumer_name)
+          subscription = client.subscribe(subjects, consumer_name, consumer_config.merge(deliver_policy))
+          @consumers << [subscription, config, processor]
         end
       end
 
@@ -86,14 +85,12 @@ module Cosmo
         Config.dig(:consumers, :streams)&.filter_map do |config|
           next unless (klass = Utils::String.safe_constantize(config[:class]))
 
-          [config[:stream].to_sym, config.merge(class: klass)]
-        end.to_h
+          config.merge(class: klass)
+        end.to_a
       end
 
       def dynamic_config
-        Config.system[:streams].to_h do |klass|
-          [klass.default_options[:stream].to_sym, klass.default_options.merge(class: klass)]
-        end
+        Config.system[:streams].map { _1.default_options.merge(class: _1) }
       end
     end
   end

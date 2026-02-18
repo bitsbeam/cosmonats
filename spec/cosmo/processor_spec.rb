@@ -20,8 +20,8 @@ RSpec.describe Cosmo::Processor do
       expect(processor.instance_variable_get(:@running)).to eq(running)
     end
 
-    it "initializes empty consumers hash" do
-      expect(processor.instance_variable_get(:@consumers)).to eq({})
+    it "initializes empty consumers array" do
+      expect(processor.instance_variable_get(:@consumers)).to eq([])
     end
 
     it "stores options" do
@@ -48,32 +48,17 @@ RSpec.describe Cosmo::Processor do
   end
 
   describe "#fetch_messages" do
-    let(:consumer) { double("consumer") }
+    let(:subscription) { double("subscription") }
     let(:messages) { [double("message")] }
 
-    before do
-      processor.instance_variable_set(:@consumers, { test: consumer })
-    end
-
-    it "fetches messages from consumer" do
-      expect(consumer).to receive(:fetch).with(10, timeout: 1).and_return(messages)
-      processor.send(:fetch_messages, :test, batch_size: 10, timeout: 1) {}
-    end
-
-    it "yields messages when block given" do
-      allow(consumer).to receive(:fetch).and_return(messages)
-      expect { |b| processor.send(:fetch_messages, :test, batch_size: 10, timeout: 1, &b) }.to yield_with_args(messages)
-    end
-
-    it "calls process when no block given" do
-      allow(consumer).to receive(:fetch).and_return(messages)
-      expect(processor).to receive(:process).with(:test, messages)
-      processor.send(:fetch_messages, :test, batch_size: 10, timeout: 1)
+    it "fetches messages from subscription" do
+      expect(subscription).to receive(:fetch).with(10, timeout: 1).and_return(messages)
+      processor.send(:fetch_messages, subscription, batch_size: 10, timeout: 1)
     end
 
     it "handles NATS timeout gracefully" do
-      allow(consumer).to receive(:fetch).and_raise(NATS::Timeout)
-      expect { processor.send(:fetch_messages, :test, batch_size: 10, timeout: 1) {} }.not_to raise_error
+      allow(subscription).to receive(:fetch).and_raise(NATS::Timeout)
+      expect { processor.send(:fetch_messages, subscription, batch_size: 10, timeout: 1) }.not_to raise_error
     end
   end
 

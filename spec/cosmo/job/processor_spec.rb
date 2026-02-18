@@ -50,7 +50,7 @@ RSpec.describe Cosmo::Job::Processor do
   describe "#work_loop (private)" do
     before do
       processor.instance_variable_set(:@weights, [:default])
-      processor.instance_variable_set(:@consumers, { default: consumer })
+      processor.instance_variable_set(:@consumers, [[consumer, :default]])
       allow(pool).to receive(:post).and_yield
       allow(processor).to receive(:fetch_messages)
     end
@@ -75,7 +75,7 @@ RSpec.describe Cosmo::Job::Processor do
     let(:header) { { "X-Stream" => "default", "X-Subject" => "jobs.default.test", "X-Execute-At" => "1000", "Nats-Expected-Stream" => "scheduled" } }
 
     before do
-      processor.instance_variable_set(:@consumers, { scheduled: consumer })
+      processor.instance_variable_set(:@consumers, [[consumer, :scheduled]])
       allow(message).to receive(:header).and_return(header)
       allow(message).to receive(:data).and_return("{}")
       allow(message).to receive(:ack)

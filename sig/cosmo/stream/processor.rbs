@@ -1,10 +1,9 @@
 module Cosmo
   module Stream
     class Processor < ::Cosmo::Processor
-      @configs: Hash[Symbol, Hash[Symbol, untyped]]
-      @processors: Hash[Symbol, untyped]
+      @configs: Array[Hash[Symbol, untyped]]
 
-      def initialize: (Utils::ThreadPool pool, untyped running) -> void
+      def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options) -> void
 
       private
 
@@ -14,17 +13,15 @@ module Cosmo
 
       def work_loop: () -> void
 
-      def process: (Symbol stream_name, Array[untyped] messages) -> void
+      def process: (Array[untyped] messages, untyped processor) -> void
 
       def setup_configs: () -> void
 
-      def setup_processors: () -> void
-
       def setup_consumers: () -> void
 
-      def static_config: -> Hash[Symbol, untyped]
+      def static_config: -> Array[Hash[Symbol, untyped]]
 
-      def dynamic_config: -> Hash[Symbol, untyped]
+      def dynamic_config: -> Array[Hash[Symbol, untyped]]
     end
   end
 end

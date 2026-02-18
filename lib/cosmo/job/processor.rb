@@ -22,7 +22,8 @@ module Cosmo
           subject = config.delete(:subject)
           priority = config.delete(:priority)
           @weights += ([stream_name] * priority.to_i) if priority
-          @consumers[stream_name] = client.subscribe(subject, consumer_name, config)
+          subscription = client.subscribe(subject, consumer_name, config)
+          @consumers << [subscription, stream_name]
         end
       end
 
@@ -33,7 +34,11 @@ module Cosmo
 
             begin
               timeout = ENV.fetch("COSMO_JOBS_FETCH_TIMEOUT", 0.1).to_f
-              @pool.post { fetch_messages(stream_name, batch_size: 1, timeout:) }
+              @pool.post do
+                subscription = @consumers.find { |(_, sn)| sn == stream_name }&.first
+                messages = fetch_messages(subscription, batch_size: 1, timeout:)
+                process(messages) if messages&.any?
+              end
             rescue Concurrent::RejectedExecutionError
               break # pool doesn't accept new jobs, we are shutting down
             end
@@ -47,22 +52,22 @@ module Cosmo
         while running?
           break unless running?
 
+          now = Time.now.to_i
           timeout = ENV.fetch("COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT", 5).to_f
-          fetch_messages(:scheduled, batch_size: 100, timeout:) do |messages|
-            now = Time.now.to_i
-            messages.each do |message|
-              headers = message.header.except("X-Stream", "X-Subject", "X-Execute-At", "Nats-Expected-Stream")
-              stream, subject, execute_at = message.header.values_at("X-Stream", "X-Subject", "X-Execute-At")
-              headers["Nats-Expected-Stream"] = stream
-              execute_at = execute_at.to_i
+          subscription = @consumers.find { |(_, sn)| sn == :scheduled }&.first
+          messages = fetch_messages(subscription, batch_size: 100, timeout:)
+          messages&.each do |message|
+            headers = message.header.except("X-Stream", "X-Subject", "X-Execute-At", "Nats-Expected-Stream")
+            stream, subject, execute_at = message.header.values_at("X-Stream", "X-Subject", "X-Execute-At")
+            headers["Nats-Expected-Stream"] = stream
+            execute_at = execute_at.to_i
 
-              if now >= execute_at
-                client.publish(subject, message.data, headers: headers)
-                message.ack
-              else
-                delay_ns = (execute_at - now) * 1_000_000_000
-                message.nak(delay: delay_ns)
-              end
+            if now >= execute_at
+              client.publish(subject, message.data, headers: headers)
+              message.ack
+            else
+              delay_ns = (execute_at - now) * 1_000_000_000
+              message.nak(delay: delay_ns)
             end
           end
 
