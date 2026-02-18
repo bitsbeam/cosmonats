@@ -75,19 +75,20 @@ RSpec.describe Cosmo::CLI do
 
   describe "#load_config (private)" do
     it "raises error when config file does not exist" do
-      expect { cli.send(:load_config, "/nonexistent.yml") }.to raise_error(Cosmo::ConfigNotFoundError)
+      expect { cli.send(:load_config, { config_file: "/nonexistent.yml" }) }.to raise_error(Cosmo::ConfigNotFoundError)
     end
 
     it "loads config when file exists" do
       allow(File).to receive(:exist?).with(config_file).and_return(true)
       expect(Cosmo::Config).to receive(:load).with(config_file)
-      cli.send(:load_config, config_file)
+      cli.send(:load_config, { config_file: config_file })
     end
 
     it "tries default path when no path provided" do
-      allow(File).to receive(:exist?).and_return(false)
+      default_path = File.expand_path(Cosmo::Config::DEFAULT_PATH)
+      allow(File).to receive(:exist?).with(default_path).and_return(false)
       expect(Cosmo::Config).to receive(:load).with(nil)
-      cli.send(:load_config, nil)
+      cli.send(:load_config, {})
     end
   end
 

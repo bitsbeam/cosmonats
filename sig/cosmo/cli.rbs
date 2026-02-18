@@ -14,7 +14,7 @@ module Cosmo
 
     def parse: () -> [Hash[Symbol, untyped], ::String?, Hash[Symbol, untyped]]
 
-    def load_config: (::String? path) -> void
+    def load_config: (Hash[Symbol, untyped] flags) -> void
 
     def boot_application: () -> void
 

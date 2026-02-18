@@ -15,7 +15,7 @@ module Cosmo
 
     def run
       flags, command, options = parse
-      load_config(flags[:config_file])
+      load_config(flags)
       puts self.class.banner
       boot_application
       require_path(flags[:require])
@@ -37,7 +37,8 @@ module Cosmo
       [flags, command, options]
     end
 
-    def load_config(path)
+    def load_config(flags)
+      path = flags[:config_file]
       raise ConfigNotFoundError, path if path && !File.exist?(path)
 
       unless path
@@ -47,6 +48,8 @@ module Cosmo
       end
 
       Config.load(path)
+      Config.set(:concurrency, flags[:concurrency]) if flags[:concurrency]
+      Config.set(:timeout, flags[:timeout]) if flags[:timeout]
     end
 
     def boot_application
@@ -96,7 +99,7 @@ module Cosmo
         end
 
         o.on "-S", "--setup", "Load config, create streams and exit" do
-          load_config(flags[:config_file])
+          load_config(flags)
           boot_application
 
           Config[:streams].each do |name, config|
