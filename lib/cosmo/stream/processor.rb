@@ -19,7 +19,7 @@ module Cosmo
         setup_consumers
       end
 
-      def work_loop # rubocop:disable Metrics/CyclomaticComplexity
+      def work_loop # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity
         while running?
           @consumers.each do |(subscription, config, processor)|
             break unless running?
@@ -27,8 +27,11 @@ module Cosmo
             begin
               timeout = ENV.fetch("COSMO_STREAMS_FETCH_TIMEOUT", 0.1).to_f
               @pool.post do
+                Logger.debug "fetching #{config.dig(:consumer, :subjects).inspect}, timeout=#{timeout}"
                 messages = fetch_messages(subscription, batch_size: config[:batch_size], timeout:)
+                Logger.debug "fetched (#{messages&.size.to_i}) messages"
                 process(messages, processor) if messages&.any?
+                Logger.debug "processed (#{messages&.size.to_i}) messages"
               end
             rescue Concurrent::RejectedExecutionError
               break # pool doesn't accept new jobs, we are shutting down
