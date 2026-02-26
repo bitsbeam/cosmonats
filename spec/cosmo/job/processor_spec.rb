@@ -52,7 +52,7 @@ RSpec.describe Cosmo::Job::Processor do
       processor.instance_variable_set(:@weights, [:default])
       processor.instance_variable_set(:@consumers, [[consumer, :default]])
       allow(pool).to receive(:post).and_yield
-      allow(processor).to receive(:fetch_messages)
+      allow(processor).to receive(:fetch)
     end
 
     it "fetches messages for weighted streams" do
@@ -87,7 +87,7 @@ RSpec.describe Cosmo::Job::Processor do
 
       # Mock fetch_messages to return messages once then raise NATS::Timeout
       call_count = 0
-      allow(processor).to receive(:fetch_messages) do |*_args, &block|
+      allow(processor).to receive(:fetch) do |*_args, &block|
         call_count += 1
         raise NATS::Timeout unless call_count == 1
 
@@ -106,7 +106,7 @@ RSpec.describe Cosmo::Job::Processor do
 
       # Mock fetch_messages to return messages once then raise NATS::Timeout
       call_count = 0
-      allow(processor).to receive(:fetch_messages) do |*_args, &block|
+      allow(processor).to receive(:fetch) do |*_args, &block|
         call_count += 1
         raise NATS::Timeout unless call_count == 1
 

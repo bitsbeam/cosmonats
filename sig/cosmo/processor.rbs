@@ -21,7 +21,7 @@ module Cosmo
 
     def running?: () -> bool
 
-    def fetch_messages: (untyped subscription, batch_size: Integer, timeout: Float) ?{ (Array[untyped]) -> void } -> void
+    def fetch: (untyped subscription, batch_size: Integer, timeout: Float) ?{ (Array[untyped]) -> void } -> void
 
     def client: () -> Client
 

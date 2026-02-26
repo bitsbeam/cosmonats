@@ -7,6 +7,7 @@ module Cosmo
     class Data
       DEFAULTS = {
         batch_size: 100,
+        fetch_timeout: 10.0,
         consumer: {
           ack_policy: "explicit",
           max_deliver: 1,

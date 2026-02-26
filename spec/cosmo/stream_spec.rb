@@ -46,6 +46,11 @@ RSpec.describe Cosmo::Stream do
         expect(stream_class.default_options[:stream]).to eq(initial_stream)
         expect(stream_class.default_options[:batch_size]).to eq(75)
       end
+
+      it "merges fetch_timeout option" do
+        stream_class.options(fetch_timeout: 5)
+        expect(stream_class.default_options[:fetch_timeout]).to eq(5)
+      end
     end
 
     describe "#publish" do

@@ -9,6 +9,7 @@ module Cosmo
         ?stream: Symbol?,
         ?consumer_name: ::String?,
         ?batch_size: Integer?,
+        ?fetch_timeout: (Integer | Float)?,
         ?start_position: (Symbol | ::String | Time)?,
         ?consumer: Hash[Symbol, untyped]?,
         ?publisher: Hash[Symbol, untyped]?

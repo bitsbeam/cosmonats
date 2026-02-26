@@ -20,20 +20,25 @@ module Cosmo
       end
 
       def work_loop # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity
+        shutdown = false
+
         while running?
+          break if shutdown
+
           @consumers.each do |(subscription, config, processor)|
             break unless running?
 
             begin
-              timeout = ENV.fetch("COSMO_STREAMS_FETCH_TIMEOUT", 0.1).to_f
               @pool.post do
+                timeout = convert_timeout(config[:fetch_timeout])
                 Logger.debug "fetching #{config.dig(:consumer, :subjects).inspect}, timeout=#{timeout}"
-                messages = fetch_messages(subscription, batch_size: config[:batch_size], timeout:)
+                messages = fetch(subscription, batch_size: config[:batch_size], timeout:)
                 Logger.debug "fetched (#{messages&.size.to_i}) messages"
                 process(messages, processor) if messages&.any?
                 Logger.debug "processed (#{messages&.size.to_i}) messages"
               end
             rescue Concurrent::RejectedExecutionError
+              shutdown = true
               break # pool doesn't accept new jobs, we are shutting down
             end
 
@@ -94,6 +99,16 @@ module Cosmo
 
       def dynamic_config
         Config.system[:streams].map { _1.default_options.merge(class: _1) }
+      end
+
+      def convert_timeout(value)
+        timeout = value.to_f
+        if timeout <= 0
+          Logger.warn "Ignoring `fetch_timeout: #{timeout}` (causes high CPU usage) with #{Data::DEFAULTS[:fetch_timeout]}s instead"
+          timeout = Data::DEFAULTS[:fetch_timeout].to_f
+        end
+
+        timeout
       end
     end
   end

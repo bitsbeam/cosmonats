@@ -28,7 +28,11 @@ module Cosmo
       end
 
       def work_loop # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/AbcSize
+        shutdown = false
+
         while running?
+          break if shutdown
+
           @weights.shuffle.each do |stream_name|
             break unless running?
 
@@ -36,10 +40,11 @@ module Cosmo
               timeout = ENV.fetch("COSMO_JOBS_FETCH_TIMEOUT", 0.1).to_f
               @pool.post do
                 subscription = @consumers.find { |(_, sn)| sn == stream_name }&.first
-                messages = fetch_messages(subscription, batch_size: 1, timeout:)
+                messages = fetch(subscription, batch_size: 1, timeout:)
                 process(messages) if messages&.any?
               end
             rescue Concurrent::RejectedExecutionError
+              shutdown = true
               break # pool doesn't accept new jobs, we are shutting down
             end
 
@@ -55,7 +60,7 @@ module Cosmo
           now = Time.now.to_i
           timeout = ENV.fetch("COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT", 5).to_f
           subscription = @consumers.find { |(_, sn)| sn == :scheduled }&.first
-          messages = fetch_messages(subscription, batch_size: 100, timeout:)
+          messages = fetch(subscription, batch_size: 100, timeout:)
           messages&.each do |message|
             headers = message.header.except("X-Stream", "X-Subject", "X-Execute-At", "Nats-Expected-Stream")
             stream, subject, execute_at = message.header.values_at("X-Stream", "X-Subject", "X-Execute-At")

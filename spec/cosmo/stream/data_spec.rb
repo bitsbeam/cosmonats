@@ -6,6 +6,10 @@ RSpec.describe Cosmo::Stream::Data do
       expect(described_class::DEFAULTS[:batch_size]).to eq(100)
     end
 
+    it "defines default fetch_timeout" do
+      expect(described_class::DEFAULTS[:fetch_timeout]).to eq(10)
+    end
+
     it "defines default consumer config" do
       consumer = described_class::DEFAULTS[:consumer]
       expect(consumer[:ack_policy]).to eq("explicit")

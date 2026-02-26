@@ -11,6 +11,8 @@ module Cosmo
 
       def setup: () -> void
 
+      def convert_timeout: (Numeric) -> Float
+
       def work_loop: () -> void
 
       def process: (Array[untyped] messages, untyped processor) -> void

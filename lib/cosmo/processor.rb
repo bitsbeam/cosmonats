@@ -39,10 +39,16 @@ module Cosmo
       @running.true?
     end
 
-    def fetch_messages(subscription, batch_size:, timeout:)
+    def fetch(subscription, batch_size:, timeout:)
       subscription.fetch(batch_size, timeout:)
     rescue NATS::Timeout
       # No messages, continue
+    rescue StandardError => e
+      Logger.error "Snap! Error just happened"
+      Logger.error "#{e.class}: #{e.message}"
+
+      backoff = ENV.fetch("COSMO_STREAMS_FETCH_BACKOFF", 5).to_f
+      sleep([timeout, backoff].max) # backoff before retry
     end
 
     def client

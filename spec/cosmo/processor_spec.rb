@@ -53,12 +53,45 @@ RSpec.describe Cosmo::Processor do
 
     it "fetches messages from subscription" do
       expect(subscription).to receive(:fetch).with(10, timeout: 1).and_return(messages)
-      processor.send(:fetch_messages, subscription, batch_size: 10, timeout: 1)
+      processor.send(:fetch, subscription, batch_size: 10, timeout: 1)
     end
 
     it "handles NATS timeout gracefully" do
       allow(subscription).to receive(:fetch).and_raise(NATS::Timeout)
-      expect { processor.send(:fetch_messages, subscription, batch_size: 10, timeout: 1) }.not_to raise_error
+      expect { processor.send(:fetch, subscription, batch_size: 10, timeout: 1) }.not_to raise_error
+    end
+
+    it "handles StandardError by logging and sleeping with backoff" do
+      error = StandardError.new("connection error")
+      allow(subscription).to receive(:fetch).and_raise(error)
+      allow(ENV).to receive(:fetch).with("COSMO_STREAMS_FETCH_BACKOFF", 5).and_return("3")
+
+      expect(Cosmo::Logger).to receive(:error).with("Snap! Error just happened")
+      expect(Cosmo::Logger).to receive(:error).with("StandardError: connection error")
+      expect(processor).to receive(:sleep).with(3.0)
+
+      processor.send(:fetch, subscription, batch_size: 10, timeout: 1)
+    end
+
+    it "sleeps with timeout if backoff is smaller" do
+      error = StandardError.new("test error")
+      allow(subscription).to receive(:fetch).and_raise(error)
+      allow(ENV).to receive(:fetch).with("COSMO_STREAMS_FETCH_BACKOFF", 5).and_return("1")
+      allow(Cosmo::Logger).to receive(:error)
+
+      expect(processor).to receive(:sleep).with(10.0)
+
+      processor.send(:fetch, subscription, batch_size: 10, timeout: 10)
+    end
+
+    it "uses default backoff when env var not set" do
+      error = StandardError.new("test error")
+      allow(subscription).to receive(:fetch).and_raise(error)
+      allow(Cosmo::Logger).to receive(:error)
+
+      expect(processor).to receive(:sleep).with(5.0)
+
+      processor.send(:fetch, subscription, batch_size: 10, timeout: 1)
     end
   end
 

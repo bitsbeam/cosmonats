@@ -29,13 +29,14 @@ RSpec.describe Cosmo::Stream::Processor do
   end
 
   describe "#work_loop (private)" do
+    let(:consumer) { double("consumer") }
+    let(:config) { { batch_size: 10, fetch_timeout: 7.5 } }
+    let(:stream_processor) { double("stream_processor") }
+
     before do
-      consumer = double("consumer")
-      config = { batch_size: 10 }
-      stream_processor = double("stream_processor")
       processor.instance_variable_set(:@consumers, [[consumer, config, stream_processor]])
       allow(pool).to receive(:post).and_yield
-      allow(processor).to receive(:fetch_messages)
+      allow(processor).to receive(:fetch)
     end
 
     it "fetches messages for each stream" do
@@ -49,6 +50,48 @@ RSpec.describe Cosmo::Stream::Processor do
       allow(pool).to receive(:post).and_raise(Concurrent::RejectedExecutionError)
       running.make_false
       expect { processor.send(:work_loop) }.not_to raise_error
+    end
+
+    it "uses fetch_timeout from config" do
+      allow(processor).to receive(:fetch) do |_, options|
+        expect(options[:timeout]).to eq(7.5)
+        raise Concurrent::RejectedExecutionError
+      end
+
+      thread = Thread.new { processor.send(:work_loop) }
+
+      thread.join(0.5)
+      thread.kill if thread.alive?
+    end
+
+    it "warns and uses default when fetch_timeout is zero" do
+      config = { batch_size: 10, fetch_timeout: 0 }
+      processor.instance_variable_set(:@consumers, [[consumer, config, stream_processor]])
+      expect(Cosmo::Logger).to receive(:warn).with("Ignoring `fetch_timeout: 0.0` (causes high CPU usage) with 10.0s instead").at_least(:once)
+      allow(processor).to receive(:fetch) do |_, options|
+        expect(options[:timeout]).to eq(10)
+        raise Concurrent::RejectedExecutionError
+      end
+
+      thread = Thread.new { processor.send(:work_loop) }
+
+      thread.join(0.5)
+      thread.kill if thread.alive?
+    end
+
+    it "warns and uses default when fetch_timeout is negative" do
+      config = { batch_size: 10, fetch_timeout: -5 }
+      processor.instance_variable_set(:@consumers, [[consumer, config, stream_processor]])
+      expect(Cosmo::Logger).to receive(:warn).with("Ignoring `fetch_timeout: -5.0` (causes high CPU usage) with 10.0s instead").at_least(:once)
+      allow(processor).to receive(:fetch) do |_, options|
+        expect(options[:timeout]).to eq(10)
+        raise Concurrent::RejectedExecutionError
+      end
+
+      thread = Thread.new { processor.send(:work_loop) }
+
+      thread.join(0.5)
+      thread.kill if thread.alive?
     end
   end
 

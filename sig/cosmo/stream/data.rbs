@@ -1,7 +1,7 @@
 module Cosmo
   module Stream
     class Data
-      DEFAULTS: Hash[Symbol, Integer | Hash[Symbol, untyped]]
+      DEFAULTS: Hash[Symbol, Numeric | Hash[Symbol, untyped]]
     end
   end
 end
