@@ -19,7 +19,7 @@ module Cosmo
         setup_consumers
       end
 
-      def work_loop # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity
+      def work_loop # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         shutdown = false
 
         while running?
