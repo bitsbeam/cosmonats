@@ -11,7 +11,9 @@ module Cosmo
     attr_reader :nc, :js
 
     def initialize(nats_url: ENV.fetch("NATS_URL", "nats://localhost:4222"))
+      Logger.debug "Connecting to NATS server at #{nats_url}..."
       @nc = NATS.connect(nats_url)
+      Logger.debug "Connection established"
       @js = @nc.jetstream
     end
 
