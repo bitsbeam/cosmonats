@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmo<%= " — #{h(content_for :title)}" if content_for?(:title) %></title>
+  <script src="<%= url_for('/assets/htmx.min.js.gz') %>" defer></script>
+  <link rel="stylesheet" href="<%= url_for('/assets/app.css') %>">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav class="nav">
+        <a href="<%= url_for('/jobs') %>" class="navbar-brand">🚀 Cosmo</a>
+        <ul class="nav-list">
+          <li>
+            <a href="<%= url_for('/jobs') %>" class="<%= "active" if current_page?('/jobs') %>">Jobs</a>
+          </li>
+          <li>
+            <a href="<%= url_for('/streams') %>" class="<%= "active" if current_page?('/streams') %>">Streams</a>
+          </li>
+          <li>
+            <a href="<%= url_for('/actions') %>" class="<%= "active" if current_page?('/actions') %>">Actions</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <%= content_for :view %>
+  </main>
+</body>
+</html>

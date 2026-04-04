@@ -1,0 +1,11 @@
+<section>
+  <header></header>
+
+  <div id="content">
+    <div hx-get="<%= url_for('/streams/_table') %>"
+         hx-trigger="load, every 5s"
+         hx-swap="innerHTML">
+      <div class="alert alert-info">Loading streams…</div>
+    </div>
+  </div>
+</section>

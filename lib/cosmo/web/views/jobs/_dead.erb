@@ -1,0 +1,65 @@
+<% if @jobs.empty? -%>
+  <div class="alert alert-success">No dead jobs found</div>
+<% else -%>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Error</th>
+          <th>Failed</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @jobs.each do |job| -%>
+        <% args_json  = (JSON.pretty_generate(job[:args]) rescue job[:args].to_s) -%>
+        <% error_type = job[:error].to_s.split(":").first || "Error" -%>
+        <tr class="dead-row">
+          <td>
+            <div class="job-class"><%= h(job[:klass].to_s) %></div>
+            <div class="job-id">JID: <code><%= h(job[:jid].to_s) %></code></div>
+            <details>
+              <summary>Arguments</summary>
+              <code><%= h(args_json) %></code>
+            </details>
+          </td>
+          <td style="max-width: 400px;">
+            <% if job[:error] -%>
+            <div class="error-message">
+              <strong><%= h(error_type) %></strong>
+              <p><%= h(job[:error]) %></p>
+            </div>
+            <% end -%>
+          </td>
+          <td style="white-space: nowrap;">
+            <time><%= h(format_timestamp(job[:failed_at])) %></time>
+            <div style="font-size: var(--font-size-small);"><code><%= h(job[:stream]) %></code></div>
+          </td>
+          <td>
+            <div class="actions-form">
+              <form method="post" action="<%= url_for('/jobs/retry') %>"
+                    hx-post="<%= url_for('/jobs/retry') %>"
+                    hx-target="#dead-jobs-container"
+                    hx-swap="innerHTML">
+                <input type="hidden" name="stream" value="<%= h(job[:stream]) %>">
+                <input type="hidden" name="seq"    value="<%= job[:seq].to_i %>">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">&#x21BB; Retry</button>
+              </form>
+              <form method="post" action="<%= url_for('/jobs/delete') %>"
+                    hx-post="<%= url_for('/jobs/delete') %>"
+                    hx-target="#dead-jobs-container"
+                    hx-swap="innerHTML"
+                    hx-confirm="Delete this job?">
+                <input type="hidden" name="stream" value="<%= h(job[:stream]) %>">
+                <input type="hidden" name="seq"    value="<%= job[:seq].to_i %>">
+                <button type="submit" class="btn btn-danger" style="width: 100%;">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <% end -%>
+      </tbody>
+    </table>
+  </div>
+<% end -%>

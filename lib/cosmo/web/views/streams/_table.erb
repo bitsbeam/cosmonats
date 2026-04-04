@@ -1,0 +1,42 @@
+<% if @streams.empty? -%>
+  <div class="alert alert-info">No streams found</div>
+<% else -%>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Messages</th>
+          <th>Size</th>
+          <th>Consumers</th>
+          <th>Subjects</th>
+          <th>Sequence</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @streams.each do |s| -%>
+        <tr>
+          <td>
+            <a href="<%= url_for('/streams/info', { name: u(s[:name]) }) %>"
+               hx-get="<%= url_for('/streams/info', { name: u(s[:name]) }) %>"
+               hx-target="#content"
+               hx-push-url="true"
+               class="stream-link"><%= h(s[:name]) %></a>
+          </td>
+          <td><%= format_numbers(s[:messages]) %></td>
+          <td><%= format_bytes(s[:bytes]) %></td>
+          <td><%= s[:consumer_count] %></td>
+          <td>
+            <div class="subjects">
+              <% (s[:subjects] || []).each do |sub| -%>
+                <span class="subject-tag"><%= h(sub) %></span>
+              <% end -%>
+            </div>
+          </td>
+          <td><code><%= format_numbers(s[:first_seq]) %> &rarr; <%= format_numbers(s[:last_seq]) %></code></td>
+        </tr>
+        <% end -%>
+      </tbody>
+    </table>
+  </div>
+<% end -%>

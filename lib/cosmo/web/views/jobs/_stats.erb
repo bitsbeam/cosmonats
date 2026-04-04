@@ -1,0 +1,28 @@
+<div class="cards-container">
+  <article class="stat-card">
+    <h3><%= format_numbers(@processed) %></h3>
+    <p>&#x1F4AA; Processed</p>
+  </article>
+  <article class="stat-card">
+    <h3><%= format_numbers(@failed) %></h3>
+    <p>&#x1F625; Failed</p>
+  </article>
+  <article class="stat-card">
+    <h3><%= format_numbers(@scheduled) %></h3>
+    <p>
+      <a href="<%= url_for('/jobs/scheduled') %>"
+         hx-get="<%= url_for('/jobs/scheduled') %>"
+         hx-target="#content"
+         hx-push-url="true">&#x23F0; Scheduled</a>
+    </p>
+  </article>
+  <article class="stat-card">
+    <h3><%= format_numbers(@dead) %></h3>
+    <p>
+      <a href="<%= url_for('/jobs/dead') %>"
+         hx-get="<%= url_for('/jobs/dead') %>"
+         hx-target="#content"
+         hx-push-url="true">&#x1F480; Dead</a>
+    </p>
+  </article>
+</div>

@@ -1,0 +1,38 @@
+<% if @jobs.empty? -%>
+  <div class="alert alert-success">No scheduled jobs found</div>
+<% else -%>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Job</th>
+          <th>Arguments</th>
+          <th>Stream</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @jobs.each do |job| -%>
+        <% args_json = (JSON.pretty_generate(job[:args]) rescue job[:args].to_s) -%>
+        <tr>
+          <td style="white-space: nowrap;">
+            <div class="time-badge"><%= h(time_until(job[:at])) %></div>
+            <time><%= h(format_timestamp(job[:at])) %></time>
+          </td>
+          <td>
+            <div class="job-class"><%= h(job[:klass].to_s) %></div>
+            <div class="job-id">JID: <code><%= h(job[:jid].to_s) %></code></div>
+          </td>
+          <td>
+            <details>
+              <summary>Show args</summary>
+              <code><%= h(args_json) %></code>
+            </details>
+          </td>
+          <td><code><%= h(job[:stream]) %></code></td>
+        </tr>
+        <% end -%>
+      </tbody>
+    </table>
+  </div>
+<% end -%>

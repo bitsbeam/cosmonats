@@ -1,0 +1,11 @@
+<section>
+  <header></header>
+
+  <div id="content">
+    <div hx-get="<%= url_for("/streams/_info", { name: u(@name) }) %>"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="alert alert-info">Loading stream info…</div>
+    </div>
+  </div>
+</section>

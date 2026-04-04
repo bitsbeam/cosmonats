@@ -1,0 +1,88 @@
+<div class="cards-container">
+  <article class="stat-card">
+    <h3><%= format_numbers(@state.messages) %></h3>
+    <p>Messages</p>
+  </article>
+  <article class="stat-card">
+    <h3><%= format_bytes(@state.bytes) %></h3>
+    <p>Size</p>
+  </article>
+  <article class="stat-card">
+    <h3><%= @state.consumer_count %></h3>
+    <p>Consumers</p>
+  </article>
+  <article class="stat-card">
+    <h3><%= format_numbers(@state.first_seq) + " &rarr; " + format_numbers(@state.last_seq) %></h3>
+    <p>Sequence Range</p>
+  </article>
+</div>
+
+<a href="<%= url_for('/streams') %>"
+   hx-get="<%= url_for('/streams') %>"
+   hx-target="#content"
+   hx-push-url="true"
+   class="btn"
+   style="display: block; width: fit-content; margin: var(--space-3x) auto;">Back to Streams</a>
+
+<h2>Configuration</h2>
+<div class="table-container">
+  <table>
+    <tbody>
+      <tr>
+        <th>Name</th>
+        <td>
+          <code><%= h(@name) %></code>
+        </td>
+      </tr>
+      <tr>
+        <th>Retention</th>
+        <td>
+          <code><%= h(@config.retention.to_s) %></code>
+        </td>
+      </tr>
+      <tr>
+        <th>Storage</th>
+        <td>
+          <code><%= h(@config.storage.to_s) %></code>
+        </td>
+      </tr>
+      <tr>
+        <th>Discard Policy</th>
+        <td>
+          <code><%= h(@config.discard.to_s) %></code>
+        </td>
+      </tr>
+      <tr>
+        <th>Max Consumers</th>
+        <td>
+          <code><%= @config.max_consumers || "Unlimited" %></code>
+        </td>
+      </tr>
+      <tr>
+        <th>Max Messages</th>
+        <td>
+          <code><%= @config.max_msgs || "Unlimited" %></code>
+        </td>
+      </tr>
+      <tr>
+        <th>Max Bytes</th>
+        <td>
+          <code><%= @config.max_bytes&.positive? ? format_bytes(@config.max_bytes) : "Unlimited" %></code>
+        </td>
+      </tr>
+      <tr>
+        <th>Max Age</th>
+        <td>
+          <code><%= @config.max_age&.positive? ? "#{@config.max_age}ns" : "Unlimited" %></code>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Subjects</h2>
+<div class="subjects" style="margin-top: var(--space-2x);">
+  <% Array(@config.subjects).each do |sub| -%>
+    <div class="subject-tag" style="padding: var(--space) var(--space-2x); font-size: 1rem;"><%= h(sub) %></div>
+  <% end -%>
+</div>

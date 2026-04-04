@@ -1,0 +1,17 @@
+<section>
+  <header></header>
+
+  <div hx-get="<%= url_for('/jobs/_stats') %>"
+       hx-trigger="load, every 5s"
+       hx-swap="innerHTML">
+    <div class="alert alert-info">Loading statistics…</div>
+  </div>
+
+  <div id="content">
+    <div hx-get="<%= url_for('/jobs/_scheduled') %>"
+         hx-trigger="load, every 5s"
+         hx-swap="innerHTML">
+      <div class="alert alert-info">Loading scheduled jobs…</div>
+    </div>
+  </div>
+</section>
