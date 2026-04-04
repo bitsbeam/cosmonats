@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-gem "byebug", "~> 11.0", platforms: %i[mri mingw x64_mingw]
+gem "byebug", "~> 11.0", platforms: %i[mri windows]
 gem "irb"
 gem "puma"
 gem "rackup", "~> 2.2"

@@ -35,3 +35,7 @@ Metrics/ClassLength:
 Metrics/BlockLength:
   Exclude:
     - spec/**/*.rb
+
+Style/OneClassPerFile:
+  Exclude:
+    - spec/**/*
