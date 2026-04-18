@@ -54,7 +54,7 @@ module Cosmo
       end
     end
 
-    attr_reader :jid
+    attr_accessor :jid
 
     def perform(...)
       raise NotImplementedError, "#{self.class}#perform must be implemented"

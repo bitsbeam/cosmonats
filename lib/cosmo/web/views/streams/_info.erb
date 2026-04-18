@@ -17,12 +17,13 @@
   </article>
 </div>
 
-<a href="<%= url_for('/streams') %>"
-   hx-get="<%= url_for('/streams') %>"
-   hx-target="#content"
-   hx-push-url="true"
-   class="btn"
-   style="display: block; width: fit-content; margin: var(--space-3x) auto;">Back to Streams</a>
+<div class="nav">
+  <a href="<%= url_for('/streams') %>"
+     hx-get="<%= url_for('/streams') %>"
+     hx-target="#content"
+     hx-push-url="true"
+     class="btn">Back to Streams</a>
+</div>
 
 <h2>Configuration</h2>
 <div class="table-container">

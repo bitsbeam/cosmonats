@@ -5,11 +5,13 @@ RSpec.describe Cosmo::Config do
   let(:test_config) do
     {
       concurrency: 10,
-      streams: {
-        test_stream: {
-          subjects: ["%{name}.>"],
-          max_age: 3600,
-          duplicate_window: 60
+      setup: {
+        streams: {
+          test_stream: {
+            subjects: ["%{name}.>"],
+            max_age: 3600,
+            duplicate_window: 60
+          }
         }
       },
       consumers: {
@@ -39,15 +41,15 @@ RSpec.describe Cosmo::Config do
     end
 
     it "converts max_age to nanoseconds" do
-      config = { streams: { test: { max_age: 60 } } }
+      config = { setup: { streams: { test: { max_age: 60 } } } }
       described_class.normalize!(config)
-      expect(config[:streams][:test][:max_age]).to eq(60 * 1_000_000_000)
+      expect(config[:setup][:streams][:test][:max_age]).to eq(60 * 1_000_000_000)
     end
 
     it "converts duplicate_window to nanoseconds" do
-      config = { streams: { test: { duplicate_window: 30 } } }
+      config = { setup: { streams: { test: { duplicate_window: 30 } } } }
       described_class.normalize!(config)
-      expect(config[:streams][:test][:duplicate_window]).to eq(30 * 1_000_000_000)
+      expect(config[:setup][:streams][:test][:duplicate_window]).to eq(30 * 1_000_000_000)
     end
 
     it "formats subject strings" do
@@ -57,9 +59,9 @@ RSpec.describe Cosmo::Config do
     end
 
     it "formats subjects arrays" do
-      config = { streams: { test: { subjects: %w[%{name}.> %{name}.events] } } }
+      config = { setup: { streams: { test: { subjects: %w[%{name}.> %{name}.events] } } } }
       described_class.normalize!(config)
-      expect(config[:streams][:test][:subjects]).to eq(%w[test.> test.events])
+      expect(config[:setup][:streams][:test][:subjects]).to eq(%w[test.> test.events])
     end
   end
 
@@ -130,8 +132,8 @@ RSpec.describe Cosmo::Config do
   describe "#dig" do
     it "digs into config hash" do
       instance = described_class.new
-      instance.set(:streams, :test, :subjects, ["test.>"])
-      expect(instance.dig(:streams, :test, :subjects)).to eq(["test.>"])
+      instance.set(:setup, :streams, :test, :subjects, ["test.>"])
+      expect(instance.dig(:setup, :streams, :test, :subjects)).to eq(["test.>"])
     end
 
     it "returns nil when path does not exist" do
@@ -153,8 +155,8 @@ RSpec.describe Cosmo::Config do
   describe "#set" do
     it "sets nested configuration values" do
       instance = described_class.new
-      instance.set(:streams, :test, :subjects, ["test.>"])
-      expect(instance.dig(:streams, :test, :subjects)).to eq(["test.>"])
+      instance.set(:setup, :streams, :test, :subjects, ["test.>"])
+      expect(instance.dig(:setup, :streams, :test, :subjects)).to eq(["test.>"])
     end
   end
 

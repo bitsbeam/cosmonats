@@ -58,7 +58,7 @@ RSpec.describe Cosmo::Client do
 
       ack = client.publish(subject_name, "payload")
 
-      message = client.get_message(stream_name, ack.seq)
+      message = client.get_message(stream_name, seq: ack.seq)
       expect(message.data).to eq("payload")
     end
 
@@ -77,7 +77,7 @@ RSpec.describe Cosmo::Client do
 
       ack = client.publish(subject_name, "payload", header: { "key" => "value" })
 
-      message = client.get_message(stream_name, ack.seq)
+      message = client.get_message(stream_name, seq: ack.seq)
       expect(message.headers).to eq({ "key" => "value" })
     end
   end
@@ -153,7 +153,7 @@ RSpec.describe Cosmo::Client do
       client.create_stream(stream_name, { subjects: ["test.>"] })
       ack = client.publish(subject_name, "payload")
 
-      message = client.get_message(stream_name, ack.seq)
+      message = client.get_message(stream_name, seq: ack.seq)
 
       expect(message.data).to eq("payload")
     end

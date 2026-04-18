@@ -1,10 +1,22 @@
+<div class="nav">
+  <% @stream_names.each do |stream_name| -%>
+    <button hx-get="<%= url_for('/jobs/enqueued', { stream_name: }) %>"
+            hx-target="#content"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            class="btn <%= "btn-primary" if @stream_name.to_s == stream_name.to_s %>">
+      <%= h(stream_name) %>
+    </button>
+  <% end -%>
+</div>
+
 <div class="pending">
   <span></span>
-  <span class="text-muted"><%= @total %> job(s) scheduled</span>
+  <span class="text-muted"><%= @total %> message(s) pending</span>
 </div>
 
 <% if @jobs.empty? -%>
-  <div class="alert alert-success">No scheduled jobs found</div>
+  <div class="alert alert-success">Stream <code><%= h(@stream_name) %></code> is empty</div>
 <% else -%>
   <div class="table-container">
     <table>
@@ -13,7 +25,7 @@
           <th>Job</th>
           <th>JID[Args]</th>
           <th>Stream</th>
-          <th>When</th>
+          <th>Seq</th>
         </tr>
       </thead>
       <tbody>
@@ -35,11 +47,10 @@
             </div>
           </td>
           <td>
-            <code><%= h(job.x_stream) %></code>
+            <code><%= h(job.stream) %></code>
           </td>
-          <td style="white-space: nowrap;">
-            <div class="time-badge"><%= h(time_until(job.execute_at)) %></div>
-            <time><%= h(format_timestamp(job.execute_at)) %></time>
+          <td>
+            <code><%= job.seq %></code>
           </td>
         </tr>
         <% end -%>

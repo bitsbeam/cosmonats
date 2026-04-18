@@ -1,10 +1,10 @@
 <div class="pending">
   <span></span>
-  <span class="text-muted"><%= @total %> job(s) scheduled</span>
+  <span class="text-muted"><%= @total %> job(s) running</span>
 </div>
 
 <% if @jobs.empty? -%>
-  <div class="alert alert-success">No scheduled jobs found</div>
+  <div class="alert alert-success">No jobs are currently running</div>
 <% else -%>
   <div class="table-container">
     <table>
@@ -13,7 +13,8 @@
           <th>Job</th>
           <th>JID[Args]</th>
           <th>Stream</th>
-          <th>When</th>
+          <th>Worker</th>
+          <th>Running for</th>
         </tr>
       </thead>
       <tbody>
@@ -21,25 +22,25 @@
         <tr>
           <td>
             <div class="job-class">
-              <%= h(job.data[:class].to_s) %>
+              <%= h(job.dig(:data, :class).to_s) %>
             </div>
           </td>
           <td>
             <div class="job-id">
               <details>
                 <summary>
-                  <code><%= h(job.data[:jid].to_s) %></code>
+                  <code><%= h(job.dig(:data, :jid)) %></code>
                 </summary>
-                <code><%= h((JSON.pretty_generate(job.data[:args]) rescue job.data[:args].to_s)) %></code>
+                <code><%= h(JSON.pretty_generate(job.dig(:data, :args))) %></code>
               </details>
             </div>
           </td>
           <td>
-            <code><%= h(job.x_stream) %></code>
+            <code><%= h(job[:stream].to_s) %></code>
           </td>
-          <td style="white-space: nowrap;">
-            <div class="time-badge"><%= h(time_until(job.execute_at)) %></div>
-            <time><%= h(format_timestamp(job.execute_at)) %></time>
+          <td><code style="font-size: var(--font-size-small);"><%= h(job[:worker].to_s) %></code></td>
+          <td>
+            <%= elapsed(job[:started_at]) %>
           </td>
         </tr>
         <% end -%>

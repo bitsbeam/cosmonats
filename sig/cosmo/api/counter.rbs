@@ -1,0 +1,34 @@
+module Cosmo
+  module API
+    class Counter
+      STREAM_NAME: ::String
+
+      self.@instance: Counter
+      @namespace: ::String
+
+      def self.instance: () -> Counter
+
+      def initialize: (::String namespace) -> void
+
+      def with: () { () -> bool } -> void
+
+      def increment: (Symbol key, ?by: ::Integer) -> ::Integer
+      alias incr increment
+
+      def decrement: (Symbol key, ?by: ::Integer) -> ::Integer
+      alias decr decrement
+
+      def reset: (Symbol key) -> untyped
+
+      def get: (Symbol key) -> ::Integer
+
+      private
+
+      def publish: (Symbol key, ::String value) -> ::Integer
+
+      def subject: (Symbol key) -> ::String
+
+      def client: () -> Client
+    end
+  end
+end

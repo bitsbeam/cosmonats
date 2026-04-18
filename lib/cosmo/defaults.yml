@@ -27,39 +27,40 @@ consumers:
       max_ack_pending: 100
       ack_wait: 10
 
-streams:
-  critical:
-    <<: &config
-      storage: file
-      retention: workqueue
-      duplicate_window: 120 # 2m
-      discard: old
-      allow_direct: true
-      subjects:
-        - jobs.%{name}.>
-    description: Very critical priority jobs
-  high:
-    <<: *config
-    description: Higher priority jobs
-  default:
-    <<: *config
-    description: Default priority jobs
-  low:
-    <<: *config
-    description: Lower priority jobs
-  scheduled:
-    <<: *config
-    description: Scheduled jobs
-  dead:
-    <<: *config
-    retention: limits
-    max_msgs: 10000
-    max_age: 604800 # 7d
-    description: Broken jobs (DLQ)
+setup:
+  jobs:
+    critical:
+      <<: &config
+        storage: file
+        retention: workqueue
+        duplicate_window: 120 # 2m
+        discard: old
+        allow_direct: true
+        subjects:
+          - jobs.%{name}.>
+      description: Very critical priority jobs
+    high:
+      <<: *config
+      description: Higher priority jobs
+    default:
+      <<: *config
+      description: Default priority jobs
+    low:
+      <<: *config
+      description: Lower priority jobs
+    scheduled:
+      <<: *config
+      description: Scheduled jobs
+    dead:
+      <<: *config
+      retention: limits
+      max_msgs: 10000
+      max_age: 604800 # 7d
+      description: Broken jobs (DLQ)
 
 development:
   verbose: false
-  concurrency: 1
+  concurrency: *concurrency
 
 staging:
   verbose: true

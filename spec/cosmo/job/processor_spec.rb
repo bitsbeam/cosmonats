@@ -122,13 +122,23 @@ RSpec.describe Cosmo::Job::Processor do
 
   describe "#process (private)" do
     let(:message) { double("message") }
-    let(:metadata) { double("metadata", num_delivered: 1) }
+    let(:sequence) { double("sequence", stream: 1) }
+    let(:metadata) { double("metadata", num_delivered: 1, sequence: sequence, stream: "jobs") }
+    let(:stream) { double("stream") }
+    let(:busy) { instance_double(Cosmo::API::Busy, with: nil, add: nil, delete: nil) }
+    let(:counter) { instance_double(Cosmo::API::Counter) }
     let(:data) { { jid: "123", class: "TestJob", args: %w[arg1 arg2], retry: 3, dead: true } }
     let(:worker_instance) { double("worker") }
 
     before do
+      allow(Cosmo::API::Busy).to receive(:instance).and_return(busy)
+      allow(busy).to receive(:with).and_yield
+      allow(Cosmo::API::Counter).to receive(:instance).and_return(counter)
+      allow(counter).to receive(:with).and_yield
       allow(message).to receive(:data).and_return(Cosmo::Utils::Json.dump(data))
       allow(message).to receive(:metadata).and_return(metadata)
+      allow(message).to receive(:subject).and_return("jobs.default.test_job")
+      allow(metadata).to receive(:stream).and_return(stream)
       allow(message).to receive(:ack)
       # Logger.with can be called with or without block
       allow(Cosmo::Logger).to receive(:with) do |*_args, &block|
@@ -177,7 +187,7 @@ RSpec.describe Cosmo::Job::Processor do
       end
       stub_const("TestJob", worker_class)
 
-      expect(client).to receive(:publish).with("jobs.dead.test_job", anything)
+      expect(client).to receive(:publish).with("jobs.dead.test_job", anything, header: anything)
       expect(message).to receive(:ack)
       processor.send(:process, [message])
     end
@@ -195,12 +205,14 @@ RSpec.describe Cosmo::Job::Processor do
 
   describe "#handle_failure (private)" do
     let(:message) { double("message") }
-    let(:metadata) { double("metadata", num_delivered: 1) }
+    let(:sequence) { double("sequence", stream: 99) }
+    let(:metadata) { double("metadata", num_delivered: 1, sequence: sequence, stream: "jobs") }
     let(:data) { { jid: "123", class: "TestJob", retry: 3, dead: true } }
 
     before do
       allow(message).to receive(:metadata).and_return(metadata)
       allow(message).to receive(:data).and_return("{}")
+      allow(message).to receive(:subject).and_return("jobs.default.test_job")
       allow(Cosmo::Logger).to receive(:debug)
     end
 
@@ -211,7 +223,7 @@ RSpec.describe Cosmo::Job::Processor do
 
     it "moves to DLQ when retries exhausted and dead enabled" do
       allow(metadata).to receive(:num_delivered).and_return(4)
-      expect(client).to receive(:publish).with("jobs.dead.test_job", "{}")
+      expect(client).to receive(:publish).with("jobs.dead.test_job", "{}", header: anything)
       expect(message).to receive(:ack)
       processor.send(:handle_failure, message, data)
     end

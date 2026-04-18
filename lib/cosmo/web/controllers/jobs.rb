@@ -11,6 +11,21 @@ module Cosmo
           ok render("jobs/index", layout: true)
         end
 
+        def busy
+          return _busy if hx_request?
+
+          content_for :title, "Busy Jobs"
+          ok render("jobs/busy", layout: true)
+        end
+
+        def enqueued
+          return _enqueued if hx_request?
+
+          content_for :title, "Enqueued Jobs"
+          stream_name, _stream_names = streams
+          ok render("jobs/enqueued", { stream_name: }, layout: true)
+        end
+
         def scheduled
           return _scheduled if hx_request?
 
@@ -26,31 +41,55 @@ module Cosmo
         end
 
         def retry
-          stream_name = @request.params["stream"]
-          seq = @request.params["seq"].to_i
-          api.retry(stream_name, seq)
-
-          no_content
+          seq = path.split("/").last.to_i
+          stream = API::Stream.new("dead")
+          stream.retry(seq)
+          ok
         end
 
         def delete
-          no_content
+          seq = path.split("/").last.to_i
+          stream = API::Stream.new("dead")
+          stream.delete(seq)
+          ok
         end
 
         def _scheduled
-          limit = @request.params["limit"]
-          stats = api.scheduled(limit)
-          ok render("jobs/_scheduled", stats)
+          stream = API::Stream.new("scheduled")
+          jobs = stream.messages(page: params["page"], limit: params["limit"])
+          ok render("jobs/_scheduled", { jobs: jobs, total: stream.total })
         end
 
         def _dead
-          limit = @request.params["limit"]
-          stats = api.dead(limit)
-          ok render("jobs/_dead", stats)
+          stream = API::Stream.new("dead")
+          jobs = stream.messages(page: params["page"], limit: params["limit"])
+          ok render("jobs/_dead", { jobs: jobs, total: stream.total })
+        end
+
+        def _busy
+          limit = (limit || 25).to_i
+          jobs  = API::Busy.instance.list(limit:)
+          ok render("jobs/_busy", { jobs: jobs, total: API::Busy.instance.size })
+        end
+
+        def _enqueued
+          stream_name, stream_names = streams
+          stream = API::Stream.new(stream_name)
+          jobs = stream.messages(page: params["page"], limit: params["limit"])
+
+          ok render("jobs/_enqueued", { jobs:, total: stream.total, stream_name:, stream_names: })
         end
 
         def _stats
-          ok render("jobs/_stats", api.stats)
+          ok render("jobs/_stats", API::Stats.summary)
+        end
+
+        private
+
+        def streams
+          stream_names = API::Stream.jobs.map(&:name)
+          stream_name = params.fetch("stream_name", stream_names.first)
+          [stream_name, stream_names]
         end
       end
     end

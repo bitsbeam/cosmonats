@@ -1,11 +1,36 @@
 <div class="cards-container">
   <article class="stat-card">
-    <h3><%= format_numbers(@processed) %></h3>
-    <p>&#x1F4AA; Processed</p>
+    <div class="row">
+      <p>&#x1F4AA; Processed</p>
+      <h4><%= format_numbers(@processed) %></h4>
+    </div>
+    <div class="row">
+      <p>&#x1F625; Failed</p>
+      <h4><%= format_numbers(@failed) %></h4>
+    </div>
+    <div class="row">
+      <p>&#x1F504; Retries</p>
+      <h4><%= format_numbers(@retries) %></h4>
+    </div>
   </article>
   <article class="stat-card">
-    <h3><%= format_numbers(@failed) %></h3>
-    <p>&#x1F625; Failed</p>
+    <h3><%= format_numbers(@busy) %></h3>
+    <p>
+      <a href="<%= url_for('/jobs/busy') %>"
+         hx-get="<%= url_for('/jobs/busy') %>"
+         hx-target="#content"
+         hx-push-url="true">&#x23F3; Busy</a>
+    </p>
+  </article>
+  <article class="stat-card">
+    <h3><%= format_numbers(@enqueued) %></h3>
+    <p>
+      <a href="<%= url_for('/jobs/enqueued') %>"
+         hx-get="<%= url_for('/jobs/enqueued') %>"
+         hx-target="#content"
+         hx-push-url="true"
+         class="<%= 'active' if referrer?('/jobs/enqueued') %>">&#x1F4EC; Enqueued</a>
+    </p>
   </article>
   <article class="stat-card">
     <h3><%= format_numbers(@scheduled) %></h3>
@@ -13,7 +38,8 @@
       <a href="<%= url_for('/jobs/scheduled') %>"
          hx-get="<%= url_for('/jobs/scheduled') %>"
          hx-target="#content"
-         hx-push-url="true">&#x23F0; Scheduled</a>
+         hx-push-url="true"
+         class="<%= 'active' if referrer?('/jobs/scheduled') %>">&#x23F0; Scheduled</a>
     </p>
   </article>
   <article class="stat-card">
@@ -22,7 +48,22 @@
       <a href="<%= url_for('/jobs/dead') %>"
          hx-get="<%= url_for('/jobs/dead') %>"
          hx-target="#content"
-         hx-push-url="true">&#x1F480; Dead</a>
+         hx-push-url="true"
+         class="<%= 'active' if referrer?('/jobs/dead') %>">&#x1F480; Dead</a>
     </p>
   </article>
 </div>
+
+<script>
+  (function () {
+    const links = document.querySelectorAll('.cards-container a');
+
+    links.forEach(link => {
+      link.addEventListener('click', () => {
+        links.forEach(item => item.classList.remove('active'));
+
+        link.classList.add('active');
+      });
+    });
+  })();
+</script>

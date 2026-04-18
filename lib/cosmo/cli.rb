@@ -102,10 +102,12 @@ module Cosmo
           load_config(flags)
           boot_application
 
-          Config[:streams].each do |name, config|
-            Client.instance.stream_info(name)
-          rescue NATS::JetStream::Error::NotFound
-            Client.instance.create_stream(name, config)
+          Config[:setup]&.each_value do |configs|
+            configs.each do |name, config|
+              Client.instance.stream_info(name)
+            rescue NATS::JetStream::Error::NotFound
+              Client.instance.create_stream(name, config)
+            end
           end
 
           puts "Cosmo streams were created/updated"

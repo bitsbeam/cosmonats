@@ -19,11 +19,21 @@ module Cosmo
 
     def create_stream: (::String | Symbol name, Hash[Symbol, untyped] config) -> untyped
 
-    def delete_stream: (::String | Symbol name, Hash[Symbol, untyped] params) -> untyped
+    def delete_stream: (::String | Symbol name, ?Hash[Symbol, untyped] params) -> untyped
 
-    def list_streams: -> Array[::String]
+    def list_streams: () -> Array[::String]
 
-    def get_message: (::String | Symbol name, Integer seq) -> NATS::JetStream::API::RawStreamMsg
+    def list_consumers: (::String stream_name) -> Array[Hash[::String, untyped]]
+
+    def get_message: (::String | Symbol name, **untyped options) -> NATS::JetStream::API::RawStreamMsg
+
+    def delete_message: (::String name, ::Integer seq) -> Hash[::String, untyped]
+
+    def purge: (::String stream_name, ::String? subject) -> ::Integer?
+
+    def consumer_info: (::String stream_name, ::String consumer_name) -> NATS::JetStream::API::ConsumerInfo
+
+    def kv: (::String name, **untyped opts) -> NATS::KeyValue
 
     def close: -> void
   end

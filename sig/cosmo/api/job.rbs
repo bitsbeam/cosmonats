@@ -1,0 +1,31 @@
+module Cosmo
+  module API
+    class Job
+      @stream: ::String
+      @message: untyped
+      @data: Hash[Symbol, untyped]?
+
+      attr_reader message: untyped
+
+      def initialize: (::String stream, untyped message) -> void
+
+      def data: () -> Hash[Symbol, untyped]?
+
+      def seq: () -> (::Integer | ::String)
+
+      def headers: () -> Hash[::String, ::String]?
+
+      def execute_at: () -> ::Integer?
+
+      def x_stream: () -> ::String?
+
+      def x_subject: () -> ::String?
+
+      def subject: () -> ::String
+
+      def stream: () -> ::String
+
+      def timestamp: () -> ::String?
+    end
+  end
+end

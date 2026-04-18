@@ -67,7 +67,7 @@ RSpec.describe Cosmo::Processor do
       allow(ENV).to receive(:fetch).with("COSMO_STREAMS_FETCH_BACKOFF", 5).and_return("3")
 
       expect(Cosmo::Logger).to receive(:error).with("Snap! Error just happened")
-      expect(Cosmo::Logger).to receive(:error).with("StandardError: connection error")
+      expect(Cosmo::Logger).to receive(:error).with(start_with("StandardError: connection error"))
       expect(processor).to receive(:sleep).with(3.0)
 
       processor.send(:fetch, subscription, batch_size: 10, timeout: 1)

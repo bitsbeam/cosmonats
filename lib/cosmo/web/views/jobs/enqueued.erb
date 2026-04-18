@@ -1,0 +1,16 @@
+<section>
+  <header></header>
+
+  <div hx-get="<%= url_for('/jobs/_stats') %>"
+       hx-trigger="load, every 5s"
+       hx-swap="innerHTML">
+    <div class="alert alert-info">Loading statistics…</div>
+  </div>
+
+  <div id="content"
+       hx-get="<%= url_for('/jobs/_enqueued', stream_name: @stream_name) %>"
+       hx-trigger="load"
+       hx-swap="innerHTML">
+    <div class="alert alert-info">Loading enqueued jobs&hellip;</div>
+  </div>
+</section>

@@ -1,0 +1,21 @@
+module Cosmo
+  module API
+    module Stats
+      def self.summary: () -> Hash[Symbol, ::Integer]
+
+      def self.processed: () -> ::Integer
+
+      def self.failed: () -> ::Integer
+
+      def self.busy: () -> ::Integer
+
+      def self.enqueued: () -> ::Integer
+
+      def self.retries: () -> ::Integer
+
+      def self.scheduled: () -> ::Integer
+
+      def self.dead: () -> ::Integer
+    end
+  end
+end

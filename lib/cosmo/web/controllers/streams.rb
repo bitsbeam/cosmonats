@@ -22,12 +22,21 @@ module Cosmo
         end
 
         def _table
-          ok render("streams/_table", api.streams)
+          streams = API::Stream.all.map do |stream|
+            state, config = stream.info.values
+            { name: stream.name, messages: state.messages, bytes: state.bytes,
+              first_seq: state.first_seq, last_seq: state.last_seq,
+              consumer_count: state.consumer_count,
+              subjects: config.subjects }
+          end
+
+          ok render("streams/_table", { streams: streams })
         end
 
         def _info
           name = Rack::Utils.unescape(@request.params["name"])
-          ok render("streams/_info", api.info(name))
+          state = API::Stream.new(name).info.merge(name:)
+          ok render("streams/_info", state)
         end
       end
     end

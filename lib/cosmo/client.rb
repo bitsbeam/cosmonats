@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "nats/client"
+require "cosmo/utils/overrides"
 
 module Cosmo
   class Client
@@ -45,8 +46,38 @@ module Cosmo
       data["streams"].filter_map { _1.dig("config", "name") }
     end
 
-    def get_message(name, seq)
-      js.get_msg(name, seq: seq)
+    def list_consumers(stream_name)
+      response = nc.request("$JS.API.CONSUMER.LIST.#{stream_name}", "")
+      data = Utils::Json.parse(response.data, symbolize_names: false)
+      data["consumers"]
+    end
+
+    def consumer_info(stream_name, consumer_name)
+      js.consumer_info(stream_name, consumer_name)
+    end
+
+    def get_message(name, **options)
+      js.get_msg(name, **options)
+    end
+
+    def delete_message(name, seq)
+      response = nc.request("$JS.API.STREAM.MSG.DELETE.#{name}", JSON.dump({ seq: seq }))
+      Utils::Json.parse(response.data, symbolize_names: false)
+    end
+
+    def purge(stream_name, subject)
+      payload = subject ? Utils::Json.dump({ filter: subject }) : ""
+      response = @nc.request("$JS.API.STREAM.PURGE.#{stream_name}", payload)
+      result = Utils::Json.parse(response.data, default: {}, symbolize_names: false)
+      raise NATS::JetStream::Error, result.dig("error", "description") if result["error"]
+
+      result["purged"] # number of messages purged
+    end
+
+    def kv(name, **options)
+      js.key_value(name)
+    rescue NATS::KeyValue::BucketNotFoundError
+      js.create_key_value({ bucket: name }.merge(options))
     end
 
     def close

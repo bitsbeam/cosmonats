@@ -45,7 +45,7 @@ module Cosmo
       # No messages, continue
     rescue StandardError => e
       Logger.error "Snap! Error just happened"
-      Logger.error "#{e.class}: #{e.message}"
+      Logger.error "#{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
 
       backoff = ENV.fetch("COSMO_STREAMS_FETCH_BACKOFF", 5).to_f
       sleep([timeout, backoff].max) # backoff before retry

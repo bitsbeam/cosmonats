@@ -18,7 +18,7 @@ module Cosmo
       YAML.load_file(path, aliases: true).tap { normalize!(_1) }
     end
 
-    def self.normalize!(config) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def self.normalize!(config) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       Utils::Hash.symbolize_keys!(config)
 
       config[:consumers]&.each_key do |name|
@@ -30,11 +30,13 @@ module Cosmo
         end
       end
 
-      config[:streams]&.each_key do |name|
-        c = config[:streams][name]
-        c[:max_age] = c[:max_age].to_i * NANO if c[:max_age]
-        c[:duplicate_window] = c[:duplicate_window].to_i * NANO if c[:duplicate_window]
-        c[:subjects] = c[:subjects].map { |s| format(s, name: name) } if c[:subjects]
+      config[:setup]&.each_key do |type|
+        config[:setup][type]&.each_key do |name|
+          c = config[:setup][type][name]
+          c[:max_age] = c[:max_age].to_i * NANO if c[:max_age]
+          c[:duplicate_window] = c[:duplicate_window].to_i * NANO if c[:duplicate_window]
+          c[:subjects] = c[:subjects].map { |s| format(s, name: name) } if c[:subjects]
+        end
       end
     end
 

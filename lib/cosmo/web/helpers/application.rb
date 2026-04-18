@@ -29,6 +29,18 @@ module Cosmo
           value.to_s
         end
 
+        def elapsed(value)
+          elapsed = Time.now.to_i - value.to_i
+
+          if elapsed < 60
+            "#{elapsed}s"
+          elsif elapsed < 3600
+            "#{elapsed / 60}m #{elapsed % 60}s"
+          else
+            "#{elapsed / 3600}h #{(elapsed % 3600) / 60}m"
+          end
+        end
+
         def time_until(value)
           return "N/A" unless value
 
@@ -53,6 +65,10 @@ module Cosmo
           request_path = @request.path_info
           request_path = "/" if request_path.empty?
           request_path == url_for(path)
+        end
+
+        def referrer?(path)
+          URI(@request.referrer).path == path
         end
       end
     end

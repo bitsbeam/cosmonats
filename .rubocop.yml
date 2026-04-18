@@ -15,6 +15,9 @@ Style/Documentation:
 Style/FormatStringToken:
   Enabled: false
 
+Lint/ItWithoutArgumentsInBlock:
+  Enabled: false
+
 Lint/NestedPercentLiteral:
   Exclude:
     - spec/**/*.rb
@@ -32,6 +35,9 @@ Metrics/MethodLength:
 Metrics/ClassLength:
   Max: 120
 
+Metrics/ModuleLength:
+  Max: 120
+
 Metrics/BlockLength:
   Exclude:
     - spec/**/*.rb
@@ -39,3 +45,6 @@ Metrics/BlockLength:
 Style/OneClassPerFile:
   Exclude:
     - spec/**/*
+
+Style/RescueModifier:
+  Enabled: false

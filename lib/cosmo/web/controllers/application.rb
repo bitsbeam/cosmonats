@@ -26,8 +26,12 @@ module Cosmo
           erb("layout", defaults, @content_for)
         end
 
-        def api
-          @api ||= Api.new
+        def params
+          @request.params
+        end
+
+        def path
+          @request.path
         end
 
         def hx_request?

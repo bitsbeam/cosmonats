@@ -2,7 +2,7 @@
 
 module Cosmo
   module Job
-    class Processor < ::Cosmo::Processor
+    class Processor < ::Cosmo::Processor # rubocop:disable Metrics/ClassLength
       def initialize(pool, running, options)
         super
         @weights = []
@@ -95,7 +95,7 @@ module Cosmo
           return
         end
 
-        begin
+        with_stats(message) do
           sw = stopwatch
           Logger.with(jid: data[:jid])
           Logger.info "start"
@@ -104,10 +104,12 @@ module Cosmo
           instance.perform(*data[:args])
           message.ack
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
+          true
         rescue StandardError => e
           Logger.debug e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
-          handle_failure(message, data)
+          dropped = handle_failure(message, data)
+          false if dropped
         rescue Exception # rubocop:disable Lint/RescueException
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
           raise
@@ -117,7 +119,7 @@ module Cosmo
         Logger.debug "processed message #{message.inspect}"
       end
 
-      def handle_failure(message, data) # rubocop:disable Metrics/AbcSize
+      def handle_failure(message, data) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Naming/PredicateMethod
         current_attempt = message.metadata.num_delivered
         max_retries = data[:retry].to_i + 1
 
@@ -125,16 +127,25 @@ module Cosmo
           # NATS will auto-retry based on max_deliver with exponential backoff
           delay_ns = ((current_attempt**4) + 15) * 1_000_000_000
           message.nak(delay: delay_ns)
-          return
+          return false
         end
 
         if data[:dead]
-          Client.instance.publish("jobs.dead.#{Utils::String.underscore(data[:class])}", message.data)
+          headers = { "X-Stream" => message.metadata.stream, "X-Subject" => message.subject }
+          Client.instance.publish("jobs.dead.#{Utils::String.underscore(data[:class])}", message.data, header: headers)
           message.ack
           Logger.debug "job moved #{data[:jid]} to DLQ"
         else
           message.term
           Logger.debug "job dropped #{data[:jid]}"
+        end
+
+        true
+      end
+
+      def with_stats(message, &block)
+        API::Busy.instance.with(message) do
+          API::Counter.instance.with(&block)
         end
       end
     end

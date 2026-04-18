@@ -1,0 +1,44 @@
+module Cosmo
+  module API
+    class Stream
+      LIMIT: ::Integer
+
+      self.@client: Client
+      @name: ::String
+      @offset: ::Integer
+
+      def self.all: () -> Array[Stream]
+
+      def self.jobs: () -> Array[Stream]
+
+      def self.client: () -> Client
+
+      attr_reader name: ::String
+
+      def initialize: (::String name) -> void
+
+      def info: () -> Hash[Symbol, untyped]
+
+      def offset: (::Integer) -> self
+
+      def total: () -> ::Integer
+      alias size total
+
+      def retries: () -> ::Integer
+
+      def each: (?from: ::Integer?) { (Job) -> void } -> void
+
+      def messages: (?page: ::Integer?, ?limit: ::Integer?) -> Array[Job]
+
+      def message: (::Integer seq) -> Job?
+
+      def retry: (::Integer seq) -> void
+
+      def delete: (::Integer seq) -> untyped
+
+      private
+
+      def client: () -> Client
+    end
+  end
+end

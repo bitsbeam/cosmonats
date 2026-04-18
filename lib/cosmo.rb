@@ -1,12 +1,6 @@
 # frozen_string_literal: true
 
-require "cosmo/utils/hash"
-require "cosmo/utils/json"
-require "cosmo/utils/string"
-require "cosmo/utils/signal"
-require "cosmo/utils/stopwatch"
-require "cosmo/utils/thread_pool"
-
+require "cosmo/utils"
 require "cosmo/client"
 require "cosmo/publisher"
 require "cosmo/processor"
@@ -17,6 +11,7 @@ require "cosmo/job"
 require "cosmo/stream"
 require "cosmo/cli"
 require "cosmo/engine"
+require "cosmo/api"
 
 module Cosmo
   class Error < StandardError; end

@@ -6,6 +6,8 @@
       <thead>
         <tr>
           <th>Job</th>
+          <th>JID[Args]</th>
+          <th>Stream</th>
           <th>Error</th>
           <th>Failed</th>
           <th>Actions</th>
@@ -13,49 +15,47 @@
       </thead>
       <tbody>
         <% @jobs.each do |job| -%>
-        <% args_json  = (JSON.pretty_generate(job[:args]) rescue job[:args].to_s) -%>
-        <% error_type = job[:error].to_s.split(":").first || "Error" -%>
-        <tr class="dead-row">
+        <tr class="dead-row" id="dead-row-<%= job.seq %>">
           <td>
-            <div class="job-class"><%= h(job[:klass].to_s) %></div>
-            <div class="job-id">JID: <code><%= h(job[:jid].to_s) %></code></div>
-            <details>
-              <summary>Arguments</summary>
-              <code><%= h(args_json) %></code>
-            </details>
+            <div class="job-class">
+              <%= h(job.data[:class].to_s) %>
+            </div>
+          </td>
+          <td>
+            <div class="job-id">
+              <details>
+                <summary>
+                  <code><%= h(job.data[:jid].to_s) %></code>
+                </summary>
+                <code><%= h((JSON.pretty_generate(job.data[:args]) rescue job.data[:args].to_s)) %></code>
+              </details>
+            </div>
+          </td>
+          <td>
+            <code><%= h(job.stream) %></code>
           </td>
           <td style="max-width: 400px;">
-            <% if job[:error] -%>
+            <% if job.data[:error] -%>
             <div class="error-message">
-              <strong><%= h(error_type) %></strong>
-              <p><%= h(job[:error]) %></p>
+              <strong><%= h(job.data[:error].to_s.split(":").first || "Error") %></strong>
+              <p><%= h(job.data[:error]) %></p>
             </div>
             <% end -%>
           </td>
           <td style="white-space: nowrap;">
-            <time><%= h(format_timestamp(job[:failed_at])) %></time>
-            <div style="font-size: var(--font-size-small);"><code><%= h(job[:stream]) %></code></div>
+            <time><%= h(job.timestamp) %></time>
           </td>
           <td>
-            <div class="actions-form">
-              <form method="post" action="<%= url_for('/jobs/retry') %>"
-                    hx-post="<%= url_for('/jobs/retry') %>"
-                    hx-target="#dead-jobs-container"
-                    hx-swap="innerHTML">
-                <input type="hidden" name="stream" value="<%= h(job[:stream]) %>">
-                <input type="hidden" name="seq"    value="<%= job[:seq].to_i %>">
-                <button type="submit" class="btn btn-primary" style="width: 100%;">&#x21BB; Retry</button>
-              </form>
-              <form method="post" action="<%= url_for('/jobs/delete') %>"
-                    hx-post="<%= url_for('/jobs/delete') %>"
-                    hx-target="#dead-jobs-container"
-                    hx-swap="innerHTML"
-                    hx-confirm="Delete this job?">
-                <input type="hidden" name="stream" value="<%= h(job[:stream]) %>">
-                <input type="hidden" name="seq"    value="<%= job[:seq].to_i %>">
-                <button type="submit" class="btn btn-danger" style="width: 100%;">Delete</button>
-              </form>
-            </div>
+            <a hx-patch="<%= url_for("/jobs/retry/#{job.seq}") %>"
+               hx-target="#dead-row-<%= job.seq %>"
+               hx-swap="innerHTML"
+               class="btn btn-primary"
+               style="width: 100%; text-align: center; margin-bottom: 3px">&#x21BB; Retry</a>
+            <a hx-delete="<%= url_for("/jobs/delete/#{job.seq}") %>"
+               hx-target="#dead-row-<%= job.seq %>"
+               hx-swap="innerHTML"
+               class="btn btn-danger"
+               style="width: 100%; text-align: center; margin-bottom: 3px">&#x2715; Delete</a>
           </td>
         </tr>
         <% end -%>

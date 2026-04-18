@@ -1,0 +1,30 @@
+module Cosmo
+  module API
+    class KV
+      @name: ::String
+      @options: Hash[Symbol, untyped]
+      @kv: untyped
+
+      def initialize: (::String name, ?Hash[Symbol, untyped]? options) -> void
+
+      def set: (::String | ::Integer key, ::String value) -> untyped
+
+      def get: (::String | ::Integer key) -> ::String?
+
+      def delete: (::String | ::Integer key) -> untyped
+
+      def keys: (?::String? subject, ?limit: ::Integer) -> Array[::String]
+
+      def purge: (::String | ::Integer key) -> untyped
+
+      def clean: () -> untyped
+
+      def count: () -> ::Integer
+      alias size count
+
+      private
+
+      def kv: () -> untyped
+    end
+  end
+end

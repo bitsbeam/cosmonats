@@ -1,0 +1,35 @@
+module Cosmo
+  module API
+    class Busy
+      TTL: ::Integer
+      HEARTBEAT: ::Integer
+      BUCKET: ::String
+
+      self.@instance: Busy
+      @messages: Hash[::Integer, ::String]
+      @kv: KV
+      @thread: Thread?
+      @worker_id: ::String
+
+      def self.instance: () -> Busy
+
+      def initialize: () -> void
+
+      def with: (untyped message) { () -> void } -> void
+
+      def add: (untyped message) -> void
+
+      def delete: (untyped message) -> void
+
+      def list: (?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+
+      def size: () -> ::Integer
+
+      private
+
+      def heartbeat_loop: () -> void
+
+      def worker_id: () -> ::String
+    end
+  end
+end

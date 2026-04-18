@@ -59,7 +59,7 @@ RSpec.describe Cosmo::Publisher do
     it "serializes and publishes data" do
       ack = publisher.publish(subject_name, data)
 
-      message = client.get_message(stream_name, ack.seq)
+      message = client.get_message(stream_name, seq: ack.seq)
       expect(message.data).to eq('{"key":"value"}')
     end
 
@@ -69,14 +69,14 @@ RSpec.describe Cosmo::Publisher do
 
       ack = publisher.publish(subject_name, data, serializer: custom_serializer)
 
-      message = client.get_message(stream_name, ack.seq)
+      message = client.get_message(stream_name, seq: ack.seq)
       expect(message.data).to eq("custom")
     end
 
     it "passes additional options to client" do
       ack = publisher.publish(subject_name, data, header: { "key" => "value" })
 
-      message = client.get_message(stream_name, ack.seq)
+      message = client.get_message(stream_name, seq: ack.seq)
       expect(message.headers).to eq({ "key" => "value" })
     end
   end

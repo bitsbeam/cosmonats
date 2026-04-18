@@ -78,7 +78,7 @@ code {
 }
 
 a { color: inherit; text-decoration: none; }
-a:hover { color: oklch(from var(--color-primary) calc(l + 0.06) c h); }
+a.active, a:hover { color: oklch(from var(--color-primary) calc(l + 0.06) c h); }
 
 /* ── Buttons ───────────────────────────────────────────────────────────── */
 button, .btn {
@@ -246,6 +246,21 @@ section > header {
   z-index: auto;
 }
 
+section .nav {
+  display: flex;
+  gap: var(--space);
+  flex-wrap: wrap;
+  width: fit-content;
+  margin: var(--space-3x) auto;
+}
+
+section .pending {
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 /* ── Stat cards ────────────────────────────────────────────────────────── */
 .cards-container {
   display: grid;
@@ -265,6 +280,21 @@ section > header {
 .stat-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px var(--color-shadow);
+}
+.stat-card .row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space);
+}
+.stat-card .row p {
+  white-space: nowrap;
+  text-align: left;
+}
+.stat-card .row h4 {
+  width: 100%;
+  white-space: nowrap;
+  text-align: right;
 }
 .stat-card h3 {
   color: var(--color-text);
@@ -339,7 +369,7 @@ tr:hover         { background: var(--color-table-bg-alt); }
 }
 
 .time-badge {
-  background: var(--color-warning);
+  background: var(--color-success);
   border-radius: var(--space-1-2);
   color: var(--color-elevated);
   display: inline-block;
@@ -377,13 +407,13 @@ time {
 
 /* ── Details / summary ─────────────────────────────────────────────────── */
 details summary {
-  color: var(--color-primary);
+  color: var(--color-text-light);
   cursor: pointer;
   font-size: var(--font-size-small);
   user-select: none;
 }
-details summary:hover          { text-decoration: underline; }
-details[open] summary          { margin-bottom: var(--space); }
+details summary code { display: inline; }
+details[open] summary { margin-bottom: var(--space); }
 details code { display: block; max-width: 400px; white-space: pre-wrap; }
 
 /* ── HTMX ──────────────────────────────────────────────────────────────── */

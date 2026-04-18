@@ -248,18 +248,19 @@ consumers:
         max_deliver: 3
         subjects: ["events.>"]
 
-streams:
-  my_stream:
-    storage: file         # or memory
-    retention: workqueue  # or limits
-    max_age: 86400       # 1d in seconds
-    subjects: ["events.>"]
+setup:
+  streams:
+    my_stream:
+      storage: file         # or memory
+      retention: workqueue  # or limits
+      max_age: 86400       # 1d in seconds
+      subjects: ["events.>"]
 ```
 
 **Programmatic:**
 ```ruby
 Cosmo::Config.set(:concurrency, 20)
-Cosmo::Config.set(:streams, :custom, { storage: 'file', subjects: ['custom.>'] })
+Cosmo::Config.set(:setup, :streams, :custom, { storage: 'file', subjects: ['custom.>'] })
 ```
 
 **Environment variables:**
