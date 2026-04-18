@@ -40,7 +40,7 @@ module Cosmo
               timeout = ENV.fetch("COSMO_JOBS_FETCH_TIMEOUT", 0.1).to_f
               @pool.post do
                 subscription = @consumers.find { |(_, sn)| sn == stream_name }&.first
-                messages = fetch(subscription, batch_size: 1, timeout:)
+                messages = lock(stream_name) { fetch(subscription, batch_size: 1, timeout:) }
                 process(messages) if messages&.any?
               end
             rescue Concurrent::RejectedExecutionError
@@ -147,6 +147,11 @@ module Cosmo
         API::Busy.instance.with(message) do
           API::Counter.instance.with(&block)
         end
+      end
+
+      def lock(stream_name, &)
+        @mutexes ||= Hash.new { |h, k| h[k] = Mutex.new }
+        @mutexes[stream_name].synchronize(&)
       end
     end
   end

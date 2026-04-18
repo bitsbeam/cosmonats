@@ -52,14 +52,40 @@ RSpec.describe Cosmo::Job::Processor do
       processor.instance_variable_set(:@weights, [:default])
       processor.instance_variable_set(:@consumers, [[consumer, :default]])
       allow(pool).to receive(:post).and_yield
-      allow(processor).to receive(:fetch)
+      allow(processor).to receive(:fetch).and_return(nil)
+      allow(processor).to receive(:process)
     end
 
-    it "fetches messages for weighted streams" do
-      running.make_false # Stop after one iteration
-      thread = Thread.new { processor.send(:work_loop) }
-      sleep 0.1
-      thread.kill
+    it "posts fetch+process to pool for each weighted stream" do
+      call_count = 0
+      allow(processor).to receive(:running?) { (call_count += 1) <= 2 }
+      expect(pool).to receive(:post).once
+      processor.send(:work_loop)
+    end
+
+    it "serializes fetches per stream with a mutex" do
+      mutex = processor.instance_variable_get(:@mutexes)[:default]
+      call_count = 0
+      allow(processor).to receive(:running?) { (call_count += 1) <= 2 }
+      expect(mutex).to receive(:synchronize).once.and_call_original
+      processor.send(:work_loop)
+    end
+
+    it "processes messages when fetch returns results" do
+      messages = [double("msg")]
+      call_count = 0
+      allow(processor).to receive(:running?) { (call_count += 1) <= 2 }
+      allow(processor).to receive(:fetch).and_return(messages)
+      expect(processor).to receive(:process).with(messages)
+      processor.send(:work_loop)
+    end
+
+    it "skips process when fetch returns nothing" do
+      call_count = 0
+      allow(processor).to receive(:running?) { (call_count += 1) <= 2 }
+      allow(processor).to receive(:fetch).and_return(nil)
+      expect(processor).not_to receive(:process)
+      processor.send(:work_loop)
     end
 
     it "handles RejectedExecutionError during shutdown" do
