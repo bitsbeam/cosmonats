@@ -4,7 +4,7 @@ require "cosmonats"
 require "support/results"
 require "support/global_helpers"
 
-Cosmo::Logger.instance = ::Logger.new(IO::NULL)
+Cosmo::Logger.instance = Logger.new(IO::NULL)
 
 RSpec.configure do |config|
   config.include_context "Global helpers"

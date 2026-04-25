@@ -46,7 +46,7 @@ RSpec.describe Cosmo::Job::Processor do
 
         options stream: :default, retry: 0
 
-        def perform(a, b, c) = Results.instance << { a: a, b: b, c: c }
+        def perform(a, b, c) = Results.instance << { a: a, b: b, c: c } # rubocop:disable Naming/MethodParameterName
       end)
 
       MultiArgJob.perform_async("hello", 42, true)
@@ -68,7 +68,10 @@ RSpec.describe Cosmo::Job::Processor do
 
       processor.stop
 
-      expect { LifecycleJob.perform_async("after-stop"); sleep 0.5 }.not_to change { results.size }.from(1)
+      expect do
+        LifecycleJob.perform_async("after-stop")
+        sleep 0.5
+      end.not_to change { results.size }.from(1)
     end
 
     it "has subscriptions for all configured priority tiers and processes jobs from each" do

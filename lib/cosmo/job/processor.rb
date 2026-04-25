@@ -13,7 +13,7 @@ module Cosmo
         @pool.shutdown
         @consumers.each { |(s, _)| s.unsubscribe rescue nil }
         @pool.wait_for_termination(timeout)
-        [@work_thread, @schedule_thread].compact.each { it.join(timeout) || it.kill }
+        [@work_thread, @schedule_thread].compact.each { _1.join(timeout) || _1.kill }
         @consumers.clear
       end
 
@@ -131,7 +131,7 @@ module Cosmo
         Logger.debug "processed message #{message.inspect}"
       end
 
-      def handle_failure(message, data) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Naming/PredicateMethod
+      def handle_failure(message, data) # rubocop:disable Naming/PredicateMethod
         current_attempt = message.metadata.num_delivered
         max_retries = data[:retry].to_i + 1
 
