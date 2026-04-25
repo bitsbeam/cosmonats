@@ -3,8 +3,8 @@
 RSpec.describe Cosmo::API::KV do
   subject(:kv) { described_class.new("test_kv_bucket") }
 
-  before { clean_streams }
-  after { clean_streams }
+  before { destroy_streams }
+  after { destroy_streams }
 
   describe "#set and #get" do
     it "stores and retrieves a value" do

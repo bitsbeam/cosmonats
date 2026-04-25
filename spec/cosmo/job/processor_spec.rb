@@ -1,264 +1,223 @@
 # frozen_string_literal: true
 
 RSpec.describe Cosmo::Job::Processor do
-  let(:pool) { instance_double(Cosmo::Utils::ThreadPool) }
-  let(:running) { Concurrent::AtomicBoolean.new }
-  let(:options) { {} }
-  let(:processor) { described_class.new(pool, running, options) }
-  let(:client) { instance_double(Cosmo::Client) }
-  let(:consumer) { double("consumer") }
+  let(:concurrency) { 3 }
+  let(:pool)        { Cosmo::Utils::ThreadPool.new(concurrency) }
+  let(:running)     { Concurrent::AtomicBoolean.new }
+  let(:processor)   { described_class.new(pool, running, {}) }
+  let(:results)     { Results.instance }
 
-  before do
-    allow(Cosmo::Client).to receive(:instance).and_return(client)
-    allow(Cosmo::Config).to receive(:dig).with(:consumers, :jobs).and_return(nil)
-    running.make_true
-  end
-
-  describe "#initialize" do
-    it "inherits from Processor" do
-      expect(processor).to be_a(Cosmo::Processor)
+  around(:example) do |example|
+    prepare_streams do
+      processor.run
+      example.run
+      processor.stop
     end
   end
 
-  describe "#setup (private)" do
-    let(:jobs_config) do
-      {
-        default: { subject: "jobs.default.>", priority: 10 },
-        high: { subject: "jobs.high.>", priority: 5 }
-      }
-    end
-
+  context "with successful job execution" do
     before do
-      allow(Cosmo::Config).to receive(:dig).with(:consumers, :jobs).and_return(jobs_config)
-      allow(client).to receive(:subscribe).and_return(consumer)
+      stub_const("GreeterJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(name) = Results.instance << name
+      end)
     end
 
-    it "sets up consumers for each stream" do
-      expect(client).to receive(:subscribe).with("jobs.default.>", "consumer-default", {})
-      expect(client).to receive(:subscribe).with("jobs.high.>", "consumer-high", {})
-      processor.send(:setup)
+    it "calls perform with the arguments that were published" do
+      GreeterJob.perform_async("Alice")
+      wait_until(timeout: 5) { results.any? }
+
+      expect(results).to include("Alice")
     end
 
-    it "builds weights array based on priority" do
-      processor.send(:setup)
-      weights = processor.instance_variable_get(:@weights)
-      expect(weights.count(:default)).to eq(10)
-      expect(weights.count(:high)).to eq(5)
+    it "processes several jobs published to the same stream" do
+      %w[Alice Bob Charlie].each { GreeterJob.perform_async(_1) }
+      wait_until(timeout: 5) { results.size >= 3 }
+
+      expect(results).to contain_exactly("Alice", "Bob", "Charlie")
+    end
+
+    it "forwards every argument to perform intact" do
+      stub_const("MultiArgJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(a, b, c) = Results.instance << { a: a, b: b, c: c }
+      end)
+
+      MultiArgJob.perform_async("hello", 42, true)
+      wait_until(timeout: 5) { results.any? }
+
+      expect(results.first).to eq(a: "hello", b: 42, c: true)
+    end
+
+    it "stops consuming messages after an explicit shutdown" do
+      stub_const("LifecycleJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(tag) = Results.instance << tag
+      end)
+      LifecycleJob.perform_async("before-stop")
+      wait_until(timeout: 5) { results.include?("before-stop") }
+
+      processor.stop
+
+      expect { LifecycleJob.perform_async("after-stop"); sleep 0.5 }.not_to change { results.size }.from(1)
+    end
+
+    it "has subscriptions for all configured priority tiers and processes jobs from each" do
+      %w[default high critical low].each do |stream_name|
+        stub_const("#{stream_name.capitalize}TierJob", Class.new do
+          include Cosmo::Job
+
+          options stream: stream_name.to_sym, retry: 0
+
+          define_method(:perform) { |*| Results.instance << stream_name }
+        end)
+      end
+
+      Object.const_get("DefaultTierJob").perform_async
+      Object.const_get("HighTierJob").perform_async
+      Object.const_get("CriticalTierJob").perform_async
+      Object.const_get("LowTierJob").perform_async
+
+      wait_until(timeout: 5) { results.size >= 4 }
+      expect(results).to contain_exactly("default", "high", "critical", "low")
+    end
+
+    context "with scheduler" do
+      before do
+        stub_const("OverdueJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << "dispatched:#{tag}"
+        end)
+      end
+
+      it "executes a job whose scheduled execution time is in the past" do
+        OverdueJob.perform_at(Time.now - 120, "past-due")
+        wait_until(timeout: 12) { results.any? }
+        expect(results).to include("dispatched:past-due")
+      end
+
+      it "does not execute a job whose execution time is far in the future" do
+        stub_const("DistantFutureJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(...) = Results.instance << :future_ran
+        end)
+
+        DistantFutureJob.perform_in(3600, "not yet") # 1 hour from now
+        sleep 1 # give the scheduler loop time to inspect and nack the message
+
+        expect(results).not_to include(:future_ran)
+        expect(stream_size("scheduled")).to eq(1)
+        expect(stream_size("default")).to eq(0)
+      end
     end
   end
 
-  describe "#work_loop (private)" do
-    before do
-      processor.instance_variable_set(:@weights, [:default])
-      processor.instance_variable_set(:@consumers, [[consumer, :default]])
-      allow(pool).to receive(:post).and_yield
-      allow(processor).to receive(:fetch).and_return(nil)
-      allow(processor).to receive(:process)
-    end
+  context "with failed job execution" do
+    context "with dead letter queue" do
+      it "moves the failing job to DLQ" do
+        stub_const("ImmediatelyDeadJob", Class.new do
+          include Cosmo::Job
 
-    it "posts fetch+process to pool for each weighted stream" do
-      call_count = 0
-      allow(processor).to receive(:running?) { (call_count += 1) <= 2 }
-      expect(pool).to receive(:post).once
-      processor.send(:work_loop)
-    end
+          options stream: :default, retry: 0, dead: true
 
-    it "serializes fetches per stream with a mutex" do
-      mutex = processor.instance_variable_get(:@mutexes)[:default]
-      call_count = 0
-      allow(processor).to receive(:running?) { (call_count += 1) <= 2 }
-      expect(mutex).to receive(:synchronize).once.and_call_original
-      processor.send(:work_loop)
-    end
+          def perform(...) = raise "intentional failure"
+        end)
+        expect(stream_size("dead")).to eq(0)
 
-    it "processes messages when fetch returns results" do
-      messages = [double("msg")]
-      call_count = 0
-      allow(processor).to receive(:running?) { (call_count += 1) <= 2 }
-      allow(processor).to receive(:fetch).and_return(messages)
-      expect(processor).to receive(:process).with(messages)
-      processor.send(:work_loop)
-    end
+        ImmediatelyDeadJob.perform_async("trigger")
+        wait_until(timeout: 5) { stream_size("dead") >= 1 }
 
-    it "skips process when fetch returns nothing" do
-      call_count = 0
-      allow(processor).to receive(:running?) { (call_count += 1) <= 2 }
-      allow(processor).to receive(:fetch).and_return(nil)
-      expect(processor).not_to receive(:process)
-      processor.send(:work_loop)
-    end
-
-    it "handles RejectedExecutionError during shutdown" do
-      allow(pool).to receive(:post).and_raise(Concurrent::RejectedExecutionError)
-      running.make_false
-      expect { processor.send(:work_loop) }.not_to raise_error
-    end
-  end
-
-  describe "#schedule_loop (private)" do
-    let(:message) { double("message") }
-    let(:metadata) { double("metadata") }
-    let(:header) { { "X-Stream" => "default", "X-Subject" => "jobs.default.test", "X-Execute-At" => "1000", "Nats-Expected-Stream" => "scheduled" } }
-
-    before do
-      processor.instance_variable_set(:@consumers, [[consumer, :scheduled]])
-      allow(message).to receive(:header).and_return(header)
-      allow(message).to receive(:data).and_return("{}")
-      allow(message).to receive(:ack)
-      allow(message).to receive(:nak)
-    end
-
-    it "publishes scheduled messages when time is reached" do
-      allow(Time).to receive(:now).and_return(Time.at(1001))
-
-      # Mock fetch_messages to return messages once then raise NATS::Timeout
-      call_count = 0
-      allow(processor).to receive(:fetch) do |*_args, &block|
-        call_count += 1
-        raise NATS::Timeout unless call_count == 1
-
-        block.call([message])
+        expect(stream_size("dead")).to eq(1)
+        expect(stream_size("default")).to eq(0)
       end
 
-      allow(client).to receive(:publish)
-      allow(message).to receive(:ack)
+      it "retries a failing job and moves it to the DLQ" do
+        stub_const("RetryableJob", Class.new do
+          include Cosmo::Job
 
-      running.make_false
-      processor.send(:schedule_loop)
-    end
+          options stream: :default, retry: 1, dead: true
 
-    it "naks messages when time not reached" do
-      allow(Time).to receive(:now).and_return(Time.at(500))
+          def perform
+            Results.instance << "attempt-#{Results.instance.counter}"
+            Results.instance.increment
 
-      # Mock fetch_messages to return messages once then raise NATS::Timeout
-      call_count = 0
-      allow(processor).to receive(:fetch) do |*_args, &block|
-        call_count += 1
-        raise NATS::Timeout unless call_count == 1
+            raise StandardError, "still broken"
+          end
+        end)
 
-        block.call([message])
+        RetryableJob.perform_async
+
+        wait_until(timeout: 5) { results.any? }
+        expect(results).to eq(["attempt-0"])
+
+        # First attempt lands quickly, the second arrives after NATS backoff ~16s.
+        wait_until(timeout: 20) { stream_size("dead") >= 1 }
+        expect(results).to eq(%w[attempt-0 attempt-1])
+        expect(stream_size("dead")).to eq(1)
       end
 
-      allow(message).to receive(:nak)
+      it "skips a malformed JSON payload and keeps processing" do
+        stub_const("CanaryJob", Class.new do
+          include Cosmo::Job
 
-      running.make_false
-      processor.send(:schedule_loop)
-    end
-  end
+          options stream: :default, retry: 0
 
-  describe "#process (private)" do
-    let(:message) { double("message") }
-    let(:sequence) { double("sequence", stream: 1) }
-    let(:metadata) { double("metadata", num_delivered: 1, sequence: sequence, stream: "jobs") }
-    let(:stream) { double("stream") }
-    let(:busy) { instance_double(Cosmo::API::Busy, with: nil, add: nil, delete: nil) }
-    let(:counter) { instance_double(Cosmo::API::Counter) }
-    let(:data) { { jid: "123", class: "TestJob", args: %w[arg1 arg2], retry: 3, dead: true } }
-    let(:worker_instance) { double("worker") }
+          def perform = Results.instance << :canary_ok
+        end)
+        client.publish("jobs.default.garbage_payload", "THIS_IS_NOT_JSON", header: { "Nats-Msg-Id" => "bad-json-1" })
+        client.publish("jobs.default.canary_job", %({"class":"CanaryJob","jid":"abc","args":[]}), header: { "Nats-Msg-Id" => "abc" })
 
-    before do
-      allow(Cosmo::API::Busy).to receive(:instance).and_return(busy)
-      allow(busy).to receive(:with).and_yield
-      allow(Cosmo::API::Counter).to receive(:instance).and_return(counter)
-      allow(counter).to receive(:with).and_yield
-      allow(message).to receive(:data).and_return(Cosmo::Utils::Json.dump(data))
-      allow(message).to receive(:metadata).and_return(metadata)
-      allow(message).to receive(:subject).and_return("jobs.default.test_job")
-      allow(metadata).to receive(:stream).and_return(stream)
-      allow(message).to receive(:ack)
-      # Logger.with can be called with or without block
-      allow(Cosmo::Logger).to receive(:with) do |*_args, &block|
-        block&.call
+        wait_until(timeout: 5) { stream_size("default").zero? }
+        expect(results).to include(:canary_ok)
       end
-      allow(Cosmo::Logger).to receive(:without)
-      allow(Cosmo::Logger).to receive(:info)
-      allow(Cosmo::Logger).to receive(:debug)
-    end
 
-    it "processes valid job successfully" do
-      worker_class = Class.new do
-        attr_accessor :jid
+      it "skips an unknown job class and keeps processing" do
+        stub_const("CanaryJob", Class.new do
+          include Cosmo::Job
 
-        def perform(*args); end
+          options stream: :default, retry: 0
+
+          def perform = Results.instance << :canary_ok
+        end)
+        payload = Cosmo::Utils::Json.dump({ jid: "unknown-class-test", class: "AbsolutelyNonExistentJobXYZ", args: [], retry: 0, dead: false })
+        client.publish("jobs.default.absolutely_non_existent_job_xyz", payload, header: { "Nats-Msg-Id" => "bad-class-1" })
+        client.publish("jobs.default.canary_job", %({"class":"CanaryJob","jid":"abc","args":[]}), header: { "Nats-Msg-Id" => "abc" })
+
+        wait_until(timeout: 5) { stream_size("default").zero? }
+        expect(results).to eq([:canary_ok])
       end
-      stub_const("TestJob", worker_class)
-
-      expect_any_instance_of(worker_class).to receive(:perform).with("arg1", "arg2")
-      expect(message).to receive(:ack)
-      processor.send(:process, [message])
     end
 
-    it "handles job failure with retries" do
-      worker_class = Class.new do
-        attr_accessor :jid
+    context "without dead letter queue" do
+      it "terminates the message" do
+        stub_const("TerminatedJob", Class.new do
+          include Cosmo::Job
 
-        def perform(*_args)
-          raise StandardError, "Job failed"
-        end
+          options stream: :default, retry: 0, dead: false
+
+          def perform(...) = raise "intentional failure"
+        end)
+
+        TerminatedJob.perform_async("trigger")
+        wait_until(timeout: 5) { stream_size("default").zero? }
+
+        expect(stream_size("dead")).to eq(0)
       end
-      stub_const("TestJob", worker_class)
-
-      expect(message).to receive(:nak).with(delay: anything)
-      processor.send(:process, [message])
-    end
-
-    it "moves job to DLQ when retries exhausted" do
-      allow(metadata).to receive(:num_delivered).and_return(4)
-      worker_class = Class.new do
-        attr_accessor :jid
-
-        def perform(*_args)
-          raise StandardError, "Job failed"
-        end
-      end
-      stub_const("TestJob", worker_class)
-
-      expect(client).to receive(:publish).with("jobs.dead.test_job", anything, header: anything)
-      expect(message).to receive(:ack)
-      processor.send(:process, [message])
-    end
-
-    it "logs malformed payload" do
-      allow(message).to receive(:data).and_return("invalid json")
-
-      processor.send(:process, [message])
-    end
-
-    it "logs when worker class not found" do
-      processor.send(:process, [message])
-    end
-  end
-
-  describe "#handle_failure (private)" do
-    let(:message) { double("message") }
-    let(:sequence) { double("sequence", stream: 99) }
-    let(:metadata) { double("metadata", num_delivered: 1, sequence: sequence, stream: "jobs") }
-    let(:data) { { jid: "123", class: "TestJob", retry: 3, dead: true } }
-
-    before do
-      allow(message).to receive(:metadata).and_return(metadata)
-      allow(message).to receive(:data).and_return("{}")
-      allow(message).to receive(:subject).and_return("jobs.default.test_job")
-      allow(Cosmo::Logger).to receive(:debug)
-    end
-
-    it "naks message with exponential backoff when retries remain" do
-      expect(message).to receive(:nak).with(delay: anything)
-      processor.send(:handle_failure, message, data)
-    end
-
-    it "moves to DLQ when retries exhausted and dead enabled" do
-      allow(metadata).to receive(:num_delivered).and_return(4)
-      expect(client).to receive(:publish).with("jobs.dead.test_job", "{}", header: anything)
-      expect(message).to receive(:ack)
-      processor.send(:handle_failure, message, data)
-    end
-
-    it "terminates message when retries exhausted and dead disabled" do
-      allow(metadata).to receive(:num_delivered).and_return(4)
-      data[:dead] = false
-      expect(message).to receive(:term)
-      processor.send(:handle_failure, message, data)
     end
   end
 end

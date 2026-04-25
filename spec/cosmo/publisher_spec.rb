@@ -7,9 +7,9 @@ RSpec.describe Cosmo::Publisher do
   let(:subject_name) { "test.subject" }
   let(:subjects) { [subject_name] }
 
-  before { clean_streams }
+  before { destroy_streams }
   after do
-    clean_streams
+    destroy_streams
     client.close
   rescue NATS::IO::ConnectionClosedError
     # nop

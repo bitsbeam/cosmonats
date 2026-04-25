@@ -6,11 +6,11 @@ RSpec.describe Cosmo::API::Stream do
   let(:payload) { Cosmo::Utils::Json.dump({ class: "MyWorker", args: [], jid: "abc" }) }
 
   before do
-    clean_streams
+    destroy_streams
     client.create_stream(stream_name, { subjects: [subject_pattern], allow_direct: true, storage: "memory" })
   end
 
-  after { clean_streams }
+  after { destroy_streams }
 
   describe ".all" do
     it "returns all streams" do

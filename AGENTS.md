@@ -111,8 +111,8 @@ docker compose up nats
 
 ## Testing Patterns
 
-- Specs assume a **live NATS connection**; use `clean_streams` (from `spec/support/global_helpers.rb`) to purge streams between tests.
-- `RSpec.shared_context "Global helpers"` is included globally; gives `client` and `clean_streams` helpers.
+- Specs assume a **live NATS connection**; use `destroy_streams` (from `spec/support/global_helpers.rb`) to purge streams between tests.
+- `RSpec.shared_context "Global helpers"` is included globally; gives `client` and `destroy_streams` helpers.
 - Use `perform_sync` to test job logic without NATS.
 
 ---

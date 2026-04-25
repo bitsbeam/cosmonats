@@ -5,8 +5,8 @@ RSpec.describe Cosmo::API::Counter do
 
   let(:stream_name) { described_class::STREAM_NAME }
 
-  before { clean_streams }
-  after { clean_streams }
+  before { destroy_streams }
+  after { destroy_streams }
 
   describe ".instance" do
     it "returns a singleton" do

@@ -8,16 +8,26 @@ module Cosmo
         @weights = []
       end
 
+      def stop(timeout = Config[:timeout])
+        @running.make_false
+        @pool.shutdown
+        @consumers.each { |(s, _)| s.unsubscribe rescue nil }
+        @pool.wait_for_termination(timeout)
+        [@work_thread, @schedule_thread].compact.each { it.join(timeout) || it.kill }
+        @consumers.clear
+      end
+
       private
 
       def run_loop
-        Thread.new { work_loop }
-        Thread.new { schedule_loop }
+        @work_thread = Thread.new { work_loop }
+        @schedule_thread = Thread.new { schedule_loop }
       end
 
       def setup
         jobs_config = Config.dig(:consumers, :jobs)
         jobs_config&.each do |stream_name, config|
+          config = config.dup
           consumer_name = "consumer-#{stream_name}"
           subject = config.delete(:subject)
           priority = config.delete(:priority)
@@ -85,13 +95,15 @@ module Cosmo
         Logger.debug "received messages #{messages.inspect}"
         data = Utils::Json.parse(message.data)
         unless data
-          Logger.debug ArgumentError.new("malformed payload")
+          Logger.error ArgumentError.new("malformed payload")
+          move_message(message)
           return
         end
 
         worker_class = Utils::String.safe_constantize(data[:class])
         unless worker_class
-          Logger.debug ArgumentError.new("#{data[:class]} class not found")
+          Logger.error ArgumentError.new("#{data[:class]} class not found")
+          move_message(message, data)
           return
         end
 
@@ -124,23 +136,29 @@ module Cosmo
         max_retries = data[:retry].to_i + 1
 
         if current_attempt < max_retries
-          # NATS will auto-retry based on max_deliver with exponential backoff
+          # NATS will auto-retry with delay (exponential backoff based on current attempt).
+          # When max_deliver is reached, NATS stops redelivering the message and marks it as "max deliveries exceeded".
+          # The message is effectively abandoned by NATS — it stays in the stream (consuming a slot) but will never be delivered again to that consumer.
           delay_ns = ((current_attempt**4) + 15) * 1_000_000_000
           message.nak(delay: delay_ns)
           return false
         end
 
-        if data[:dead]
-          headers = { "X-Stream" => message.metadata.stream, "X-Subject" => message.subject }
-          Client.instance.publish("jobs.dead.#{Utils::String.underscore(data[:class])}", message.data, header: headers)
-          message.ack
-          Logger.debug "job moved #{data[:jid]} to DLQ"
-        else
-          message.term
-          Logger.debug "job dropped #{data[:jid]}"
-        end
-
+        data[:dead] ? move_message(message, data) : drop_message(message, data)
         true
+      end
+
+      def drop_message(message, data)
+        message.term
+        Logger.debug "job dropped #{data[:jid]}"
+      end
+
+      def move_message(message, data = nil)
+        klass = data ? Utils::String.underscore(data[:class]) : "default"
+        headers = { "X-Stream" => message.metadata.stream, "X-Subject" => message.subject }
+        Client.instance.publish("jobs.dead.#{klass}", message.data, header: headers)
+        message.ack
+        Logger.debug "job moved #{data&.dig(:jid)} to DLQ"
       end
 
       def with_stats(message, &block)
