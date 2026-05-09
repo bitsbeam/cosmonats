@@ -109,4 +109,50 @@ RSpec.describe Cosmo::API::Stream do
       expect(stream.message(ack.seq)).to be_nil
     end
   end
+
+  describe "#pause!" do
+    subject(:stream) { described_class.new(stream_name) }
+
+    it "pauses consumers" do
+      client.subscribe("teststreamapi.job", "test-consumer", { ack_policy: "explicit" })
+
+      stream.pause!
+
+      expect(stream.paused?).to be true
+    end
+  end
+
+  describe "#unpause!" do
+    subject(:stream) { described_class.new(stream_name) }
+
+    it "resumes consumers" do
+      client.subscribe("teststreamapi.job", "test-consumer", { ack_policy: "explicit" })
+      stream.pause!
+      expect(stream.paused?).to be true
+
+      stream.unpause!
+
+      expect(stream.paused?).to be false
+    end
+  end
+
+  describe "#paused?" do
+    subject(:stream) { described_class.new(stream_name) }
+
+    it "is not paused initially" do
+      expect(stream.paused?).to be false
+    end
+
+    it "returns false when there are no consumers" do
+      client.create_stream("empty-stream-test", { subjects: ["empty.>"], storage: "memory" })
+      expect(described_class.new("empty-stream-test").paused?).to be false
+    end
+
+    it "persists pause state" do
+      client.subscribe("teststreamapi.job", "test-consumer", { ack_policy: "explicit" })
+      stream.pause!
+
+      expect(described_class.new(stream_name).paused?).to be true
+    end
+  end
 end

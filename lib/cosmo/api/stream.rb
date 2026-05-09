@@ -41,7 +41,7 @@ module Cosmo
       alias size total
 
       def retries
-        client.list_consumers(name).sum { it["num_redelivered"].to_i }
+        client.list_consumers(name).sum { _1["num_redelivered"].to_i }
       end
 
       def each
@@ -98,6 +98,18 @@ module Cosmo
 
       def delete(seq)
         client.delete_message(name, seq)
+      end
+
+      def pause!
+        client.pause_stream(name)
+      end
+
+      def unpause!
+        client.unpause_stream(name)
+      end
+
+      def paused?
+        client.stream_paused?(name)
       end
 
       private

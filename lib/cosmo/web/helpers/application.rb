@@ -8,6 +8,12 @@ module Cosmo
       module Application
         include Renderer
 
+        def render(template, locals = nil)
+          defaults = { request: @request }
+          locals = Hash(locals).merge(defaults)
+          erb(template, locals)
+        end
+
         def format_bytes(bytes)
           b = bytes.to_i
           return "0 B" if b.zero?

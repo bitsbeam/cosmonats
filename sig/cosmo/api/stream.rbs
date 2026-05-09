@@ -26,7 +26,7 @@ module Cosmo
 
       def retries: () -> ::Integer
 
-      def each: (?from: ::Integer?) { (Job) -> void } -> void
+      def each: () { (Job) -> void } -> void
 
       def messages: (?page: ::Integer?, ?limit: ::Integer?) -> Array[Job]
 
@@ -35,6 +35,12 @@ module Cosmo
       def retry: (::Integer seq) -> void
 
       def delete: (::Integer seq) -> untyped
+
+      def pause!: () -> untyped
+
+      def unpause!: () -> untyped
+
+      def paused?: () -> bool
 
       private
 

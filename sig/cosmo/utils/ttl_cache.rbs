@@ -1,0 +1,20 @@
+module Cosmo
+  module Utils
+    class TTLCache
+      @store: Hash[untyped, [untyped, Time?]]
+
+      def initialize: () -> void
+
+      def set: (untyped key, untyped value, ?ttl: Numeric?) -> untyped
+
+      def get: (untyped key) -> untyped
+
+      def fetch: (untyped key, ?ttl: Numeric?) { () -> untyped } -> untyped
+
+      private
+
+      def key?: (untyped key) -> bool
+    end
+  end
+end
+

@@ -10,7 +10,9 @@ module Cosmo
       @pool = pool
       @running = running
       @options = options
+      @threads = []
       @consumers = []
+      @cache = Utils::TTLCache.new
     end
 
     def run
@@ -19,6 +21,16 @@ module Cosmo
 
       @running.make_true
       run_loop
+    end
+
+    def stop(timeout = Config[:timeout])
+      @running.make_false
+      @pool.shutdown
+      @consumers.each { |(s, _)| s.unsubscribe rescue nil }
+      @pool.wait_for_termination(timeout)
+      @threads.compact.each { _1.join(timeout) || _1.kill }
+      @consumers.clear
+      @threads.clear
     end
 
     private

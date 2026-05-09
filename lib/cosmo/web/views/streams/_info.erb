@@ -17,6 +17,10 @@
   </article>
 </div>
 
+<% if @state.consumer_count.to_i > 0 -%>
+  <%= render("streams/_pause_banner", { name: @name, paused: @paused, consumer_count: @state.consumer_count }) %>
+<% end -%>
+
 <div class="nav">
   <a href="<%= url_for('/streams') %>"
      hx-get="<%= url_for('/streams') %>"
@@ -87,3 +91,4 @@
     <div class="subject-tag" style="padding: var(--space) var(--space-2x); font-size: 1rem;"><%= h(sub) %></div>
   <% end -%>
 </div>
+

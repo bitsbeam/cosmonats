@@ -30,13 +30,14 @@ RSpec.describe Cosmo::Stream::Processor do
 
   describe "#work_loop (private)" do
     let(:consumer) { double("consumer") }
-    let(:config) { { batch_size: 10, fetch_timeout: 7.5 } }
+    let(:config) { { batch_size: 10, fetch_timeout: 7.5, stream: "test_stream" } }
     let(:stream_processor) { double("stream_processor") }
 
     before do
       processor.instance_variable_set(:@consumers, [[consumer, config, stream_processor]])
       allow(pool).to receive(:post).and_yield
       allow(processor).to receive(:fetch)
+      allow(Cosmo::API::Stream).to receive(:new).and_return(double("api_stream", paused?: false))
     end
 
     it "fetches messages for each stream" do
@@ -50,6 +51,22 @@ RSpec.describe Cosmo::Stream::Processor do
       allow(pool).to receive(:post).and_raise(Concurrent::RejectedExecutionError)
       running.make_false
       expect { processor.send(:work_loop) }.not_to raise_error
+    end
+
+    it "skips fetching and sleeps when stream is paused" do
+      paused_stream = double("api_stream", paused?: true)
+      allow(Cosmo::API::Stream).to receive(:new).with("test_stream").and_return(paused_stream)
+
+      fetch_called = false
+      allow(processor).to receive(:fetch) { fetch_called = true }
+      allow(processor).to receive(:sleep) # stub sleep so the test is fast
+
+      running.make_false
+      thread = Thread.new { processor.send(:work_loop) }
+      thread.join(0.5)
+      thread.kill if thread.alive?
+
+      expect(fetch_called).to be false
     end
 
     it "uses fetch_timeout from config" do

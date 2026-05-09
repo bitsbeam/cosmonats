@@ -8,20 +8,11 @@ module Cosmo
         @weights = []
       end
 
-      def stop(timeout = Config[:timeout])
-        @running.make_false
-        @pool.shutdown
-        @consumers.each { |(s, _)| s.unsubscribe rescue nil }
-        @pool.wait_for_termination(timeout)
-        [@work_thread, @schedule_thread].compact.each { _1.join(timeout) || _1.kill }
-        @consumers.clear
-      end
-
       private
 
       def run_loop
-        @work_thread = Thread.new { work_loop }
-        @schedule_thread = Thread.new { schedule_loop }
+        @threads << Thread.new { work_loop }
+        @threads << Thread.new { schedule_loop }
       end
 
       def setup
@@ -45,6 +36,12 @@ module Cosmo
 
           @weights.shuffle.each do |stream_name|
             break unless running?
+
+            if @cache.fetch(stream_name, ttl: 5) { API::Stream.new(stream_name).paused? }
+              Logger.debug "stream #{stream_name} is paused, skipping fetch"
+              sleep(1)
+              next
+            end
 
             begin
               timeout = ENV.fetch("COSMO_JOBS_FETCH_TIMEOUT", 0.1).to_f

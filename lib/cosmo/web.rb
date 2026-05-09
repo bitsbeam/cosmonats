@@ -41,6 +41,8 @@ module Cosmo
                  in [:get,    "/streams/info"]          then [Controllers::Streams, :info]
                  in [:get,    "/streams/_table"]        then [Controllers::Streams, :_table]
                  in [:get,    "/streams/_info"]         then [Controllers::Streams, :_info]
+                 in [:patch,  "/streams/pause"]         then [Controllers::Streams, :pause]
+                 in [:patch,  "/streams/unpause"]       then [Controllers::Streams, :unpause]
                  in [:get,    "/actions"]               then [Controllers::Actions, :index]
                  in [:get,    "/assets/htmx.min.js.gz"] then serve("htmx.2.0.8.min.js.gz",
                                                                    "application/javascript",

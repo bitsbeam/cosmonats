@@ -166,4 +166,53 @@ RSpec.describe Cosmo::Client do
       expect { client.stream_info(stream_name) }.to raise_error(NATS::IO::ConnectionClosedError)
     end
   end
+
+  describe "#pause_stream" do
+    let(:consumer_name) { "pause-test-consumer" }
+
+    it "reports paused" do
+      client.create_stream(stream_name, { subjects: subjects, storage: "memory" })
+      client.subscribe(subject_name, consumer_name, { ack_policy: "explicit" })
+
+      client.pause_stream(stream_name)
+
+      expect(client.stream_paused?(stream_name)).to be true
+    end
+  end
+
+  describe "#unpause_stream" do
+    let(:consumer_name) { "pause-test-consumer" }
+
+    it "reports not paused" do
+      client.create_stream(stream_name, { subjects: subjects, storage: "memory" })
+      client.subscribe(subject_name, consumer_name, { ack_policy: "explicit" })
+      client.pause_stream(stream_name)
+      expect(client.stream_paused?(stream_name)).to be true
+
+      client.unpause_stream(stream_name)
+
+      expect(client.stream_paused?(stream_name)).to be false
+    end
+  end
+
+  describe "#stream_paused?" do
+    let(:consumer_name) { "pause-test-consumer" }
+
+    it "is not paused when no consumers" do
+      client.create_stream(stream_name, { subjects: subjects, storage: "memory" })
+
+      expect(client.stream_paused?(stream_name)).to be false
+    end
+
+    it "reports not paused after unpause_stream" do
+      client.create_stream(stream_name, { subjects: subjects, storage: "memory" })
+      client.subscribe(subject_name, consumer_name, { ack_policy: "explicit" })
+      client.pause_stream(stream_name)
+      expect(client.stream_paused?(stream_name)).to be true
+
+      client.unpause_stream(stream_name)
+
+      expect(client.stream_paused?(stream_name)).to be false
+    end
+  end
 end

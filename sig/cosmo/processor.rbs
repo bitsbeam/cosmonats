@@ -3,6 +3,8 @@ module Cosmo
     @pool: Utils::ThreadPool
     @running: untyped
     @consumers: Array[untyped]
+    @threads: Array[Thread]
+    @cache: Utils::TTLCache
     @options: Hash[Symbol, untyped]
 
     def self.run: (*untyped) -> Processor

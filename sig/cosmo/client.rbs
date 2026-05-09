@@ -23,15 +23,23 @@ module Cosmo
 
     def list_streams: () -> Array[::String]
 
+    def pause_stream: (::String name) -> void
+
+    def unpause_stream: (::String name) -> void
+
+    def stream_paused?: (::String name) -> bool
+
     def list_consumers: (::String stream_name) -> Array[Hash[::String, untyped]]
+
+    def pause_consumer: (::String stream_name, ::String consumer_name, bool paused) -> Hash[::String, untyped]
+
+    def consumer_info: (::String stream_name, ::String consumer_name) -> NATS::JetStream::API::ConsumerInfo
 
     def get_message: (::String | Symbol name, **untyped options) -> NATS::JetStream::API::RawStreamMsg
 
     def delete_message: (::String name, ::Integer seq) -> Hash[::String, untyped]
 
     def purge: (::String stream_name, ::String? subject) -> ::Integer?
-
-    def consumer_info: (::String stream_name, ::String consumer_name) -> NATS::JetStream::API::ConsumerInfo
 
     def kv: (::String name, **untyped opts) -> NATS::KeyValue
 

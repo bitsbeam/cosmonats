@@ -11,7 +11,7 @@ module Cosmo
       private
 
       def run_loop
-        Thread.new { work_loop }
+        @threads << Thread.new { work_loop }
       end
 
       def setup
@@ -27,6 +27,13 @@ module Cosmo
 
           @consumers.each do |(subscription, config, processor)|
             break unless running?
+
+            stream_name = config[:stream].to_s
+            if @cache.fetch(stream_name, ttl: 5) { API::Stream.new(stream_name).paused? }
+              Logger.debug "stream #{stream_name} is paused, skipping fetch"
+              sleep(1)
+              next
+            end
 
             begin
               @pool.post do

@@ -135,6 +135,52 @@ button:hover, .btn:hover {
   );
 }
 
+.btn-warning {
+  background: linear-gradient(
+    oklch(from var(--color-warning) calc(l + 0.06) c h),
+    var(--color-warning)
+  );
+  color: oklch(27% 0.005 256);
+}
+.btn-warning:hover {
+  background: linear-gradient(
+    oklch(from var(--color-warning) calc(l + 0.16) c h),
+    oklch(from var(--color-warning) calc(l + 0.1) c h)
+  );
+  color: oklch(27% 0.005 256);
+}
+
+.btn-success {
+  background: linear-gradient(
+    oklch(from var(--color-success) calc(l + 0.06) c h),
+    var(--color-success)
+  );
+}
+.btn-success:hover {
+  background: linear-gradient(
+    oklch(from var(--color-success) calc(l + 0.16) c h),
+    oklch(from var(--color-success) calc(l + 0.1) c h)
+  );
+}
+
+/* ── Badges ────────────────────────────────────────────────────────────── */
+.badge {
+  border-radius: var(--space-1-2);
+  display: inline-block;
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  padding: 2px var(--space);
+  white-space: nowrap;
+}
+.badge-success {
+  background: oklch(from var(--color-success) l c h / 15%);
+  color: var(--color-success);
+}
+.badge-warning {
+  background: oklch(from var(--color-warning) l c h / 20%);
+  color: oklch(from var(--color-warning) calc(l - 0.15) c h);
+}
+
 /* ── Alerts ────────────────────────────────────────────────────────────── */
 .alert {
   padding: var(--space-2x);

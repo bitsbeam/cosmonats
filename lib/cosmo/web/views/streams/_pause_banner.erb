@@ -1,0 +1,19 @@
+<% if @consumer_count.to_i > 0 -%>
+  <% if @paused -%>
+    <div id="pause-banner-<%= h(@name) %>" class="alert alert-warning" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-2x);">
+      <span>&#9208; <strong>Stream is paused</strong> — consumers are not fetching new messages.</span>
+      <a hx-patch="<%= url_for('/streams/unpause', { name: u(@name), banner: 1 }) %>"
+         hx-target="#pause-banner-<%= h(@name) %>"
+         hx-swap="outerHTML"
+         class="btn btn-success">&#9654; Resume Stream</a>
+    </div>
+  <% else -%>
+    <div id="pause-banner-<%= h(@name) %>" class="alert alert-success" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-2x);">
+      <span>&#9654; <strong>Stream is active</strong> — consumers are fetching new messages.</span>
+      <a hx-patch="<%= url_for('/streams/pause', { name: u(@name), banner: 1 }) %>"
+         hx-target="#pause-banner-<%= h(@name) %>"
+         hx-swap="outerHTML"
+         class="btn btn-warning">&#9208; Pause Stream</a>
+    </div>
+  <% end -%>
+<% end -%>

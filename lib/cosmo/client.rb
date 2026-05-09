@@ -46,10 +46,38 @@ module Cosmo
       data["streams"].filter_map { _1.dig("config", "name") }
     end
 
+    def pause_stream(name)
+      list_consumers(name).each { pause_consumer(name, _1["name"], true) }
+    end
+
+    def unpause_stream(name)
+      list_consumers(name).each { pause_consumer(name, _1["name"], false) }
+    end
+
+    def stream_paused?(name)
+      consumers = list_consumers(name)
+      return false if consumers.empty?
+
+      consumers.all? { _1["paused"] == true }
+    rescue NATS::IO::Timeout
+      false
+    end
+
     def list_consumers(stream_name)
       response = nc.request("$JS.API.CONSUMER.LIST.#{stream_name}", "")
-      data = Utils::Json.parse(response.data, symbolize_names: false)
-      data["consumers"]
+      data = Utils::Json.parse(response.data, default: {}, symbolize_names: false)
+      Array(data["consumers"])
+    end
+
+    def pause_consumer(stream_name, consumer_name, paused)
+      subject = "$JS.API.CONSUMER.PAUSE.#{stream_name}.#{consumer_name}"
+      pause_until = (Time.now + (10 * 60 * 60 * 24 * 365)).utc.iso8601 # 10 years
+      payload = paused ? Utils::Json.dump({ pause_until: pause_until }) : "{}"
+      response = nc.request(subject, payload)
+      result = Utils::Json.parse(response.data, default: {}, symbolize_names: false)
+      raise NATS::JetStream::Error, result.dig("error", "description") if result["error"]
+
+      result
     end
 
     def consumer_info(stream_name, consumer_name)

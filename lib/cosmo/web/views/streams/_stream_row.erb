@@ -1,0 +1,46 @@
+<tr id="stream-row-<%= h(@stream[:name]) %>">
+  <td>
+    <a href="<%= url_for('/streams/info', { name: u(@stream[:name]) }) %>"
+       hx-get="<%= url_for('/streams/info', { name: u(@stream[:name]) }) %>"
+       hx-target="#content"
+       hx-push-url="true"
+       class="stream-link"><%= h(@stream[:name]) %></a>
+  </td>
+  <td><%= format_numbers(@stream[:messages]) %></td>
+  <td><%= format_bytes(@stream[:bytes]) %></td>
+  <td><%= @stream[:consumer_count] %></td>
+  <td>
+    <div class="subjects">
+      <% Array(@stream[:subjects]).each do |subject| -%>
+        <span class="subject-tag"><%= h(subject) %></span>
+      <% end -%>
+    </div>
+  </td>
+  <td><code><%= format_numbers(@stream[:first_seq]) %> &rarr; <%= format_numbers(@stream[:last_seq]) %></code></td>
+  <td>
+    <% if @stream[:consumer_count].to_i > 0 -%>
+      <% if @stream[:paused] -%>
+        <span class="badge badge-warning">&#9208; Paused</span>
+      <% else -%>
+        <span class="badge badge-success">&#9654; Active</span>
+      <% end -%>
+    <% else -%>
+      <span class="badge">No consumers</span>
+    <% end -%>
+  </td>
+  <td>
+    <% if @stream[:consumer_count].to_i > 0 -%>
+      <% if @stream[:paused] -%>
+        <a hx-patch="<%= url_for('/streams/unpause', { name: u(@stream[:name]) }) %>"
+           hx-target="#stream-row-<%= h(@stream[:name]) %>"
+           hx-swap="outerHTML"
+           class="btn btn-success">&#9654; Resume</a>
+      <% else -%>
+        <a hx-patch="<%= url_for('/streams/pause', { name: u(@stream[:name]) }) %>"
+           hx-target="#stream-row-<%= h(@stream[:name]) %>"
+           hx-swap="outerHTML"
+           class="btn btn-warning">&#9208; Pause</a>
+      <% end -%>
+    <% end -%>
+  </td>
+</tr>
