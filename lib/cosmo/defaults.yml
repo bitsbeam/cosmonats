@@ -2,27 +2,37 @@ timeout: 25
 max_retries: &max_retries 3
 concurrency: &concurrency 1
 
+stream_config: &stream_config
+  storage: file
+  retention: workqueue
+  duplicate_window: 120 # 2m
+  discard: old
+  allow_direct: true
+  subjects:
+    - jobs.%{name}.>
+consumer_config: &consumer_config
+  ack_policy: explicit # each individual message must be acknowledged
+  max_deliver: 10      # max number of times a message delivery will be attempted
+  max_ack_pending: 20  # maximum number of messages w/o ack
+  ack_wait: 60         # duration server waits for ack of message once it's delivered
+  subject: jobs.%{name}.>
+
 consumers:
   jobs:
     critical:
-      <<: &config
-        ack_policy: explicit      # each individual message must be acknowledged
-        max_deliver: *max_retries # max number of times a message delivery will be attempted
-        max_ack_pending: 3        # maximum number of messages w/o ack
-        ack_wait: 60              # duration server waits for ack of message once it's delivered
-        subject: jobs.%{name}.>
+      <<: *consumer_config
       priority: 50
     high:
-      <<: *config
+      <<: *consumer_config
       priority: 30
     default:
-      <<: *config
+      <<: *consumer_config
       priority: 15
     low:
-      <<: *config
+      <<: *consumer_config
       priority: 5
     scheduled:
-      <<: *config
+      <<: *consumer_config
       max_deliver: 1
       max_ack_pending: 100
       ack_wait: 10
@@ -30,29 +40,22 @@ consumers:
 setup:
   jobs:
     critical:
-      <<: &config
-        storage: file
-        retention: workqueue
-        duplicate_window: 120 # 2m
-        discard: old
-        allow_direct: true
-        subjects:
-          - jobs.%{name}.>
+      <<: *stream_config
       description: Very critical priority jobs
     high:
-      <<: *config
+      <<: *stream_config
       description: Higher priority jobs
     default:
-      <<: *config
+      <<: *stream_config
       description: Default priority jobs
     low:
-      <<: *config
+      <<: *stream_config
       description: Lower priority jobs
     scheduled:
-      <<: *config
+      <<: *stream_config
       description: Scheduled jobs
     dead:
-      <<: *config
+      <<: *stream_config
       retention: limits
       max_msgs: 10000
       max_age: 604800 # 7d

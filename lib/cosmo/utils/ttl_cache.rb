@@ -26,7 +26,6 @@ module Cosmo
         result
       end
 
-
       private
 
       def key?(key)

@@ -9,6 +9,8 @@ module Cosmo
 
     def self.run: (*untyped) -> Processor
 
+    attr_reader consumers: Array[untyped]
+
     def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options) -> void
 
     def run: () -> void
@@ -17,9 +19,19 @@ module Cosmo
 
     def run_loop: () -> void
 
+    def work_loop: () -> void
+
+    def schedule_loop: () -> void
+
+    def scheduler?: () -> bool
+
     def setup: () -> void
 
     def process: (*untyped) -> void
+
+    def fetch_timeout: (Hash[Symbol, untyped] config) -> Float
+
+    def fetch_subjects: (Hash[Symbol, untyped] config) -> untyped
 
     def running?: () -> bool
 

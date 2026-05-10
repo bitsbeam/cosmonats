@@ -1,23 +1,29 @@
 module Cosmo
   module Job
     class Processor < ::Cosmo::Processor
-      @weights: Array[Symbol]
-
-      def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options) -> void
-
       private
-
-      def run_loop: () -> void
 
       def setup: () -> void
 
-      def work_loop: () -> void
-
       def schedule_loop: () -> void
 
-      def process: (Array[untyped] messages) -> void
+      def scheduler?: () -> bool
+
+      def consumers: () -> Array[untyped]
+
+      def fetch_subjects: (Hash[Symbol, untyped] config) -> untyped
+
+      def fetch_timeout: (Hash[Symbol, untyped] config) -> Float
+
+      def process: (Array[untyped] messages, untyped processor) -> void
 
       def handle_failure: (untyped message, Hash[Symbol, untyped] data) -> void
+
+      def drop_message: (untyped message, Hash[Symbol, untyped] data) -> void
+
+      def move_message: (untyped message, ?Hash[Symbol, untyped]? data) -> void
+
+      def with_stats: (untyped message) { () -> untyped } -> void
     end
   end
 end

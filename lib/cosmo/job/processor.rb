@@ -2,61 +2,18 @@
 
 module Cosmo
   module Job
-    class Processor < ::Cosmo::Processor # rubocop:disable Metrics/ClassLength
-      def initialize(pool, running, options)
-        super
-        @weights = []
-      end
-
+    class Processor < ::Cosmo::Processor
       private
-
-      def run_loop
-        @threads << Thread.new { work_loop }
-        @threads << Thread.new { schedule_loop }
-      end
 
       def setup
         jobs_config = Config.dig(:consumers, :jobs)
         jobs_config&.each do |stream_name, config|
           config = config.dup
+          config[:batch_size] = 1
+          config[:stream] = stream_name
           consumer_name = "consumer-#{stream_name}"
-          subject = config.delete(:subject)
-          priority = config.delete(:priority)
-          @weights += ([stream_name] * priority.to_i) if priority
-          subscription = client.subscribe(subject, consumer_name, config)
-          @consumers << [subscription, stream_name]
-        end
-      end
-
-      def work_loop # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/AbcSize
-        shutdown = false
-
-        while running?
-          break if shutdown
-
-          @weights.shuffle.each do |stream_name|
-            break unless running?
-
-            if @cache.fetch(stream_name, ttl: 5) { API::Stream.new(stream_name).paused? }
-              Logger.debug "stream #{stream_name} is paused, skipping fetch"
-              sleep(1)
-              next
-            end
-
-            begin
-              timeout = ENV.fetch("COSMO_JOBS_FETCH_TIMEOUT", 0.1).to_f
-              @pool.post do
-                subscription = @consumers.find { |(_, sn)| sn == stream_name }&.first
-                messages = lock(stream_name) { fetch(subscription, batch_size: 1, timeout:) }
-                process(messages) if messages&.any?
-              end
-            rescue Concurrent::RejectedExecutionError
-              shutdown = true
-              break # pool doesn't accept new jobs, we are shutting down
-            end
-
-            break unless running?
-          end
+          subscription = client.subscribe(config[:subject], consumer_name, config.except(:subject, :priority, :stream, :batch_size))
+          @consumers << [subscription, config, nil]
         end
       end
 
@@ -66,7 +23,9 @@ module Cosmo
 
           now = Time.now.to_i
           timeout = ENV.fetch("COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT", 5).to_f
-          subscription = @consumers.find { |(_, sn)| sn == :scheduled }&.first
+          subscription = @consumers.find { |(_, c, _)| c[:stream] == :scheduled }&.first
+          break unless subscription
+
           messages = fetch(subscription, batch_size: 100, timeout:)
           messages&.each do |message|
             headers = message.header.except("X-Stream", "X-Subject", "X-Execute-At", "Nats-Expected-Stream")
@@ -87,7 +46,7 @@ module Cosmo
         end
       end
 
-      def process(messages) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+      def process(messages, _) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
         message = messages.first
         Logger.debug "received messages #{messages.inspect}"
         data = Utils::Json.parse(message.data)
@@ -158,15 +117,27 @@ module Cosmo
         Logger.debug "job moved #{data&.dig(:jid)} to DLQ"
       end
 
+      def scheduler?
+        true
+      end
+
+      def consumers
+        @weights ||= @consumers.filter_map { |(_, c, _)| [c[:stream]] * c[:priority].to_i if c[:priority] }.flatten
+        @weights.shuffle.map { |s| @consumers.find { |(_, c, _)| c[:stream] == s } }
+      end
+
+      def fetch_subjects(config)
+        config[:subject]
+      end
+
+      def fetch_timeout(_config)
+        ENV.fetch("COSMO_JOBS_FETCH_TIMEOUT", 0.1).to_f
+      end
+
       def with_stats(message, &block)
         API::Busy.instance.with(message) do
           API::Counter.instance.with(&block)
         end
-      end
-
-      def lock(stream_name, &)
-        @mutexes ||= Hash.new { |h, k| h[k] = Mutex.new }
-        @mutexes[stream_name].synchronize(&)
       end
     end
   end

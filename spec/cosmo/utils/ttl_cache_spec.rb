@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Style/RedundantFetchBlock
 RSpec.describe Cosmo::Utils::TTLCache do
   subject(:cache) { described_class.new }
 
@@ -33,7 +34,10 @@ RSpec.describe Cosmo::Utils::TTLCache do
   describe "#fetch" do
     it "yields and stores value on cache miss" do
       yielded = false
-      result = cache.fetch(:key) { yielded = true; 42 }
+      result = cache.fetch(:key) do
+        yielded = true
+        42
+      end
       expect(yielded).to be true
       expect(result).to eq(42)
     end
@@ -41,7 +45,10 @@ RSpec.describe Cosmo::Utils::TTLCache do
     it "does not yield on cache hit" do
       cache.set(:key, 99)
       calls = 0
-      result = cache.fetch(:key) { calls += 1; 0 }
+      result = cache.fetch(:key) do
+        calls += 1
+        0
+      end
       expect(calls).to eq(0)
       expect(result).to eq(99)
     end
@@ -54,9 +61,15 @@ RSpec.describe Cosmo::Utils::TTLCache do
 
     it "re-yields after TTL expires" do
       call_count = 0
-      cache.fetch(:key, ttl: 0.01) { call_count += 1; "v1" }
+      cache.fetch(:key, ttl: 0.01) do
+        call_count += 1
+        "v1"
+      end
       sleep 0.02
-      cache.fetch(:key, ttl: 0.01) { call_count += 1; "v2" }
+      cache.fetch(:key, ttl: 0.01) do
+        call_count += 1
+        "v2"
+      end
       expect(call_count).to eq(2)
     end
 
@@ -89,3 +102,4 @@ RSpec.describe Cosmo::Utils::TTLCache do
     end
   end
 end
+# rubocop:enable Style/RedundantFetchBlock

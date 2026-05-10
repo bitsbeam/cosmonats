@@ -1,7 +1,7 @@
 module Cosmo
   module Utils
     class TTLCache
-      @store: Hash[untyped, [untyped, Time?]]
+      @store: ::Hash[untyped, [untyped, ::Time?]]
 
       def initialize: () -> void
 

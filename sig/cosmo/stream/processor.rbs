@@ -3,23 +3,15 @@ module Cosmo
     class Processor < ::Cosmo::Processor
       @configs: Array[Hash[Symbol, untyped]]
 
-      def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options) -> void
-
       private
-
-      def run_loop: () -> void
 
       def setup: () -> void
 
-      def convert_timeout: (Numeric) -> Float
-
-      def work_loop: () -> void
-
       def process: (Array[untyped] messages, untyped processor) -> void
 
-      def setup_configs: () -> void
+      def fetch_subjects: (Hash[Symbol, untyped] config) -> untyped
 
-      def setup_consumers: () -> void
+      def fetch_timeout: (Hash[Symbol, untyped] config) -> Float
 
       def static_config: -> Array[Hash[Symbol, untyped]]
 

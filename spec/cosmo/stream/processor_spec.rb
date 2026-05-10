@@ -21,10 +21,34 @@ RSpec.describe Cosmo::Stream::Processor do
   end
 
   describe "#setup (private)" do
-    it "calls setup methods in order" do
-      expect(processor).to receive(:setup_configs).ordered
-      expect(processor).to receive(:setup_consumers).ordered
+    let(:stream_class) do
+      Class.new do
+        include Cosmo::Stream
+
+        def process_one; end
+      end
+    end
+
+    before do
+      stub_const("SetupTestStreamClass", stream_class)
+      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams)
+                                           .and_return([{ stream: "test_stream", class: "SetupTestStreamClass", consumer: { subjects: ["test.>"] } }])
+      allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([])
+      allow(Cosmo::Config).to receive(:deliver_policy).and_return({ deliver_policy: "all" })
+      allow(client).to receive(:subscribe).and_return(double("subscription"))
+    end
+
+    it "populates @configs from static and dynamic sources" do
       processor.send(:setup)
+      configs = processor.instance_variable_get(:@configs)
+      expect(configs).to be_an(Array)
+      expect(configs.map { |c| c[:class] }).to include(stream_class)
+    end
+
+    it "populates @consumers for each config" do
+      proc_with_filter = described_class.new(pool, running, { processors: ["SetupTestStreamClass"] })
+      proc_with_filter.send(:setup)
+      expect(proc_with_filter.consumers).not_to be_empty
     end
   end
 
@@ -156,7 +180,7 @@ RSpec.describe Cosmo::Stream::Processor do
     end
   end
 
-  describe "#setup_configs (private)" do
+  describe "#setup (private) - config filtering" do
     let(:stream_class) do
       Class.new do
         include Cosmo::Stream
@@ -176,32 +200,35 @@ RSpec.describe Cosmo::Stream::Processor do
     before do
       stub_const("TestStreamClass", stream_class)
       stub_const("AnotherStreamClass", another_stream_class)
-      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return([
-                                                                                    { stream: "configured_stream", class: "TestStreamClass" }
-                                                                                  ])
+      allow(Cosmo::Config).to receive(:dig)
+        .with(:consumers, :streams)
+        .and_return([{ stream: "configured_stream", class: "TestStreamClass", consumer: { subjects: ["configured.>"] } }])
       allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([stream_class, another_stream_class])
+      allow(Cosmo::Config).to receive(:deliver_policy).and_return({ deliver_policy: "all" })
+      allow(client).to receive(:subscribe).and_return(double("subscription"))
     end
 
     it "merges config from Config and system streams" do
-      processor.send(:setup_configs)
+      processor.send(:setup)
       configs = processor.instance_variable_get(:@configs)
       expect(configs).to be_an(Array)
       expect(configs.map { |c| c[:class] }).to include(stream_class)
     end
 
     it "skips invalid class names" do
-      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return([
-                                                                                    { stream: "invalid", class: "NonExistentClass" }
-                                                                                  ])
-      expect { processor.send(:setup_configs) }.not_to raise_error
+      allow(Cosmo::Config).to receive(:dig)
+        .with(:consumers, :streams).and_return([{ stream: "invalid", class: "NonExistentClass" }])
+      expect { processor.send(:setup) }.not_to raise_error
     end
 
     it "filters configs by processor names when processors option is provided" do
       processor_with_filter = described_class.new(pool, running, { processors: ["TestStreamClass"] })
-      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return([{ stream: "configured_stream", class: "TestStreamClass" }])
+      allow(Cosmo::Config).to receive(:dig)
+        .with(:consumers, :streams)
+        .and_return([{ stream: "configured_stream", class: "TestStreamClass", consumer: { subjects: ["configured.>"] } }])
       allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([stream_class, another_stream_class])
 
-      processor_with_filter.send(:setup_configs)
+      processor_with_filter.send(:setup)
       configs = processor_with_filter.instance_variable_get(:@configs)
 
       expect(configs.map { |c| c[:class] }).to include(stream_class)
@@ -209,7 +236,8 @@ RSpec.describe Cosmo::Stream::Processor do
     end
   end
 
-  describe "#setup_consumers (private)" do
+  describe "#setup (private) - consumer creation" do
+    let(:options) { { processors: ["ConsumerTestStreamClass"] } }
     let(:consumer) { double("consumer") }
     let(:deliver_policy) { { deliver_policy: "all" } }
     let(:stream_class) do
@@ -219,17 +247,20 @@ RSpec.describe Cosmo::Stream::Processor do
         def process_one; end
       end
     end
+    let(:config_entry) do
+      {
+        stream_name: :test_stream,
+        consumer_name: "consumer-test",
+        class: stream_class,
+        consumer: { ack_policy: "explicit", subjects: ["test.>"] },
+        start_position: nil
+      }
+    end
 
     before do
-      processor.instance_variable_set(:@configs, [
-                                        {
-                                          stream_name: :test_stream,
-                                          consumer_name: "consumer-test",
-                                          class: stream_class,
-                                          consumer: { ack_policy: "explicit", subjects: ["test.>"] },
-                                          start_position: nil
-                                        }
-                                      ])
+      stub_const("ConsumerTestStreamClass", stream_class)
+      allow(processor).to receive(:static_config).and_return([config_entry])
+      allow(processor).to receive(:dynamic_config).and_return([])
       allow(Cosmo::Config).to receive(:deliver_policy).and_return(deliver_policy)
       allow(client).to receive(:subscribe).and_return(consumer)
     end
@@ -240,11 +271,11 @@ RSpec.describe Cosmo::Stream::Processor do
         "consumer-test",
         hash_including(ack_policy: "explicit", deliver_policy: "all")
       )
-      processor.send(:setup_consumers)
+      processor.send(:setup)
     end
 
     it "stores consumers as array of tuples" do
-      processor.send(:setup_consumers)
+      processor.send(:setup)
       consumers = processor.instance_variable_get(:@consumers)
       expect(consumers).to be_an(Array)
       expect(consumers.length).to eq(1)
