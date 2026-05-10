@@ -8,10 +8,11 @@ module Cosmo
       def setup # rubocop:disable Metrics/AbcSize
         @configs ||= []
         @configs = static_config + dynamic_config
-        return unless @options[:processors]
 
-        pattern = Regexp.new(@options[:processors].map { "\\b#{_1}\\b" }.join("|"))
-        @configs.select! { _1[:class].name.match?(pattern) }
+        if @options[:processors]
+          pattern = Regexp.new(@options[:processors].map { "\\b#{_1}\\b" }.join("|"))
+          @configs.select! { _1[:class].name.match?(pattern) }
+        end
 
         @configs.each do |config|
           processor = config[:class].new

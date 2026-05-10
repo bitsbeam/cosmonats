@@ -10,6 +10,7 @@ RSpec.shared_context "Global helpers" do
   end
 
   def prepare_streams
+    Cosmo::Config.system[:streams] = []
     Cosmo::API::Busy.instance_variable_set(:@instance, nil)
     Cosmo::API::Counter.instance_variable_set(:@instance, nil)
     Cosmo::Publisher.instance_variable_set(:@instance, nil)
@@ -25,6 +26,7 @@ RSpec.shared_context "Global helpers" do
     destroy_streams
     Results.instance.clear
     ENV.delete("COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT")
+    Cosmo::Config.system[:streams] = []
   end
 
   def wait_until(timeout:)

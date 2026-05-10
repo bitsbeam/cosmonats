@@ -42,9 +42,17 @@ Metrics/BlockLength:
   Exclude:
     - spec/**/*.rb
 
+Metrics/AbcSize:
+  Exclude:
+    - spec/**/*
+
 Style/OneClassPerFile:
   Exclude:
     - spec/**/*
 
 Style/RescueModifier:
   Enabled: false
+
+Security/MarshalLoad:
+  Exclude:
+    - spec/**/*

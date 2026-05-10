@@ -1,336 +1,499 @@
 # frozen_string_literal: true
 
 RSpec.describe Cosmo::Stream::Processor do
-  let(:pool) { instance_double(Cosmo::Utils::ThreadPool) }
-  let(:running) { Concurrent::AtomicBoolean.new }
-  let(:options) { {} }
-  let(:processor) { described_class.new(pool, running, options) }
-  let(:client) { instance_double(Cosmo::Client) }
+  let(:concurrency) { 3 }
+  let(:pool)        { Cosmo::Utils::ThreadPool.new(concurrency) }
+  let(:running)     { Concurrent::AtomicBoolean.new }
+  let(:results)     { Results.instance }
+  let(:config)      { { storage: "file", retention: "limits", duplicate_window: 120 * Cosmo::Config::NANO, discard: "old", allow_direct: true } }
+  let(:processor)   { described_class.new(pool, running, {}) }
 
-  before do
-    allow(Cosmo::Client).to receive(:instance).and_return(client)
-    allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return(nil)
-    allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([])
-    running.make_true
+  def create_stream(name)
+    client.create_stream(name, config.merge(subjects: ["#{name}.>"]))
   end
 
-  describe "#initialize" do
-    it "inherits from Processor" do
-      expect(processor).to be_a(Cosmo::Processor)
+  around(:example) do |example|
+    prepare_streams { example.run }
+  end
+
+  context "with successful job execution" do
+    context "with #process_one" do
+      before do
+        stub_const("EventProcessor", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_events,
+                  fetch_timeout: 1.0,
+                  consumer: { subjects: ["test_events.>"] }
+
+          def process_one
+            Results.instance << message.data
+            message.ack
+          end
+        end)
+      end
+
+      before do
+        create_stream("test_events")
+        processor.run
+      end
+      after do
+        processor.stop
+      end
+
+      it "calls process_one for each incoming message" do
+        EventProcessor.publish({ type: "greeting", name: "Alice" }, subject: "test_events.hello")
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results.first).to eq("type" => "greeting", "name" => "Alice")
+      end
+
+      it "processes multiple messages published to the same stream" do
+        %w[Alice Bob Charlie].each { |name| EventProcessor.publish({ name: name }, subject: "test_events.hello") }
+        wait_until(timeout: 5) { results.size >= 3 }
+
+        expect(results.map { |r| r["name"] }).to contain_exactly("Alice", "Bob", "Charlie")
+      end
+
+      it "deserializes JSON payloads via the default serializer" do
+        client.publish("test_events.raw", %({"key":"value","number":42}))
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results.first).to eq("key" => "value", "number" => 42)
+      end
+
+      it "stops consuming messages after an explicit shutdown" do
+        EventProcessor.publish({ event: "first" }, subject: "test_events.work")
+        wait_until(timeout: 5) { results.any? }
+
+        processor.stop
+
+        EventProcessor.publish({ event: "after-stop" }, subject: "test_events.late")
+        sleep 1.5
+
+        expect(results.map { |r| r["event"] }).not_to include("after-stop")
+      end
+    end
+
+    context "with #process" do
+      before do
+        stub_const("OrderProcessor", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_orders,
+                  batch_size: 10,
+                  fetch_timeout: 1.0,
+                  consumer: { subjects: ["test_orders.>"] }
+
+          def process(messages)
+            Results.instance.concat(messages.map(&:data))
+            messages.each(&:ack)
+          end
+        end)
+      end
+
+      before do
+        create_stream("test_orders")
+        processor.run
+      end
+      after do
+        processor.stop
+      end
+
+      it "passes all messages to the overridden process method" do
+        3.times { |i| OrderProcessor.publish({ order_id: i }, subject: "test_orders.new") }
+        wait_until(timeout: 5) { results.size >= 3 }
+
+        expect(results.map { |r| r["order_id"] }).to contain_exactly(0, 1, 2)
+      end
+
+      it "provides Message objects with correct data to the process method" do
+        OrderProcessor.publish({ tag: "batch-test" }, subject: "test_orders.new")
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results.first).to eq("tag" => "batch-test")
+      end
+    end
+
+    context "with processor filtering" do
+      let(:processor) { described_class.new(pool, running, { processors: ["FilteredProcessor"] }) }
+
+      before do
+        stub_const("FilteredProcessor", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_filtered,
+                  fetch_timeout: 1.0,
+                  consumer: { subjects: ["test_filtered.>"] }
+
+          def process_one
+            Results.instance << "filtered:#{message.data["val"]}"
+            message.ack
+          end
+        end)
+
+        stub_const("IgnoredProcessor", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_ignored,
+                  fetch_timeout: 1.0,
+                  consumer: { subjects: ["test_ignored.>"] }
+
+          def process_one
+            Results.instance << "ignored:#{message.data["val"]}"
+            message.ack
+          end
+        end)
+      end
+
+      before do
+        create_stream("test_filtered")
+        create_stream("test_ignored")
+        processor.run
+      end
+      after do
+        processor.stop
+      end
+
+      it "only creates subscriptions for the specified processor" do
+        expect(processor.consumers.size).to eq(1)
+      end
+
+      it "processes messages for the filtered-in processor" do
+        IgnoredProcessor.publish({ val: "no" }, subject: "test_ignored.item")
+        sleep 1.5
+        FilteredProcessor.publish({ val: "yes" }, subject: "test_filtered.item")
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results).not_to include("ignored:no")
+        expect(stream_size("test_ignored")).to eq(1)
+        expect(results).to eq(["filtered:yes"])
+      end
+    end
+
+    context "with multiple processors" do
+      before do
+        stub_const("StreamAlpha", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_alpha,
+                  fetch_timeout: 1.0,
+                  consumer: { subjects: ["test_alpha.>"] }
+
+          def process_one
+            Results.instance << "alpha:#{message.data["id"]}"
+            message.ack
+          end
+        end)
+
+        stub_const("StreamBeta", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_beta,
+                  fetch_timeout: 1.0,
+                  consumer: { subjects: ["test_beta.>"] }
+
+          def process_one
+            Results.instance << "beta:#{message.data["id"]}"
+            message.ack
+          end
+        end)
+      end
+
+      before do
+        create_stream("test_alpha")
+        create_stream("test_beta")
+        processor.run
+      end
+      after do
+        processor.stop
+      end
+
+      it "creates subscriptions for every registered stream class" do
+        expect(processor.consumers.size).to eq(2)
+      end
+
+      it "independently routes messages to the correct processor" do
+        StreamAlpha.publish({ id: 1 }, subject: "test_alpha.item")
+        StreamBeta.publish({ id: 2 }, subject: "test_beta.item")
+
+        wait_until(timeout: 5) { results.size >= 2 }
+
+        expect(results).to contain_exactly("alpha:1", "beta:2")
+      end
+    end
+
+    context "with static configuration" do
+      before do
+        stub_const("StaticProcessor", Class.new do
+          include Cosmo::Stream
+
+          def process_one
+            Results.instance << message.data["tag"]
+            message.ack
+          end
+        end)
+      end
+
+      before do
+        create_stream("test_static")
+        Cosmo::Config.instance_variable_set(:@instance, nil)
+        Cosmo::Config.instance.set(:consumers, :streams, [
+                                     {
+                                       stream: "test_static",
+                                       consumer_name: "consumer-static-test",
+                                       class: "StaticProcessor",
+                                       batch_size: 10,
+                                       fetch_timeout: 1.0,
+                                       consumer: { subjects: ["test_static.>"] }
+                                     }
+                                   ])
+        processor.run
+      end
+      after do
+        processor.stop
+        Cosmo::Config.instance_variable_set(:@instance, nil)
+      end
+
+      it "creates a subscription for each entry in the configuration" do
+        expect(processor.consumers.size).to eq(1)
+      end
+
+      it "processes messages from a statically-configured stream" do
+        client.publish("test_static.item", %({"tag":"static-test"}))
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results).to include("static-test")
+      end
+
+      it "skips configuration entries whose class name cannot be resolved" do
+        Cosmo::Config.instance_variable_set(:@instance, nil)
+        Cosmo::Config.instance.set(:consumers, :streams, [
+                                     { stream: "test_static", class: "DoesNotExistXYZ",
+                                       consumer: { subjects: ["test_static.>"] } }
+                                   ])
+
+        processor = described_class.new(Cosmo::Utils::ThreadPool.new(1), Concurrent::AtomicBoolean.new, {})
+        expect { processor.run }.not_to raise_error
+        expect(processor.consumers).to be_empty
+      ensure
+        processor&.stop
+      end
+    end
+
+    context "with a paused stream" do
+      let(:ttl_recheck) { 0.1 }
+
+      before do
+        stub_const("PauseTestProcessor", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_pause,
+                  fetch_timeout: 1.0,
+                  consumer: { subjects: ["test_pause.>"] }
+
+          def process_one
+            Results.instance << message.data
+            message.ack
+          end
+        end)
+      end
+
+      before do
+        create_stream("test_pause")
+        stub_const("Cosmo::Processor::STREAM_PAUSED_RECHECK_TTL", ttl_recheck)
+        processor.run
+      end
+      after do
+        processor.stop
+      end
+
+      it "does not consume messages while the stream is paused" do
+        client.pause_stream("test_pause")
+        sleep(ttl_recheck * 2)
+        PauseTestProcessor.publish({ event: "after-unpause" }, subject: "test_pause.item")
+        sleep(Cosmo::Processor::STREAMS_PAUSED_IDLE_SLEEP + 0.2) # ensure the processor has time to check the paused state at least once
+        expect(results).to be_empty
+        expect(stream_size("test_pause")).to eq(1)
+
+        client.unpause_stream("test_pause")
+
+        wait_until(timeout: 5) { results.any? }
+        expect(results.first).to eq("event" => "after-unpause")
+      end
+    end
+
+    context "when fetch_timeout is invalid" do
+      before { stub_const("Cosmo::Stream::Data::DEFAULTS", Cosmo::Stream::Data::DEFAULTS.merge(fetch_timeout: 1)) }
+
+      it "emits a warning and falls back to the default, when 0" do
+        stub_const("ZeroTimeoutProcessor", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_zero_timeout,
+                  fetch_timeout: 0,
+                  consumer: { subjects: ["test_zero_timeout.>"] }
+
+          def process_one
+            Results.instance << message.data["tag"]
+            message.ack
+          end
+        end)
+
+        create_stream("test_zero_timeout")
+
+        expect(Cosmo::Logger).to receive(:warn)
+          .with("Ignoring `fetch_timeout: 0.0` (causes high CPU usage) with #{Cosmo::Stream::Data::DEFAULTS[:fetch_timeout]}s instead")
+          .at_least(:once)
+
+        processor = described_class.new(pool, running, {})
+        processor.run
+        ZeroTimeoutProcessor.publish({ tag: "zero-timeout" }, subject: "test_zero_timeout.item")
+        wait_until(timeout: 5) { results.any? }
+
+        processor.stop
+        expect(results).to include("zero-timeout")
+      end
+
+      it "emits a warning and falls back to the default, when -3" do
+        stub_const("NegTimeoutProcessor", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_neg_timeout,
+                  fetch_timeout: -3,
+                  consumer: { subjects: ["test_neg_timeout.>"] }
+
+          def process_one
+            Results.instance << message.data["tag"]
+            message.ack
+          end
+        end)
+
+        create_stream("test_neg_timeout")
+
+        expect(Cosmo::Logger).to receive(:warn)
+          .with("Ignoring `fetch_timeout: -3.0` (causes high CPU usage) with #{Cosmo::Stream::Data::DEFAULTS[:fetch_timeout]}s instead")
+          .at_least(:once)
+
+        processor = described_class.new(pool, running, {})
+        processor.run
+        NegTimeoutProcessor.publish({ tag: "neg-timeout" }, subject: "test_neg_timeout.item")
+        wait_until(timeout: 15) { results.any? }
+
+        processor.stop
+        expect(results).to include("neg-timeout")
+      end
+    end
+
+    context "with a custom serializer" do
+      before do
+        require "base64"
+
+        stub_const("SymbolSerializer", Module.new do
+          module_function
+
+          def serialize(data)
+            Base64.encode64(Marshal.dump(data))
+          end
+
+          def deserialize(payload)
+            Marshal.load(Base64.decode64(payload))
+          end
+        end)
+
+        stub_const("SymbolizedProcessor", Class.new do
+          include Cosmo::Stream
+
+          options stream: :test_custom_serial,
+                  fetch_timeout: 1.0,
+                  consumer: { subjects: ["test_custom_serial.>"] },
+                  publisher: { serializer: SymbolSerializer }
+
+          def process_one
+            Results.instance << message.data
+            message.ack
+          end
+        end)
+      end
+
+      before do
+        create_stream("test_custom_serial")
+        processor.run
+      end
+      after do
+        processor.stop
+      end
+
+      it "deserializes raw message data using the custom serializer" do
+        value = { key: "sym", number: 7 }
+        payload = Base64.encode64(Marshal.dump(value))
+
+        client.publish("test_custom_serial.item", payload)
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results.first).to eq(key: "sym", number: 7)
+      end
+
+      it "cannot deserialize corrupted data" do
+        client.publish("test_custom_serial.item", "marshall mathers")
+        sleep 2
+
+        expect(results).to be_empty
+      end
+
+      it "uses the custom serializer for the full publish→receive round-trip" do
+        SymbolizedProcessor.publish({ name: "round-trip" }, subject: "test_custom_serial.item")
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results.first).to eq(name: "round-trip")
+      end
     end
   end
 
-  describe "#setup (private)" do
-    let(:stream_class) do
-      Class.new do
+  context "with failed job execution" do
+    before do
+      stub_const("FaultyProcessor", Class.new do
         include Cosmo::Stream
 
-        def process_one; end
-      end
+        options stream: :test_errors,
+                fetch_timeout: 1.0,
+                consumer: { subjects: ["test_errors.>"] }
+
+        def process_one
+          raise StandardError, "intentional error" if message.data["fail"]
+
+          Results.instance << message.data["tag"]
+          message.ack
+        end
+      end)
     end
 
     before do
-      stub_const("SetupTestStreamClass", stream_class)
-      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams)
-                                           .and_return([{ stream: "test_stream", class: "SetupTestStreamClass", consumer: { subjects: ["test.>"] } }])
-      allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([])
-      allow(Cosmo::Config).to receive(:deliver_policy).and_return({ deliver_policy: "all" })
-      allow(client).to receive(:subscribe).and_return(double("subscription"))
+      create_stream("test_errors")
+      processor.run
+    end
+    after do
+      processor.stop
     end
 
-    it "populates @configs from static and dynamic sources" do
-      processor.send(:setup)
-      configs = processor.instance_variable_get(:@configs)
-      expect(configs).to be_an(Array)
-      expect(configs.map { |c| c[:class] }).to include(stream_class)
+    it "catches StandardError and continues processing subsequent messages" do
+      FaultyProcessor.publish({ fail: true }, subject: "test_errors.item")
+      sleep 2
+      FaultyProcessor.publish({ fail: false, tag: "canary" }, subject: "test_errors.item")
+
+      wait_until(timeout: 5) { results.include?("canary") }
+
+      expect(results).to include("canary")
     end
 
-    it "populates @consumers for each config" do
-      proc_with_filter = described_class.new(pool, running, { processors: ["SetupTestStreamClass"] })
-      proc_with_filter.send(:setup)
-      expect(proc_with_filter.consumers).not_to be_empty
-    end
-  end
+    it "does not add the errored message's data to results" do
+      FaultyProcessor.publish({ fail: true, tag: "broken" }, subject: "test_errors.item")
+      sleep 2
+      FaultyProcessor.publish({ fail: false, tag: "ok" }, subject: "test_errors.item")
 
-  describe "#work_loop (private)" do
-    let(:consumer) { double("consumer") }
-    let(:config) { { batch_size: 10, fetch_timeout: 7.5, stream: "test_stream" } }
-    let(:stream_processor) { double("stream_processor") }
+      wait_until(timeout: 5) { results.include?("ok") }
 
-    before do
-      processor.instance_variable_set(:@consumers, [[consumer, config, stream_processor]])
-      allow(pool).to receive(:post).and_yield
-      allow(processor).to receive(:fetch)
-      allow(Cosmo::API::Stream).to receive(:new).and_return(double("api_stream", paused?: false))
-    end
-
-    it "fetches messages for each stream" do
-      running.make_false
-      thread = Thread.new { processor.send(:work_loop) }
-      sleep 0.1
-      thread.kill
-    end
-
-    it "handles RejectedExecutionError during shutdown" do
-      allow(pool).to receive(:post).and_raise(Concurrent::RejectedExecutionError)
-      running.make_false
-      expect { processor.send(:work_loop) }.not_to raise_error
-    end
-
-    it "skips fetching and sleeps when stream is paused" do
-      paused_stream = double("api_stream", paused?: true)
-      allow(Cosmo::API::Stream).to receive(:new).with("test_stream").and_return(paused_stream)
-
-      fetch_called = false
-      allow(processor).to receive(:fetch) { fetch_called = true }
-      allow(processor).to receive(:sleep) # stub sleep so the test is fast
-
-      running.make_false
-      thread = Thread.new { processor.send(:work_loop) }
-      thread.join(0.5)
-      thread.kill if thread.alive?
-
-      expect(fetch_called).to be false
-    end
-
-    it "uses fetch_timeout from config" do
-      allow(processor).to receive(:fetch) do |_, options|
-        expect(options[:timeout]).to eq(7.5)
-        raise Concurrent::RejectedExecutionError
-      end
-
-      thread = Thread.new { processor.send(:work_loop) }
-
-      thread.join(0.5)
-      thread.kill if thread.alive?
-    end
-
-    it "warns and uses default when fetch_timeout is zero" do
-      config = { batch_size: 10, fetch_timeout: 0 }
-      processor.instance_variable_set(:@consumers, [[consumer, config, stream_processor]])
-      expect(Cosmo::Logger).to receive(:warn).with("Ignoring `fetch_timeout: 0.0` (causes high CPU usage) with 10.0s instead").at_least(:once)
-      allow(processor).to receive(:fetch) do |_, options|
-        expect(options[:timeout]).to eq(10)
-        raise Concurrent::RejectedExecutionError
-      end
-
-      thread = Thread.new { processor.send(:work_loop) }
-
-      thread.join(0.5)
-      thread.kill if thread.alive?
-    end
-
-    it "warns and uses default when fetch_timeout is negative" do
-      config = { batch_size: 10, fetch_timeout: -5 }
-      processor.instance_variable_set(:@consumers, [[consumer, config, stream_processor]])
-      expect(Cosmo::Logger).to receive(:warn).with("Ignoring `fetch_timeout: -5.0` (causes high CPU usage) with 10.0s instead").at_least(:once)
-      allow(processor).to receive(:fetch) do |_, options|
-        expect(options[:timeout]).to eq(10)
-        raise Concurrent::RejectedExecutionError
-      end
-
-      thread = Thread.new { processor.send(:work_loop) }
-
-      thread.join(0.5)
-      thread.kill if thread.alive?
-    end
-  end
-
-  describe "#process (private)" do
-    let(:nats_message) { double("nats_message") }
-    let(:metadata) { double("metadata", sequence: sequence, num_delivered: 1, num_pending: 5, timestamp: Time.now) }
-    let(:sequence) { double("sequence", stream: 100, consumer: 50) }
-    let(:stream_processor) { double("stream_processor", class: stream_class) }
-    let(:stream_class) { double("stream_class", default_options: { publisher: { serializer: nil } }) }
-
-    before do
-      allow(nats_message).to receive(:metadata).and_return(metadata)
-      allow(nats_message).to receive(:data).and_return('{"key":"value"}')
-      allow(stream_processor).to receive(:process)
-      allow(Cosmo::Logger).to receive(:with).and_yield
-      allow(Cosmo::Logger).to receive(:info)
-      allow(Cosmo::Logger).to receive(:debug)
-    end
-
-    it "processes messages with stream processor" do
-      expect(stream_processor).to receive(:process)
-      processor.send(:process, [nats_message], stream_processor)
-    end
-
-    it "wraps messages in Stream::Message objects" do
-      expect(stream_processor).to receive(:process) do |messages|
-        expect(messages.first).to be_a(Cosmo::Stream::Message)
-      end
-      processor.send(:process, [nats_message], stream_processor)
-    end
-
-    it "logs processing with metadata" do
-      expect(Cosmo::Logger).to receive(:with).with(hash_including(
-                                                     seq_stream: 100,
-                                                     seq_consumer: 50,
-                                                     num_pending: 5
-                                                   ))
-      processor.send(:process, [nats_message], stream_processor)
-    end
-
-    it "handles StandardError gracefully" do
-      allow(stream_processor).to receive(:process).and_raise(StandardError, "Processing failed")
-      expect(Cosmo::Logger).to receive(:debug).with(kind_of(StandardError))
-      expect { processor.send(:process, [nats_message], stream_processor) }.not_to raise_error
-    end
-  end
-
-  describe "#setup (private) - config filtering" do
-    let(:stream_class) do
-      Class.new do
-        include Cosmo::Stream
-
-        def process_one; end
-      end
-    end
-
-    let(:another_stream_class) do
-      Class.new do
-        include Cosmo::Stream
-
-        def process_one; end
-      end
-    end
-
-    before do
-      stub_const("TestStreamClass", stream_class)
-      stub_const("AnotherStreamClass", another_stream_class)
-      allow(Cosmo::Config).to receive(:dig)
-        .with(:consumers, :streams)
-        .and_return([{ stream: "configured_stream", class: "TestStreamClass", consumer: { subjects: ["configured.>"] } }])
-      allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([stream_class, another_stream_class])
-      allow(Cosmo::Config).to receive(:deliver_policy).and_return({ deliver_policy: "all" })
-      allow(client).to receive(:subscribe).and_return(double("subscription"))
-    end
-
-    it "merges config from Config and system streams" do
-      processor.send(:setup)
-      configs = processor.instance_variable_get(:@configs)
-      expect(configs).to be_an(Array)
-      expect(configs.map { |c| c[:class] }).to include(stream_class)
-    end
-
-    it "skips invalid class names" do
-      allow(Cosmo::Config).to receive(:dig)
-        .with(:consumers, :streams).and_return([{ stream: "invalid", class: "NonExistentClass" }])
-      expect { processor.send(:setup) }.not_to raise_error
-    end
-
-    it "filters configs by processor names when processors option is provided" do
-      processor_with_filter = described_class.new(pool, running, { processors: ["TestStreamClass"] })
-      allow(Cosmo::Config).to receive(:dig)
-        .with(:consumers, :streams)
-        .and_return([{ stream: "configured_stream", class: "TestStreamClass", consumer: { subjects: ["configured.>"] } }])
-      allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([stream_class, another_stream_class])
-
-      processor_with_filter.send(:setup)
-      configs = processor_with_filter.instance_variable_get(:@configs)
-
-      expect(configs.map { |c| c[:class] }).to include(stream_class)
-      expect(configs.map { |c| c[:class] }).not_to include(another_stream_class)
-    end
-  end
-
-  describe "#setup (private) - consumer creation" do
-    let(:options) { { processors: ["ConsumerTestStreamClass"] } }
-    let(:consumer) { double("consumer") }
-    let(:deliver_policy) { { deliver_policy: "all" } }
-    let(:stream_class) do
-      Class.new do
-        include Cosmo::Stream
-
-        def process_one; end
-      end
-    end
-    let(:config_entry) do
-      {
-        stream_name: :test_stream,
-        consumer_name: "consumer-test",
-        class: stream_class,
-        consumer: { ack_policy: "explicit", subjects: ["test.>"] },
-        start_position: nil
-      }
-    end
-
-    before do
-      stub_const("ConsumerTestStreamClass", stream_class)
-      allow(processor).to receive(:static_config).and_return([config_entry])
-      allow(processor).to receive(:dynamic_config).and_return([])
-      allow(Cosmo::Config).to receive(:deliver_policy).and_return(deliver_policy)
-      allow(client).to receive(:subscribe).and_return(consumer)
-    end
-
-    it "creates consumer for each stream" do
-      expect(client).to receive(:subscribe).with(
-        ["test.>"],
-        "consumer-test",
-        hash_including(ack_policy: "explicit", deliver_policy: "all")
-      )
-      processor.send(:setup)
-    end
-
-    it "stores consumers as array of tuples" do
-      processor.send(:setup)
-      consumers = processor.instance_variable_get(:@consumers)
-      expect(consumers).to be_an(Array)
-      expect(consumers.length).to eq(1)
-      expect(consumers.first[0]).to eq(consumer) # subscription
-      expect(consumers.first[1]).to be_a(Hash) # config
-      expect(consumers.first[2]).to be_an_instance_of(stream_class) # processor instance
-    end
-  end
-
-  describe "#static_config (private)" do
-    let(:stream_class) do
-      Class.new do
-        include Cosmo::Stream
-
-        def process_one; end
-      end
-    end
-
-    it "returns config from Config.dig(:consumers, :streams)" do
-      stub_const("TestStreamClass", stream_class)
-      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return([
-                                                                                    { stream: "configured_stream", class: "TestStreamClass" }
-                                                                                  ])
-
-      config = processor.send(:static_config)
-      expect(config).to be_an(Array)
-      expect(config.first[:class]).to eq(stream_class)
-    end
-
-    it "skips invalid class names" do
-      allow(Cosmo::Config).to receive(:dig).with(:consumers, :streams).and_return([
-                                                                                    { stream: "invalid", class: "NonExistentClass" }
-                                                                                  ])
-
-      config = processor.send(:static_config)
-      expect(config).to be_empty
-    end
-  end
-
-  describe "#dynamic_config (private)" do
-    let(:stream_class) do
-      Class.new do
-        include Cosmo::Stream
-
-        def process_one; end
-      end
-    end
-
-    it "returns config from Config.system[:streams]" do
-      allow(Cosmo::Config.system).to receive(:[]).with(:streams).and_return([stream_class])
-      allow(stream_class).to receive(:default_options).and_return({ stream: :test_stream })
-
-      config = processor.send(:dynamic_config)
-      expect(config).to be_an(Array)
-      expect(config.first[:class]).to eq(stream_class)
+      expect(results).not_to include("broken")
     end
   end
 end

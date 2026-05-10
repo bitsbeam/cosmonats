@@ -2,6 +2,9 @@
 
 module Cosmo
   class Processor
+    STREAM_PAUSED_RECHECK_TTL = 5.0 # Seconds a stream's paused state is cached before re-checking (override via COSMO_STREAM_PAUSED_RECHECK_TTL)
+    STREAMS_PAUSED_IDLE_SLEEP = 1.0 # Seconds to sleep when every stream is paused, preventing a tight CPU spin (override via COSMO_STREAMS_PAUSED_IDLE_SLEEP)
+
     def self.run(...)
       new(...).tap(&:run)
     end
@@ -48,15 +51,18 @@ module Cosmo
       while running?
         break if shutdown
 
+        all_paused = true
         consumers.each do |(subscription, config, processor)|
           break unless running?
 
           stream_name = config[:stream].to_s
-          if @cache.fetch(stream_name, ttl: 5) { API::Stream.new(stream_name).paused? }
+          ttl = ENV.fetch("COSMO_STREAM_PAUSED_RECHECK_TTL", STREAM_PAUSED_RECHECK_TTL).to_f
+          if @cache.fetch(stream_name, ttl:) { API::Stream.new(stream_name).paused? }
             Logger.debug "stream #{stream_name} is paused, skipping fetch"
             next
           end
 
+          all_paused = false
           begin
             @pool.post do
               timeout = fetch_timeout(config)
@@ -72,6 +78,11 @@ module Cosmo
 
           break unless running?
         end
+
+        # When every consumer was skipped (all streams paused) there is no
+        # blocking fetch call to pace the loop naturally. Sleep briefly to
+        # avoid a tight CPU spin without delaying any individual consumer.
+        sleep(ENV.fetch("COSMO_STREAMS_PAUSED_IDLE_SLEEP", STREAMS_PAUSED_IDLE_SLEEP).to_f) if all_paused && running?
       end
     end
 
