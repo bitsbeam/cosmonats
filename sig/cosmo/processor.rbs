@@ -1,11 +1,15 @@
 module Cosmo
   class Processor
+    STREAM_PAUSED_RECHECK_TTL: Float
+    STREAMS_PAUSED_IDLE_SLEEP: Float
+
     @pool: Utils::ThreadPool
     @running: untyped
     @consumers: Array[untyped]
     @threads: Array[Thread]
     @cache: Utils::TTLCache
     @options: Hash[Symbol, untyped]
+    @locks: Hash[::String, Mutex]
 
     def self.run: (*untyped) -> Processor
 
@@ -14,6 +18,8 @@ module Cosmo
     def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options) -> void
 
     def run: () -> void
+
+    def stop: (?::Integer | ::Float timeout) -> void
 
     private
 
@@ -40,5 +46,7 @@ module Cosmo
     def client: () -> Client
 
     def stopwatch: () -> Utils::Stopwatch
+
+    def lock: (::String stream_name) { () -> void } -> void
   end
 end

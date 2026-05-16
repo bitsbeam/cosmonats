@@ -168,11 +168,8 @@ RSpec.describe Cosmo::Client do
   end
 
   describe "#pause_stream" do
-    let(:consumer_name) { "pause-test-consumer" }
-
     it "reports paused" do
       client.create_stream(stream_name, { subjects: subjects, storage: "memory" })
-      client.subscribe(subject_name, consumer_name, { ack_policy: "explicit" })
 
       client.pause_stream(stream_name)
 
@@ -181,11 +178,8 @@ RSpec.describe Cosmo::Client do
   end
 
   describe "#unpause_stream" do
-    let(:consumer_name) { "pause-test-consumer" }
-
     it "reports not paused" do
       client.create_stream(stream_name, { subjects: subjects, storage: "memory" })
-      client.subscribe(subject_name, consumer_name, { ack_policy: "explicit" })
       client.pause_stream(stream_name)
       expect(client.stream_paused?(stream_name)).to be true
 
@@ -196,9 +190,7 @@ RSpec.describe Cosmo::Client do
   end
 
   describe "#stream_paused?" do
-    let(:consumer_name) { "pause-test-consumer" }
-
-    it "is not paused when no consumers" do
+    it "is not paused initially" do
       client.create_stream(stream_name, { subjects: subjects, storage: "memory" })
 
       expect(client.stream_paused?(stream_name)).to be false
@@ -206,7 +198,6 @@ RSpec.describe Cosmo::Client do
 
     it "reports not paused after unpause_stream" do
       client.create_stream(stream_name, { subjects: subjects, storage: "memory" })
-      client.subscribe(subject_name, consumer_name, { ack_policy: "explicit" })
       client.pause_stream(stream_name)
       expect(client.stream_paused?(stream_name)).to be true
 

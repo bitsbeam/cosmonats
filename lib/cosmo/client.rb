@@ -38,6 +38,10 @@ module Cosmo
       js.delete_stream(name, params)
     end
 
+    def update_stream(name, config)
+      js.update_stream(name: name, **config)
+    end
+
     def list_streams
       response = nc.request("$JS.API.STREAM.LIST", "")
       data = Utils::Json.parse(response.data, symbolize_names: false)
@@ -47,18 +51,21 @@ module Cosmo
     end
 
     def pause_stream(name)
-      list_consumers(name).each { pause_consumer(name, _1["name"], true) }
+      config = stream_info(name).config.to_h
+      config[:metadata] ||= {}
+      config[:metadata][:"_cosmo.paused"] = "true"
+      update_stream(name, config)
     end
 
     def unpause_stream(name)
-      list_consumers(name).each { pause_consumer(name, _1["name"], false) }
+      config = stream_info(name).config.to_h
+      config[:metadata] ||= {}
+      config[:metadata].delete(:"_cosmo.paused")
+      update_stream(name, config)
     end
 
     def stream_paused?(name)
-      consumers = list_consumers(name)
-      return false if consumers.empty?
-
-      consumers.all? { _1["paused"] == true }
+      stream_info(name).config.metadata&.[](:"_cosmo.paused") == "true"
     rescue NATS::IO::Timeout
       false
     end
@@ -67,17 +74,6 @@ module Cosmo
       response = nc.request("$JS.API.CONSUMER.LIST.#{stream_name}", "")
       data = Utils::Json.parse(response.data, default: {}, symbolize_names: false)
       Array(data["consumers"])
-    end
-
-    def pause_consumer(stream_name, consumer_name, paused)
-      subject = "$JS.API.CONSUMER.PAUSE.#{stream_name}.#{consumer_name}"
-      pause_until = (Time.now + (10 * 60 * 60 * 24 * 365)).utc.iso8601 # 10 years
-      payload = paused ? Utils::Json.dump({ pause_until: pause_until }) : "{}"
-      response = nc.request(subject, payload)
-      result = Utils::Json.parse(response.data, default: {}, symbolize_names: false)
-      raise NATS::JetStream::Error, result.dig("error", "description") if result["error"]
-
-      result
     end
 
     def consumer_info(stream_name, consumer_name)

@@ -301,6 +301,7 @@ RSpec.describe Cosmo::Stream::Processor do
 
       before do
         create_stream("test_pause")
+        client.pause_stream("test_pause")
         stub_const("Cosmo::Processor::STREAM_PAUSED_RECHECK_TTL", ttl_recheck)
         processor.run
       end
@@ -309,14 +310,13 @@ RSpec.describe Cosmo::Stream::Processor do
       end
 
       it "does not consume messages while the stream is paused" do
-        client.pause_stream("test_pause")
-        sleep(ttl_recheck * 2)
         PauseTestProcessor.publish({ event: "after-unpause" }, subject: "test_pause.item")
         sleep(Cosmo::Processor::STREAMS_PAUSED_IDLE_SLEEP + 0.2) # ensure the processor has time to check the paused state at least once
         expect(results).to be_empty
         expect(stream_size("test_pause")).to eq(1)
 
         client.unpause_stream("test_pause")
+        sleep(ttl_recheck * 2) # let cache expire so processor unpauses
 
         wait_until(timeout: 5) { results.any? }
         expect(results.first).to eq("event" => "after-unpause")

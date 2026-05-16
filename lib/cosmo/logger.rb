@@ -62,7 +62,7 @@ module Cosmo
     def self.instance
       @instance ||= ::Logger.new($stdout).tap do |logger|
         logger.formatter = SimpleFormatter.new
-        logger.level = ::Logger::INFO
+        logger.level = ::Logger::Severity.coerce(ENV.fetch("COSMO_LOG_LEVEL", "info"))
       end
     end
 

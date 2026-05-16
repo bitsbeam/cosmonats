@@ -21,6 +21,8 @@ module Cosmo
 
     def delete_stream: (::String | Symbol name, ?Hash[Symbol, untyped] params) -> untyped
 
+    def update_stream: (::String | Symbol name, Hash[Symbol, untyped] config) -> untyped
+
     def list_streams: () -> Array[Hash[::String, untyped]]
 
     def pause_stream: (::String name) -> void
@@ -30,8 +32,6 @@ module Cosmo
     def stream_paused?: (::String name) -> bool
 
     def list_consumers: (::String stream_name) -> Array[Hash[::String, untyped]]
-
-    def pause_consumer: (::String stream_name, ::String consumer_name, bool paused) -> Hash[::String, untyped]
 
     def consumer_info: (::String stream_name, ::String consumer_name) -> NATS::JetStream::API::ConsumerInfo
 

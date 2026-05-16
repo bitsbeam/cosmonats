@@ -17,9 +17,7 @@
   </article>
 </div>
 
-<% if @state.consumer_count.to_i > 0 -%>
-  <%= render("streams/_pause_banner", { name: @name, paused: @paused, consumer_count: @state.consumer_count }) %>
-<% end -%>
+<%= render("streams/_pause_banner", { name: @name, paused: @paused }) %>
 
 <div class="nav">
   <a href="<%= url_for('/streams') %>"

@@ -62,8 +62,7 @@ module Cosmo
         end
 
         def banner_locals(stream)
-          state, _config = stream.info.values
-          { name: stream.name, paused: stream.paused?, consumer_count: state.consumer_count }
+          { name: stream.name, paused: stream.paused? }
         end
       end
     end
