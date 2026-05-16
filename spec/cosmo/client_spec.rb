@@ -130,7 +130,7 @@ RSpec.describe Cosmo::Client do
   describe "#delete_stream" do
     it "deletes stream" do
       client.create_stream(stream_name, { subjects: ["test.>"] })
-      expect(client.list_streams).to eq([stream_name])
+      expect(client.list_streams.map { _1.dig("config", "name") }).to eq([stream_name])
 
       client.delete_stream(stream_name)
 
@@ -144,7 +144,7 @@ RSpec.describe Cosmo::Client do
 
       client.create_stream(stream_name, { subjects: ["test.>"] })
 
-      expect(client.list_streams).to eq([stream_name])
+      expect(client.list_streams.map { _1.dig("config", "name") }).to eq([stream_name])
     end
   end
 

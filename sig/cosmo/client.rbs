@@ -21,7 +21,7 @@ module Cosmo
 
     def delete_stream: (::String | Symbol name, ?Hash[Symbol, untyped] params) -> untyped
 
-    def list_streams: () -> Array[::String]
+    def list_streams: () -> Array[Hash[::String, untyped]]
 
     def pause_stream: (::String name) -> void
 

@@ -19,6 +19,8 @@ module Cosmo
 
       def handle_failure: (untyped message, Hash[Symbol, untyped] data) -> void
 
+      def subscribe: (Symbol stream_name, Hash[Symbol, untyped] config) -> [untyped, Hash[Symbol, untyped], nil]
+
       def drop_message: (untyped message, Hash[Symbol, untyped] data) -> void
 
       def move_message: (untyped message, ?Hash[Symbol, untyped]? data) -> void

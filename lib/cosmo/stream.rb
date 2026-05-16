@@ -28,8 +28,8 @@ module Cosmo
       end
 
       def register # rubocop:disable Metrics/AbcSize
-        Config.system[:streams] ||= []
-        Config.system[:streams] << self
+        Config.internal[:streams] ||= []
+        Config.internal[:streams] << self
 
         # settings are inherited, don't try to modify them
         return if default_options != Data::DEFAULTS

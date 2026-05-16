@@ -5,7 +5,7 @@ module Cosmo
     class Processor < ::Cosmo::Processor
       private
 
-      def setup # rubocop:disable Metrics/AbcSize
+      def setup
         @configs ||= []
         @configs = static_config + dynamic_config
 
@@ -14,14 +14,7 @@ module Cosmo
           @configs.select! { _1[:class].name.match?(pattern) }
         end
 
-        @configs.each do |config|
-          processor = config[:class].new
-          subjects = config.dig(:consumer, :subjects)
-          deliver_policy = Config.deliver_policy(config[:start_position])
-          consumer_config, consumer_name = config.values_at(:consumer, :consumer_name)
-          subscription = client.subscribe(subjects, consumer_name, consumer_config.merge(deliver_policy))
-          @consumers << [subscription, config, processor]
-        end
+        @configs.each { @consumers << subscribe(nil, _1) }
       end
 
       def process(messages, processor) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
@@ -56,7 +49,16 @@ module Cosmo
       end
 
       def dynamic_config
-        Config.system[:streams].map { _1.default_options.merge(class: _1) }
+        Config.internal[:streams].map { _1.default_options.merge(class: _1) }
+      end
+
+      def subscribe(_stream_name, config)
+        processor = config[:class].new
+        subjects = config.dig(:consumer, :subjects)
+        deliver_policy = Config.deliver_policy(config[:start_position])
+        consumer_config, consumer_name = config.values_at(:consumer, :consumer_name)
+        subscription = client.subscribe(subjects, consumer_name, consumer_config.merge(deliver_policy))
+        [subscription, config, processor]
       end
 
       def fetch_subjects(config)

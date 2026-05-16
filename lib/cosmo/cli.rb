@@ -106,11 +106,12 @@ module Cosmo
             configs.each do |name, config|
               Client.instance.stream_info(name)
             rescue NATS::JetStream::Error::NotFound
-              Client.instance.create_stream(name, config)
+              meta = { metadata: { "_cosmo.type" => "jobs" } }
+              Client.instance.create_stream(name, config.merge(meta))
             end
           end
 
-          puts "Cosmo streams were created/updated"
+          puts "Cosmo streams were created successfully"
           exit(0)
         end
 

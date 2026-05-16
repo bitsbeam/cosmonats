@@ -4,7 +4,7 @@ require "yaml"
 require "forwardable"
 
 module Cosmo
-  class Config
+  class Config < ::Hash
     NANO = 1_000_000_000
     DEFAULT_PATH = "config/cosmo.yml"
 
@@ -59,45 +59,18 @@ module Cosmo
       @instance ||= new
     end
 
-    def self.system
-      @system ||= {}
-    end
-
-    def initialize
-      @config = nil
-      @system = {}
-      @defaults = self.class.parse_file(File.expand_path("defaults.yml", __dir__))
-    end
-
-    def [](key)
-      dig(key)
-    end
-
-    def fetch(key, default = nil)
-      return @config.fetch(key, default) if @config && Utils::Hash.keys?(@config, key)
-
-      @defaults.fetch(key, default)
-    end
-
-    def dig(*keys)
-      return @config&.dig(*keys) if @config && Utils::Hash.keys?(@config, *keys)
-
-      @defaults.dig(*keys)
-    end
-
-    def to_h
-      Utils::Hash.merge(@defaults, @config)
+    def self.internal
+      @internal ||= {}
     end
 
     def set(...)
-      @config ||= {}
-      Utils::Hash.set(@config, ...)
+      Utils::Hash.set(self, ...)
     end
 
     def load(path = nil)
       return unless path
 
-      @config = self.class.parse_file(path)
+      replace(self.class.parse_file(path))
     end
   end
 end

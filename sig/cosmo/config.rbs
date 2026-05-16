@@ -1,17 +1,14 @@
 module Cosmo
-  class Config
+  class Config < ::Hash[Symbol, untyped]
     NANO: Integer
     DEFAULT_PATH: ::String
 
     self.@instance: Config
-    self.@system: Hash[Symbol, untyped]
-    @config: Hash[Symbol, untyped]?
-    @system: Hash[Symbol, untyped]
-    @defaults: Hash[Symbol, untyped]
+    self.@internal: Hash[Symbol, untyped]
 
     def self.instance: () -> Config
 
-    def self.system: () -> Hash[Symbol, untyped]
+    def self.internal: () -> Hash[Symbol, untyped]
 
     def self.parse_file: (::String path) -> Hash[Symbol, untyped]
 
@@ -31,15 +28,6 @@ module Cosmo
 
     def self.load: (?::String? path) -> void
 
-    def initialize: () -> void
-
-    def []: (Symbol key) -> untyped
-
-    def fetch: (Symbol key, ?untyped default) -> untyped
-
-    def dig: (*Symbol keys) -> untyped
-
-    def to_h: () -> Hash[Symbol, untyped]
 
     def set: (*untyped) -> untyped
 

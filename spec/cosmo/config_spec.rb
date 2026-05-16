@@ -103,10 +103,10 @@ RSpec.describe Cosmo::Config do
   end
 
   describe "#[]" do
-    it "delegates to dig" do
+    it "retrieves a value by key" do
       instance = described_class.new
-      expect(instance).to receive(:dig).with(:concurrency)
-      instance[:concurrency]
+      instance.set(:concurrency, 5)
+      expect(instance[:concurrency]).to eq(5)
     end
   end
 
@@ -122,7 +122,7 @@ RSpec.describe Cosmo::Config do
       expect(instance.fetch(:nonexistent, 10)).to eq(10)
     end
 
-    it "returns defaults value when config is nil" do
+    it "returns default argument when key does not exist" do
       instance = described_class.new
       result = instance.fetch(:concurrency, 1)
       expect(result).to eq(1)
@@ -143,7 +143,7 @@ RSpec.describe Cosmo::Config do
   end
 
   describe "#to_h" do
-    it "merges defaults and config" do
+    it "returns config as a Hash" do
       instance = described_class.new
       instance.set(:concurrency, 5)
       result = instance.to_h

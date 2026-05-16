@@ -95,62 +95,69 @@ gem "cosmonats"
 
 **Requirements:** Ruby 3.1.0+, NATS Server ([installation guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
 
-
-## 🚀 Quick Start
-
-### 1. Create a Job
-
+Add these lines to config/routes.rb:
 ```ruby
-class SendEmailJob
-  include Cosmo::Job
+require "cosmo/web"
 
-  # configure job options (optional)
-  options stream: :default, retry: 3, dead: true
-
-  def perform(user_id, email_type)
-    user = User.find(user_id)
-    UserMailer.send(email_type, user).deliver_now
-  end
+Rails.application.routes.draw do
+  mount Cosmo::Web => "/cosmo" # access web UI at http://localhost:3000/cosmo
+  ...
 end
 ```
 
-### 2. Enqueue Jobs
 
-```ruby
-SendEmailJob.perform_async(123, 'welcome')           # Immediately
-SendEmailJob.perform_in(1.hour, 123, 'reminder')     # Delayed
-SendEmailJob.perform_at(1.day.from_now, 123, 'test') # Scheduled
-```
+## 🚀 Quick Start
 
-### 3. Configure (config/cosmo.yml)
+### 1. Create `config/cosmo.yml` and run `bundle exec cosmo -S` to create streams in NATS:
 
 ```yaml
-concurrency: 10
+concurrency: 5
 max_retries: 3
 
 consumers:
   jobs:
     default:
       ack_policy: explicit
-      max_deliver: 3
-      max_ack_pending: 3
-      ack_wait: 60
+      max_deliver: 10
+      max_ack_pending: 10
+      ack_wait: 15
+      subject: jobs.%{name}.>
 
-streams:
-  default:
-    storage: file
-    retention: workqueue
-    subjects: ["jobs.default.>"]
+setup:
+  jobs:
+    default:
+      storage: file
+      retention: workqueue
+      subjects: ["jobs.%{name}.>"]
+      allow_direct: true
+``` 
+
+### 2. Create a Job in app/workers
+
+```ruby
+class SendEmailJob
+  include Cosmo::Job
+
+  options stream: :default, retry: 3, dead: true
+
+  def perform(user_id, email_type)
+    # Pretend to send email to user: UserMailer.send(email_type, user_id).deliver_now
+    sleep 0.5 # Simulate work
+    puts "#{user_id}, #{email_type}"
+  end
+end
 ```
 
-### 4. Setup & Run
+### 3. Enqueue Jobs
+
+```ruby
+10.times { |i| SendEmailJob.perform_async(i, "welcome") }
+```
+
+### 4. Run
 
 ```bash
-# Setup streams
-cosmo -C config/cosmo.yml --setup
-
-# Start processing
-cosmo -C config/cosmo.yml -c 10 -r ./app/jobs jobs
+bundle exec cosmo jobs
 ```
 
 
@@ -182,7 +189,7 @@ end
 # Usage
 ReportJob.perform_async(42)                              # Enqueue now
 ReportJob.perform_in(30.minutes, 42)                     # Delayed
-ReportJob.perform_at(Time.parse('2026-01-25 10:00'), 42) # Scheduled
+ReportJob.perform_at(Time.parse("2026-01-25 10:00"), 42) # Scheduled
 ```
 
 ### Streams
@@ -221,8 +228,8 @@ end
 
 # Publishing
 ClicksProcessor.publish(
-  { user_id: 123, page: '/home' },
-  subject: 'events.clicks.homepage'
+  { user_id: 123, page: "/home" },
+  subject: "events.clicks.homepage"
 )
 
 # Message acknowledgment strategies
@@ -235,32 +242,86 @@ message.term                         # Permanent failure, no retry
 
 **File-based (config/cosmo.yml):**
 ```yaml
-timeout: 25     # Shutdown timeout in seconds
-concurrency: 10 # Number of worker threads
-max_retries: 3  # Default max retries
+timeout: 25                 # Shutdown timeout in seconds
+concurrency: &concurrency 1 # Number of worker threads
+max_retries: &max_retries 3 # Default max retries
+
+stream_config: &stream_config
+  storage: file         # storage type (file or memory)
+  retention: workqueue  # retention policy (limits, interest, workqueue)
+  duplicate_window: 120 # time window for duplicate message detection in seconds
+  discard: old          # discard new messages when stream is full (discard new or old)
+  allow_direct: true    # allow direct messages to stream, required for web UI
+  subjects:
+    - jobs.%{name}.>    # subject pattern for stream, %{name} will be replaced with stream name
+
+consumer_config: &consumer_config
+  ack_policy: explicit    # ack policy (explicit, none, all), each individual message must be acknowledged
+  max_deliver: 10         # maximum number of times a message will be delivered before it's considered failed
+  max_ack_pending: 20     # maximum number of messages with pending ack for this consumer
+  ack_wait: 60            # time in seconds to wait for an ack before redelivering the message
+  subject: jobs.%{name}.> # subject pattern for consumer, %{name} will be replaced with stream name
 
 consumers:
-  streams:
-    - class: MyStream
-      batch_size: 50
-      consumer:
-        ack_policy: explicit
-        max_deliver: 3
-        subjects: ["events.>"]
+  jobs:
+    critical:
+      <<: *consumer_config
+      priority: 50
+    high:
+      <<: *consumer_config
+      priority: 30
+    default:
+      <<: *consumer_config
+      priority: 15
+    low:
+      <<: *consumer_config
+      priority: 5
+    scheduled:
+      <<: *consumer_config
+      max_deliver: 1
+      max_ack_pending: 100
+      ack_wait: 10
 
 setup:
-  streams:
-    my_stream:
-      storage: file         # or memory
-      retention: workqueue  # or limits
-      max_age: 86400       # 1d in seconds
-      subjects: ["events.>"]
+  jobs:
+    critical:
+      <<: *stream_config
+      description: Very critical priority jobs
+    high:
+      <<: *stream_config
+      description: Higher priority jobs
+    default:
+      <<: *stream_config
+      description: Default priority jobs
+    low:
+      <<: *stream_config
+      description: Lower priority jobs
+    scheduled:
+      <<: *stream_config
+      description: Scheduled jobs
+    dead:
+      <<: *stream_config
+      retention: limits
+      max_msgs: 10000
+      max_age: 604800 # 7d
+      description: Broken jobs (DLQ)
+
+development:
+  verbose: false
+  concurrency: *concurrency
+
+staging:
+  verbose: true
+  concurrency: 3
+
+production:
+  concurrency: 3
 ```
 
 **Programmatic:**
 ```ruby
 Cosmo::Config.set(:concurrency, 20)
-Cosmo::Config.set(:setup, :streams, :custom, { storage: 'file', subjects: ['custom.>'] })
+Cosmo::Config.set(:setup, :streams, :custom, { storage: "file", subjects: ["custom.>"] })
 ```
 
 **Environment variables:**
@@ -328,10 +389,10 @@ end
 **Testing:**
 ```ruby
 # Synchronous execution
-SendEmailJob.perform_sync(123, 'test')
+SendEmailJob.perform_sync(123, "test")
 
 # Test job creation
-jid = SendEmailJob.perform_async(123, 'welcome')
+jid = SendEmailJob.perform_async(123, "welcome")
 assert_kind_of String, jid
 ```
 
@@ -438,7 +499,7 @@ sudo systemctl status cosmo
 **Stream Metrics:**
 ```ruby
 client = Cosmo::Client.instance
-info = client.stream_info('default')
+info = client.stream_info("default")
 
 info.state.messages       # Total messages
 info.state.bytes          # Total bytes
@@ -465,8 +526,8 @@ class EmailJob
   end
 end
 
-EmailJob.perform_async(123, 'welcome')
-EmailJob.perform_in(1.day, 123, 'followup')
+EmailJob.perform_async(123, "welcome")
+EmailJob.perform_in(1.day, 123, "followup")
 ```
 
 **Image Processing Pipeline:**
@@ -475,12 +536,12 @@ class ImageProcessor
   include Cosmo::Stream
   options(
     stream: :images,
-    consumer: { subjects: ['images.uploaded.>'] }
+    consumer: { subjects: ["images.uploaded.>"] }
   )
 
   def process_one
-    processed = ImageService.process(message.data['url'])
-    publish(processed, subject: 'images.processed.optimized')
+    processed = ImageService.process(message.data["url"])
+    publish(processed, subject: "images.processed.optimized")
     message.ack
   rescue => e
     logger.error "Processing failed: #{e.message}"
@@ -488,18 +549,18 @@ class ImageProcessor
   end
 end
 
-ImageProcessor.publish({ url: 'https://example.com/image.jpg' }, subject: 'images.uploaded.user')
+ImageProcessor.publish({ url: "https://example.com/image.jpg" }, subject: "images.uploaded.user")
 ```
 
 **Real-Time Analytics:**
 ```ruby
 class AnalyticsAggregator
   include Cosmo::Stream
-  options batch_size: 1000, consumer: { subjects: ['events.*.>'] }
+  options batch_size: 1000, consumer: { subjects: ["events.*.>"] }
 
   def process(messages)
     events = messages.map(&:data)
-    aggregates = events.group_by { |e| e['type'] }.transform_values(&:count)
+    aggregates = events.group_by { |e| e["type"] }.transform_values(&:count)
     Analytics.bulk_insert(aggregates)
     messages.each(&:ack)
   end

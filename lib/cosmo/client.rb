@@ -43,7 +43,7 @@ module Cosmo
       data = Utils::Json.parse(response.data, symbolize_names: false)
       return [] if data.nil? || data["streams"].nil?
 
-      data["streams"].filter_map { _1.dig("config", "name") }
+      data["streams"]
     end
 
     def pause_stream(name)

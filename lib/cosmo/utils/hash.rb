@@ -23,22 +23,6 @@ module Cosmo
         end
       end
 
-      # deep dup
-      def dup(hash)
-        Marshal.load(Marshal.dump(hash))
-      end
-
-      # dig keys
-      def keys?(hash, *keys)
-        keys.reduce(hash) do |base, key|
-          return false if !base.is_a?(::Hash) || !base.key?(key)
-
-          base[key]
-        end
-
-        true
-      end
-
       # deep set
       def set(hash, *keys, value)
         last_key = keys.pop
@@ -49,17 +33,9 @@ module Cosmo
         target[last_key] = value
       end
 
-      # deep merge
-      def merge(hash1, hash2)
-        return hash1 unless hash2
-
-        hash1.merge(hash2) do |_key, old_val, new_val|
-          if old_val.is_a?(::Hash) && new_val.is_a?(::Hash)
-            merge(old_val, new_val)
-          else
-            new_val
-          end
-        end
+      # deep dup
+      def dup(hash)
+        Marshal.load(Marshal.dump(hash))
       end
     end
   end

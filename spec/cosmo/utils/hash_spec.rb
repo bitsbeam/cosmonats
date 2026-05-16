@@ -59,32 +59,6 @@ RSpec.describe Cosmo::Utils::Hash do
     end
   end
 
-  describe ".keys?" do
-    let(:hash) { { a: { b: { c: 1 } } } }
-
-    it "returns true when all keys exist" do
-      expect(described_class.keys?(hash, :a, :b, :c)).to be true
-    end
-
-    it "returns false when key does not exist" do
-      expect(described_class.keys?(hash, :a, :x)).to be false
-    end
-
-    it "returns false when intermediate value is not a hash" do
-      hash = { a: "string" }
-      expect(described_class.keys?(hash, :a, :b)).to be false
-    end
-
-    it "returns true for single key" do
-      expect(described_class.keys?(hash, :a)).to be true
-    end
-
-    it "returns true when value is nil but key exists" do
-      hash = { a: nil }
-      expect(described_class.keys?(hash, :a)).to be true
-    end
-  end
-
   describe ".set" do
     it "sets value at single key" do
       hash = {}
@@ -111,49 +85,6 @@ RSpec.describe Cosmo::Utils::Hash do
       hash = { a: { b: 1, c: 2 } }
       described_class.set(hash, :a, :b, value: 3)
       expect(hash[:a][:c]).to eq(2)
-    end
-  end
-
-  describe ".merge" do
-    it "merges two hashes" do
-      hash1 = { a: 1, b: 2 }
-      hash2 = { b: 3, c: 4 }
-      result = described_class.merge(hash1, hash2)
-      expect(result).to eq({ a: 1, b: 3, c: 4 })
-    end
-
-    it "deep merges nested hashes" do
-      hash1 = { a: { b: 1, c: 2 } }
-      hash2 = { a: { b: 3, d: 4 } }
-      result = described_class.merge(hash1, hash2)
-      expect(result).to eq({ a: { b: 3, c: 2, d: 4 } })
-    end
-
-    it "overwrites non-hash values" do
-      hash1 = { a: 1 }
-      hash2 = { a: { b: 2 } }
-      result = described_class.merge(hash1, hash2)
-      expect(result).to eq({ a: { b: 2 } })
-    end
-
-    it "returns hash1 when hash2 is nil" do
-      hash1 = { a: 1 }
-      result = described_class.merge(hash1, nil)
-      expect(result).to eq(hash1)
-    end
-
-    it "handles empty hashes" do
-      hash1 = { a: 1 }
-      hash2 = {}
-      result = described_class.merge(hash1, hash2)
-      expect(result).to eq({ a: 1 })
-    end
-
-    it "deeply merges complex structures" do
-      hash1 = { a: { b: { c: 1, d: 2 }, e: 3 } }
-      hash2 = { a: { b: { c: 10 }, f: 4 } }
-      result = described_class.merge(hash1, hash2)
-      expect(result).to eq({ a: { b: { c: 10, d: 2 }, e: 3, f: 4 } })
     end
   end
 end

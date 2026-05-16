@@ -16,7 +16,7 @@ RSpec.describe Cosmo::Stream do
   let(:message) { double("message") }
 
   before do
-    Cosmo::Config.system.clear
+    Cosmo::Config.internal.clear
     stub_const("TestStream", stream_class)
   end
 
@@ -28,7 +28,7 @@ RSpec.describe Cosmo::Stream do
     end
 
     it "registers the stream class" do
-      expect(Cosmo::Config.system[:streams]).to eq([TestStream])
+      expect(Cosmo::Config.internal[:streams]).to eq([TestStream])
     end
   end
 
@@ -99,14 +99,14 @@ RSpec.describe Cosmo::Stream do
     end
 
     describe "#register" do
-      it "adds stream to Config.system[:streams]" do
+      it "adds stream to Config.internal[:streams]" do
         test_class = Class.new do
           include Cosmo::Stream
 
           options stream: :test
         end
 
-        expect(Cosmo::Config.system[:streams]).to include(test_class)
+        expect(Cosmo::Config.internal[:streams]).to include(test_class)
       end
 
       it "formats subject with class name" do

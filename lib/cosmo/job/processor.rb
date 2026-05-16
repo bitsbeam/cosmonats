@@ -8,24 +8,22 @@ module Cosmo
       def setup
         jobs_config = Config.dig(:consumers, :jobs)
         jobs_config&.each do |stream_name, config|
-          config = config.dup
-          config[:batch_size] = 1
-          config[:stream] = stream_name
-          consumer_name = "consumer-#{stream_name}"
-          subscription = client.subscribe(config[:subject], consumer_name, config.except(:subject, :priority, :stream, :batch_size))
-          @consumers << [subscription, config, nil]
+          next if stream_name == :scheduled # scheduled jobs are handled in schedule_loop
+
+          @consumers << subscribe(stream_name, config)
         end
       end
 
       def schedule_loop # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/AbcSize
+        config = Config.dig(:consumers, :jobs, :scheduled)
+        return unless config
+
+        subscription, = subscribe(:scheduled, config)
         while running?
           break unless running?
 
           now = Time.now.to_i
           timeout = ENV.fetch("COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT", 5).to_f
-          subscription = @consumers.find { |(_, c, _)| c[:stream] == :scheduled }&.first
-          break unless subscription
-
           messages = fetch(subscription, batch_size: 100, timeout:)
           messages&.each do |message|
             headers = message.header.except("X-Stream", "X-Subject", "X-Execute-At", "Nats-Expected-Stream")
@@ -104,6 +102,15 @@ module Cosmo
         true
       end
 
+      def subscribe(stream_name, config)
+        config = config.dup
+        config[:batch_size] = 1
+        config[:stream] = stream_name
+        consumer_name = "consumer-#{stream_name}"
+        subscription = client.subscribe(config[:subject], consumer_name, config.except(:subject, :priority, :stream, :batch_size))
+        [subscription, config, nil]
+      end
+
       def drop_message(message, data)
         message.term
         Logger.debug "job dropped #{data[:jid]}"
@@ -122,7 +129,7 @@ module Cosmo
       end
 
       def consumers
-        @weights ||= @consumers.filter_map { |(_, c, _)| [c[:stream]] * c[:priority].to_i if c[:priority] }.flatten
+        @weights ||= @consumers.filter_map { |(_, c, _)| [c[:stream]] * [c[:priority].to_i, 1].max }.flatten
         @weights.shuffle.map { |s| @consumers.find { |(_, c, _)| c[:stream] == s } }
       end
 

@@ -1,0 +1,74 @@
+timeout: 25                 # Shutdown timeout in seconds
+concurrency: &concurrency 1 # Number of worker threads
+max_retries: &max_retries 3 # Default max retries
+
+stream_config: &stream_config
+  storage: file         # storage type (file or memory)
+  retention: workqueue  # retention policy (limits, interest, workqueue)
+  duplicate_window: 120 # time window for duplicate message detection in seconds
+  discard: old          # discard new messages when stream is full (discard new or old)
+  allow_direct: true    # allow direct messages to stream, required for web UI
+  subjects:
+    - jobs.%{name}.>    # subject pattern for stream, %{name} will be replaced with stream name
+
+consumer_config: &consumer_config
+  ack_policy: explicit    # ack policy (explicit, none, all), each individual message must be acknowledged
+  max_deliver: 10         # maximum number of times a message will be delivered before it's considered failed
+  max_ack_pending: 20     # maximum number of messages with pending ack for this consumer
+  ack_wait: 60            # time in seconds to wait for an ack before redelivering the message
+  subject: jobs.%{name}.> # subject pattern for consumer, %{name} will be replaced with stream name
+
+consumers:
+  jobs:
+    critical:
+      <<: *consumer_config
+      priority: 50
+    high:
+      <<: *consumer_config
+      priority: 30
+    default:
+      <<: *consumer_config
+      priority: 15
+    low:
+      <<: *consumer_config
+      priority: 5
+    scheduled:
+      <<: *consumer_config
+      max_deliver: 1
+      max_ack_pending: 100
+      ack_wait: 10
+
+setup:
+  jobs:
+    critical:
+      <<: *stream_config
+      description: Very critical priority jobs
+    high:
+      <<: *stream_config
+      description: Higher priority jobs
+    default:
+      <<: *stream_config
+      description: Default priority jobs
+    low:
+      <<: *stream_config
+      description: Lower priority jobs
+    scheduled:
+      <<: *stream_config
+      description: Scheduled jobs
+    dead:
+      <<: *stream_config
+      retention: limits
+      max_msgs: 10000
+      max_age: 604800 # 7d
+      description: Broken jobs (DLQ)
+
+development:
+  verbose: false
+  concurrency: *concurrency
+
+staging:
+  verbose: true
+  concurrency: 3
+
+production:
+  concurrency: 3

@@ -16,6 +16,8 @@ module Cosmo
       def static_config: -> Array[Hash[Symbol, untyped]]
 
       def dynamic_config: -> Array[Hash[Symbol, untyped]]
+
+      def subscribe: (Symbol? stream_name, Hash[Symbol, untyped] config) -> [untyped, Hash[Symbol, untyped], untyped]
     end
   end
 end

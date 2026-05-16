@@ -10,12 +10,13 @@ module Cosmo
       include Enumerable
 
       def self.all
-        client.list_streams.filter_map { new(_1) }
+        client.list_streams.map { new(_1.dig("config", "name")) }
       end
 
       def self.jobs
-        names = Config[:setup][:jobs].keys - %i[scheduled dead]
-        all.select { names.include?(_1.name.to_sym) }
+        client.list_streams.select { _1.dig("config", "metadata", "_cosmo.type") == "jobs" }
+                           .reject { %w[scheduled dead].include?(_1.dig("config", "name")) }
+                           .map { new(_1.dig("config", "name")) }
       end
 
       def self.client

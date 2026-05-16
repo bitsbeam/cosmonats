@@ -48,7 +48,7 @@ module Cosmo
 
       def count
         keys.size
-      rescue NATS::KeyValue::NoKeysFoundError
+      rescue NATS::KeyValue::NoKeysFoundError, NATS::JetStream::Error::NotFound
         0
       end
       alias size count
