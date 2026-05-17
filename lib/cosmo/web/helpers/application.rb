@@ -70,11 +70,16 @@ module Cosmo
         def current_page?(path)
           request_path = @request.path_info
           request_path = "/" if request_path.empty?
-          request_path == url_for(path)
+          request_path == path
         end
 
         def referrer?(path)
-          URI(@request.referrer).path == path
+          referrer_uri  = URI(@request.referrer)
+          referrer_path = referrer_uri.path
+          script_name   = @request.script_name
+          referrer_path = referrer_path.delete_prefix(script_name) if script_name && !script_name.empty?
+          referrer_path = "/" if referrer_path.empty?
+          referrer_path == path
         end
       end
     end
