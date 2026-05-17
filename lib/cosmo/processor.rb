@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module Cosmo
-  class Processor
+  class Processor # rubocop:disable Metrics/ClassLength
     STREAM_PAUSED_RECHECK_TTL = 5.0 # Seconds a stream's paused state is cached before re-checking (override via COSMO_STREAM_PAUSED_RECHECK_TTL)
     STREAMS_PAUSED_IDLE_SLEEP = 1.0 # Seconds to sleep when every stream is paused, preventing a tight CPU spin (override via COSMO_STREAMS_PAUSED_IDLE_SLEEP)
+    STREAM_EMPTY_BACKOFF_MAX = 5.0  # Max seconds to sleep between empty fetches (override via COSMO_STREAM_EMPTY_BACKOFF_MAX)
 
     def self.run(...)
       new(...).tap(&:run)
@@ -51,8 +52,9 @@ module Cosmo
       while running?
         break if shutdown
 
-        all_paused = true
-        consumers.each do |(subscription, config, processor)|
+        all_empty = true  # every stream is empty
+        all_paused = true # every stream is paused
+        consumers.each do |(subscription, config, processor)| # rubocop:disable Metrics/BlockLength
           break unless running?
 
           stream_name = config[:stream].to_s
@@ -61,28 +63,55 @@ module Cosmo
             Logger.debug "stream #{stream_name} is paused, skipping fetch"
             next
           end
-
           all_paused = false
+
+          _, skip_t = consumer_state[stream_name]
+          if skip_t && Time.now < skip_t
+            Logger.debug "stream #{stream_name} is empty, backing off"
+            next
+          end
+          all_empty = false
+
           begin
             @pool.post do
+              # Re-check, after possibly being blocked on post to thread pool
+              _, skip_t = consumer_state[stream_name]
+              next if skip_t && Time.now < skip_t
+
               timeout = fetch_timeout(config)
               Logger.debug "fetching #{fetch_subjects(config).inspect}, timeout=#{timeout}"
               messages = lock(stream_name) { fetch(subscription, batch_size: config[:batch_size], timeout:) }
               Logger.debug "fetched (#{messages&.size.to_i}) messages"
-              process(messages, processor) if messages&.any?
+              if messages&.any?
+                consumer_state.delete(stream_name)
+                process(messages, processor)
+              else
+                max_backoff = ENV.fetch("COSMO_STREAM_EMPTY_BACKOFF_MAX", STREAM_EMPTY_BACKOFF_MAX).to_f
+                consumer_state.compute(stream_name) do |current|
+                  count = (current&.first || 0) + 1
+                  backoff = [timeout * (2**(count - 1)), max_backoff].min
+                  [count, Time.now + backoff]
+                end
+              end
             end
           rescue Concurrent::RejectedExecutionError
             shutdown = true
             break # pool doesn't accept new jobs, we are shutting down
           end
-
-          break unless running?
         end
 
-        # When every consumer was skipped (all streams paused) there is no
-        # blocking fetch call to pace the loop naturally. Sleep briefly to
-        # avoid a tight CPU spin without delaying any individual consumer.
-        sleep(ENV.fetch("COSMO_STREAMS_PAUSED_IDLE_SLEEP", STREAMS_PAUSED_IDLE_SLEEP).to_f) if all_paused && running?
+        break unless running?
+
+        if all_paused
+          period = ENV.fetch("COSMO_STREAMS_PAUSED_IDLE_SLEEP", STREAMS_PAUSED_IDLE_SLEEP).to_f
+          Logger.debug "all streams paused, sleep=#{period}"
+          sleep(period)
+        elsif all_empty
+          next_wake = consumer_state.values.filter_map { |_, t| t }.min
+          remaining = [next_wake - Time.now, 0.001].max
+          Logger.debug "all streams empty, sleep=#{remaining}"
+          sleep(remaining)
+        end
       end
     end
 
@@ -130,6 +159,10 @@ module Cosmo
     def lock(stream_name, &)
       @locks ||= Hash.new { |h, k| h[k] = Mutex.new }
       @locks[stream_name].synchronize(&)
+    end
+
+    def consumer_state
+      @consumer_state ||= Concurrent::Map.new
     end
   end
 end
