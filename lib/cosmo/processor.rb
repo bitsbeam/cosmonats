@@ -108,7 +108,9 @@ module Cosmo
           sleep(period)
         elsif all_empty
           next_wake = consumer_state.values.filter_map { |_, t| t }.min
-          remaining = [next_wake - Time.now, 0.001].max
+          next unless next_wake # entry was deleted concurrently (messages arrived), re-loop immediately
+
+          remaining = [next_wake - Time.now, 0.01].max
           Logger.debug "all streams empty, sleep=#{remaining}"
           sleep(remaining)
         end
