@@ -95,6 +95,11 @@ gem "cosmonats"
 
 **Requirements:** Ruby 3.1.0+, NATS Server ([installation guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
 
+If you are lazy like me, you can run NATS with Docker:
+```bash
+docker run -p 4222:4222 -p 8222:8222 nats:alpine -js
+```
+
 Add these lines to config/routes.rb:
 ```ruby
 require "cosmo/web"
