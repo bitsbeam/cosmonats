@@ -1,9 +1,20 @@
 # 🚀 Cosmonats
 
+<div align="center">
+
+![logo.svg](logo.svg)
+
+[![Gem Version](https://badge.fury.io/rb/cosmonats.svg)](https://rubygems.org/gems/cosmonats)
+[![Downloads](https://img.shields.io/gem/dt/cosmonats.svg)](https://rubygems.org/gems/cosmonats)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.1-red)](https://www.ruby-lang.org)
+[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](LICENSE.txt)
+[![Build Status](https://github.com/bitsbeam/cosmonats/actions/workflows/ci.yml/badge.svg)](https://github.com/bitsbeam/cosmonats/actions)
+
+</div>
+
 Background jobs + event streaming for Ruby, backed by NATS.
 No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ever silently dropped.
 
-![logo.svg](logo.svg)
 
 ---
 
