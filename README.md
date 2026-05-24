@@ -1,6 +1,6 @@
 # 🚀 Cosmonats
 
-Background jobs + event streaming for Ruby, backed by NATS.
+Background jobs + event streaming for Ruby — unified, in one gem, backed by NATS.
 No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ever silently dropped.
 
 <div align="center">
@@ -16,25 +16,7 @@ No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ev
 </div>
 
 
----
-
-## ⚡Taste it
-
-```ruby
-# Define a job
-class SendEmailJob
-  include Cosmo::Job
-  options stream: :default, retry: 3, dead: true
-
-  def perform(user_id, template)
-    EmailService.send(user_id, template)
-  end
-end
-
-# Enqueue it
-SendEmailJob.perform_async(123, "welcome")
-SendEmailJob.perform_in(1.day, 123, "followup")
-```
+## ⚡ Taste it
 
 ```ruby
 # Process a continuous event stream
@@ -52,16 +34,32 @@ end
 ClicksProcessor.publish({ user_id: 123, page: "/home" }, subject: "events.clicks.homepage")
 ```
 
-```bash
-bundle exec cosmo -C config/cosmo.yml -c 20 jobs    # Run jobs
-bundle exec cosmo -C config/cosmo.yml -c 20 streams # Run streams
+```ruby
+# Define a job
+class SendEmailJob
+  include Cosmo::Job
+  options stream: :default, retry: 3, dead: true
+
+  def perform(user_id, template)
+    EmailService.send(user_id, template)
+  end
+end
+
+# Enqueue it
+SendEmailJob.perform_async(123, "welcome")
+SendEmailJob.perform_in(1.day, 123, "followup")
 ```
 
----
+```bash
+bundle exec cosmo -C config/cosmo.yml -c 20 streams # Run streams
+bundle exec cosmo -C config/cosmo.yml -c 20 jobs    # Run jobs
+bundle exec cosmo -C config/cosmo.yml -c 20         # Run both
+```
+
 
 ## 📖 Index
 
-- [Why NATS?](#-why-nats)
+- [Why?](#-why)
 - [Features](#-features)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
@@ -75,26 +73,53 @@ bundle exec cosmo -C config/cosmo.yml -c 20 streams # Run streams
 - [Monitoring](#-monitoring)
 - [Examples](#-examples)
 
----
 
-## 🎯 Why NATS?
+## 🎯 Why?
 
-Most Ruby job queues use Redis or Postgres — tools that were never designed for this.
+Most background job libraries use Redis or Postgres — tools that were never designed for this.
 
-NATS is a single ~20MB binary with a ~10MB memory footprint — yet it delivers disk-backed persistent streams, Pub/Sub, KV store, and true horizontal clustering at millions of messages per second.
+NATS is a messaging system in a single ~20MB binary with a ~10MB memory footprint — yet it delivers disk-backed persistent streams, Pub/Sub, KV store, and true
+horizontal clustering at millions of messages per second.
 
-|              | Redis/DB-backed        | NATS                       |
-|--------------|------------------------|----------------------------|
-| Persistence  | Memory-only / DB bloat | Disk-backed, TB-scale      |
-| Scaling      | Vertical only          | True horizontal clustering |
-| Job          | Yes                    | Yes                        |
-| Stream       | No                     | Yes                        |
-| Backpressure | No, grow unbounded     | Yes                        |
-| Multi-DC     | Complex setup          | Native geo-distribution    |
+### Killer Features:
+
+#### — Jobs + Streams, unified in one gem.
+
+Most Ruby gems handle exactly that — background jobs. If you also need to consume a continuous event feed, that's a second system, second config, second set of
+worker processes, second Dockerfile entry. Cosmonats is the only Ruby gem with a first-class `Job` primitive *and* a first-class `Stream` primitive, sharing
+one server, one config, one CLI, one monitoring endpoint.
+
+#### — Message replay and time-travel debugging.
+
+NATS persists messages to disk and lets any consumer rewind to any point — beginning of time, a specific timestamp, or only new messages.
+- **Incident recovery** — your pipeline crashed for 3 hours. Replay from the crash timestamp.
+- **New consumer bootstrap** — a new service needs historical events. Start it from the beginning.
+- **Bug reproduction** — replay the exact sequence of messages that caused a production issue.
+
+#### — Multi-datacenter queues, natively.
+
+NATS has a first-class cluster + leaf-node architecture for geo-distribution. Spanning multiple regions or datacenters is a config block — not a separate
+product or a third-party replication tool. NATS was built for edge computing, IoT, and satellite communication — multi-DC is a first-class concern, not an
+afterthought.
+
+#### — Transport-level deduplication + built-in KV. No extra infrastructure.
+
+NATS deduplicates messages at the **broker** — same-ID messages within the configured window are dropped before they ever reach a worker. No uniqueness gems,
+no advisory locks, no extra round-trips. It also ships a built-in Key/Value store usable for distributed locks and rate limiting — no Redis, no Memcached,
+nothing else to run.
+
+|                   | Redis/DB-backed               | NATS                       |
+|-------------------|-------------------------------|----------------------------|
+| Persistence       | In-memory / DB bloat          | Disk-backed, TB-scale      |
+| Scaling           | Sentinel only / Vertical only | True horizontal clustering |
+| Background jobs   | Yes                           | Yes                        |
+| Stream processing | No                            | Yes                        |
+| Message replay    | No                            | Yes                        |
+| Backpressure      | No, grow unbounded            | Yes                        |
+| Multi-DC          | Complex setup                 | Native geo-distribution    |
 
 One NATS server replaces your message broker, job queue, and KV store — with lower operational overhead.
 
----
 
 ## ✨ Features
 
@@ -113,7 +138,6 @@ One NATS server replaces your message broker, job queue, and KV store — with l
 - **Consumer groups** — load-balanced across workers
 - **Custom serialization** — JSON, MessagePack, Protobuf
 
----
 
 ## 📦 Installation
 
@@ -140,7 +164,6 @@ mount Cosmo::Web => "/cosmo"
 map "/cosmo" { run Cosmo::Web }
 ```
 
----
 
 ## 🚀 Quick Start
 
@@ -197,7 +220,6 @@ SendEmailJob.perform_async(42, "welcome")
 bundle exec cosmo -C config/cosmo.yml -c 10 -r ./app/jobs jobs
 ```
 
----
 
 ## 💡 Core Concepts
 
@@ -361,7 +383,6 @@ export COSMO_JOBS_FETCH_TIMEOUT=0.1
 export COSMO_STREAMS_FETCH_TIMEOUT=0.1
 ```
 
----
 
 ## 🔧 Advanced Usage
 
@@ -414,7 +435,6 @@ jid = SendEmailJob.perform_async(123, "welcome")
 assert_kind_of String, jid
 ```
 
----
 
 ## 🖥️ CLI Reference
 
@@ -433,7 +453,6 @@ cosmo -C config/cosmo.yml -c 20                    # Both
 | `-t, --timeout NUM`     | Shutdown timeout (sec) | `-t 60`               |
 | `-S, --setup`           | Setup streams & exit   | `--setup`             |
 
----
 
 ## 🚢 Deployment
 
@@ -499,7 +518,6 @@ WantedBy=multi-user.target
 sudo systemctl enable cosmo && sudo systemctl start cosmo
 ```
 
----
 
 ## 📊 Monitoring
 
@@ -524,7 +542,6 @@ info.state.consumer_count # Number of consumers
 - `jetstream_consumer_delivered_msgs` — Delivered messages
 - `jetstream_consumer_ack_pending` — Pending acknowledgments
 
----
 
 ## 💼 Examples
 
