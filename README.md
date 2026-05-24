@@ -1,5 +1,8 @@
 # 🚀 Cosmonats
 
+Background jobs + event streaming for Ruby, backed by NATS.
+No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ever silently dropped.
+
 <div align="center">
 
 ![logo.svg](logo.svg)
@@ -11,9 +14,6 @@
 [![Build Status](https://github.com/bitsbeam/cosmonats/actions/workflows/ci.yml/badge.svg)](https://github.com/bitsbeam/cosmonats/actions)
 
 </div>
-
-Background jobs + event streaming for Ruby, backed by NATS.
-No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ever silently dropped.
 
 
 ---
