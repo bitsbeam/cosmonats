@@ -1,15 +1,56 @@
-# 🚀 Cosmonats - lightweight background and stream processing
+# 🚀 Cosmonats
 
-It is a Ruby background job and stream processing framework powered by NATS JetStream.
-It provides a familiar API for job queues while adding powerful stream processing capabilities,
-solving the scalability limitations of Redis and database-backed queues through true horizontal scaling and
-disk-backed persistence.
+Background jobs + event streaming for Ruby, backed by NATS.
+No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ever silently dropped.
 
 ![logo.svg](logo.svg)
 
+---
+
+## ⚡Taste it
+
+```ruby
+# Define a job
+class SendEmailJob
+  include Cosmo::Job
+  options stream: :default, retry: 3, dead: true
+
+  def perform(user_id, template)
+    EmailService.send(user_id, template)
+  end
+end
+
+# Enqueue it
+SendEmailJob.perform_async(123, "welcome")
+SendEmailJob.perform_in(1.day, 123, "followup")
+```
+
+```ruby
+# Process a continuous event stream
+class ClicksProcessor
+  include Cosmo::Stream
+  options stream: :clickstream, batch_size: 100,
+          consumer: { subjects: ["events.clicks.>"] }
+
+  def process_one
+    Analytics.track(message.data)
+    message.ack
+  end
+end
+
+ClicksProcessor.publish({ user_id: 123, page: "/home" }, subject: "events.clicks.homepage")
+```
+
+```bash
+bundle exec cosmo -C config/cosmo.yml -c 20 jobs    # Run jobs
+bundle exec cosmo -C config/cosmo.yml -c 20 streams # Run streams
+```
+
+---
+
 ## 📖 Index
 
-- [Why?](#-why)
+- [Why NATS?](#-why-nats)
 - [Features](#-features)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
@@ -23,68 +64,45 @@ disk-backed persistence.
 - [Monitoring](#-monitoring)
 - [Examples](#-examples)
 
+---
 
-## 🎯 Why?
-Among many others, why creating another? Cosmonats is a background processing framework for Ruby, powered by **[NATS](https://nats.io/)**.
-It's designed to solve the fundamental scaling problems that plague Redis/DB-based job queues and at the same time to provide both job and stream
-processing capabilities.
+## 🎯 Why NATS?
 
-### The Problem with Redis at Scale
+Most Ruby job queues use Redis or Postgres — tools that were never designed for this.
 
-- **Single-threaded command processing** - All operations serialized, creating contention with many workers
-- **Memory-only persistence** - Everything must fit in RAM, expensive to scale
-- **Vertical scaling only** - Can't truly distribute a single queue across nodes
-- **Polling overhead** - Thousands of blocked connections
-- **No native backpressure** - Queues can grow unbounded
-- **Weak durability** - Async replication can lose jobs during failures 
+NATS is a single ~20MB binary with a ~10MB memory footprint — yet it delivers disk-backed persistent streams, Pub/Sub, KV store, and true horizontal clustering at millions of messages per second.
 
-**Note:** Alternatives like Dragonfly solve the threading bottleneck but still face memory/scaling limitations.
+|              | Redis/DB-backed        | NATS                       |
+|--------------|------------------------|----------------------------|
+| Persistence  | Memory-only / DB bloat | Disk-backed, TB-scale      |
+| Scaling      | Vertical only          | True horizontal clustering |
+| Job          | Yes                    | Yes                        |
+| Stream       | No                     | Yes                        |
+| Backpressure | No, grow unbounded     | Yes                        |
+| Multi-DC     | Complex setup          | Native geo-distribution    |
 
-### The Problem with RDBMS at Scale
+One NATS server replaces your message broker, job queue, and KV store — with lower operational overhead.
 
-- **Database contention** - Polling queries compete with application queries for resources
-- **Connection pool pressure** - Workers consume database connections, starving the application
-- **Row-level locking overhead** - `SELECT FOR UPDATE SKIP LOCKED` still scans rows under high concurrency
-- **Vacuum/autovacuum impact** - High-churn job tables degrade database performance
-- **Vertical scaling only** - Limited by single database instance capabilities
-- **Index bloat** - High UPDATE/DELETE volume causes index degradation over time
-- **Table bloat** - Constant row updates fragment tables, requiring maintenance
-- **`LISTEN/NOTIFY` limitations** - 8KB payload limit, no persistence, breaks down at high volumes (10K+ notifications/sec)
-- **No native horizontal scaling** - Cannot distribute a single job queue across multiple database nodes
-
-**Note:** Solutions using DB might be ok for moderate workloads but face these fundamental limitations at higher scales.
-
-### The Solution
-
-Built on **NATS**, `cosmonats` provides:
-
-✅ **True horizontal scaling** - Distribute streams across cluster nodes  
-✅ **Disk-backed persistence** - TB-scale queues with memory cache   
-✅ **Replicated acknowledgments** - Survive multi-node failures  
-✅ **Built-in flow control** - Automatic backpressure  
-✅ **Multi-DC support** - Native geo-distribution, and super clusters  
-✅ **High throughput & low latency** - Millions of messages per second  
-✅ **Stream processing** - Beyond simple job queues  
-
+---
 
 ## ✨ Features
 
 ### 🎪 Job Processing
-- **Familiar compatible API** - Easy migration from existing codebases
-- **Priority queues** - Multiple priority levels (critical, high, default, low)
-- **Scheduled jobs** - Execute jobs at specific times or after delays
-- **Automatic retries** - Configurable retry strategies with exponential backoff
-- **Dead letter queue** - Capture permanently failed jobs
-- **Job uniqueness** - Prevent duplicate job execution
+- **Familiar API** — `perform_async`, `perform_in`, `perform_at`
+- **Priority queues** — critical, high, default, low with weighted round-robin
+- **Scheduled jobs** — execute at a specific time or after a delay
+- **Automatic retries** — exponential backoff, configurable attempts
+- **Dead letter queue** — capture permanently failed jobs
+- **Job uniqueness** — prevent duplicate execution
 
 ### 🌊 Stream Processing
-- **Real-time data streams** - Process continuous event streams
-- **Batch processing** - Handle multiple messages efficiently
-- **Message replay** - Reprocess messages from any point in time
-- **Consumer groups** - Multiple consumers with load balancing
-- **Exactly-once semantics** - With proper configuration
-- **Custom serialization** - JSON, MessagePack, Protobuf support
+- **Real-time event streams** — process continuous data feeds
+- **Batch processing** — handle multiple messages in one go
+- **Message replay** — reprocess from any point in time
+- **Consumer groups** — load-balanced across workers
+- **Custom serialization** — JSON, MessagePack, Protobuf
 
+---
 
 ## 📦 Installation
 
@@ -93,27 +111,29 @@ Built on **NATS**, `cosmonats` provides:
 gem "cosmonats"
 ```
 
-**Requirements:** Ruby 3.1.0+, NATS Server ([installation guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
+**Requirements:** Ruby ≥ 3.1, NATS Server ([install guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
 
-If you are lazy like me, you can run NATS with Docker:
+Spin up NATS instantly with Docker:
 ```bash
 docker run -p 4222:4222 -p 8222:8222 nats:alpine -js
 ```
 
-Add these lines to config/routes.rb:
+Mount the monitoring UI in your Rack app:
 ```ruby
 require "cosmo/web"
 
-Rails.application.routes.draw do
-  mount Cosmo::Web => "/cosmo" # access web UI at http://localhost:3000/cosmo
-  ...
-end
+# Rails
+mount Cosmo::Web => "/cosmo"
+
+# Any Rack app (config.ru)
+map "/cosmo" { run Cosmo::Web }
 ```
 
+---
 
 ## 🚀 Quick Start
 
-### 1. Create `config/cosmo.yml` and run `bundle exec cosmo -S` to create streams in NATS:
+### 1. Create `config/cosmo.yml`
 
 ```yaml
 concurrency: 5
@@ -135,51 +155,51 @@ setup:
       retention: workqueue
       subjects: ["jobs.%{name}.>"]
       allow_direct: true
-``` 
+```
 
-### 2. Create a Job in app/workers
+### 2. Create streams in NATS (one-time)
+
+```bash
+bundle exec cosmo -S
+```
+
+### 3. Define a job in `app/jobs/`
 
 ```ruby
 class SendEmailJob
   include Cosmo::Job
-
   options stream: :default, retry: 3, dead: true
 
   def perform(user_id, email_type)
-    # Pretend to send email to user: UserMailer.send(email_type, user_id).deliver_now
-    sleep 0.5 # Simulate work
-    puts "#{user_id}, #{email_type}"
+    UserMailer.send(email_type, user_id).deliver_now
   end
 end
 ```
 
-### 3. Enqueue Jobs
+### 4. Enqueue & run
 
 ```ruby
-10.times { |i| SendEmailJob.perform_async(i, "welcome") }
+SendEmailJob.perform_async(42, "welcome")
 ```
-
-### 4. Run
 
 ```bash
-bundle exec cosmo jobs
+bundle exec cosmo -C config/cosmo.yml -c 10 -r ./app/jobs jobs
 ```
 
+---
 
 ## 💡 Core Concepts
 
 ### Jobs
 
-Simple background tasks with a familiar API:
-
 ```ruby
 class ReportJob
   include Cosmo::Job
-  
+
   options(
     stream: :critical,  # Stream name
     retry: 5,           # Retry attempts
-    dead: true          # Use dead letter queue
+    dead: true          # Send to dead letter queue on final failure
   )
 
   def perform(report_id)
@@ -187,19 +207,17 @@ class ReportJob
     Report.find(report_id).generate!
   rescue StandardError => e
     logger.error "Failed: #{e.message}"
-    raise  # Triggers retry
+    raise  # Triggers retry with exponential backoff
   end
 end
 
-# Usage
 ReportJob.perform_async(42)                              # Enqueue now
 ReportJob.perform_in(30.minutes, 42)                     # Delayed
 ReportJob.perform_at(Time.parse("2026-01-25 10:00"), 42) # Scheduled
+ReportJob.perform_sync(42)                               # Inline, no NATS (great for tests)
 ```
 
 ### Streams
-
-Real-time event processing with powerful features:
 
 ```ruby
 class ClicksProcessor
@@ -217,35 +235,31 @@ class ClicksProcessor
     }
   )
 
-  # Process one message
+  # Process one message at a time
   def process_one
-    data = message.data
-    Analytics.track_click(data)
-    message.ack  # Success
+    Analytics.track_click(message.data)
+    message.ack
   end
-  
-  # OR process batch
+
+  # OR process a batch
   def process(messages)
-    Analytics.track_click(messages.map(&:data))
+    Analytics.bulk_track(messages.map(&:data))
     messages.each(&:ack)
   end
 end
 
 # Publishing
-ClicksProcessor.publish(
-  { user_id: 123, page: "/home" },
-  subject: "events.clicks.homepage"
-)
+ClicksProcessor.publish({ user_id: 123, page: "/home" }, subject: "events.clicks.homepage")
 
-# Message acknowledgment strategies
+# Acknowledgment strategies
 message.ack                          # Success
-message.nack(delay: 5_000_000_000)   # Retry (5 seconds in nanoseconds)
+message.nack(delay: 5_000_000_000)   # Retry in 5 seconds (nanoseconds)
 message.term                         # Permanent failure, no retry
 ```
 
 ### Configuration
 
-**File-based (config/cosmo.yml):**
+**Full `config/cosmo.yml` example:**
 ```yaml
 timeout: 25                 # Shutdown timeout in seconds
 concurrency: &concurrency 1 # Number of worker threads
@@ -336,6 +350,7 @@ export COSMO_JOBS_FETCH_TIMEOUT=0.1
 export COSMO_STREAMS_FETCH_TIMEOUT=0.1
 ```
 
+---
 
 ## 🔧 Advanced Usage
 
@@ -343,28 +358,15 @@ export COSMO_STREAMS_FETCH_TIMEOUT=0.1
 ```ruby
 class UrgentJob
   include Cosmo::Job
-  options stream: :critical  # priority: 50 in config
+  options stream: :critical  # priority: 50 in config — polled most frequently
 end
-
-# config/cosmo.yml
-consumers:
-  jobs:
-    critical:
-      priority: 50  # Polled more frequently
-    default:
-      priority: 15
 ```
 
 **Custom Serializers:**
 ```ruby
 module MessagePackSerializer
-  def self.serialize(data)
-    MessagePack.pack(data)
-  end
-  
-  def self.deserialize(payload)
-    MessagePack.unpack(payload)
-  end
+  def self.serialize(data) = MessagePack.pack(data)
+  def self.deserialize(payload) = MessagePack.unpack(payload)
 end
 
 class FastStream
@@ -383,51 +385,48 @@ class ResilientJob
     process_data(data)
   rescue RetryableError => e
     logger.warn "Retryable: #{e.message}"
-    raise  # Will retry
+    raise  # Will retry with exponential backoff
   rescue FatalError => e
     logger.error "Fatal: #{e.message}"
-    # Don't raise - won't retry
+    # Don't raise — won't retry, won't go to DLQ
   end
 end
 ```
 
 **Testing:**
 ```ruby
-# Synchronous execution
+# Synchronous — no NATS needed
 SendEmailJob.perform_sync(123, "test")
 
-# Test job creation
+# Async — returns a job ID
 jid = SendEmailJob.perform_async(123, "welcome")
 assert_kind_of String, jid
 ```
 
+---
 
 ## 🖥️ CLI Reference
 
 ```bash
-# Setup streams
-cosmo -C config/cosmo.yml --setup
-
-# Run processors
-cosmo -C config/cosmo.yml -c 20 -r ./app/jobs jobs     # Jobs only
-cosmo -C config/cosmo.yml -c 20 streams                # Streams only
-cosmo -C config/cosmo.yml -c 20                        # Both
+cosmo -C config/cosmo.yml --setup                  # Create streams in NATS (idempotent)
+cosmo -C config/cosmo.yml -c 20 -r ./app/jobs jobs # Jobs only
+cosmo -C config/cosmo.yml -c 20 streams            # Streams only
+cosmo -C config/cosmo.yml -c 20                    # Both
 ```
 
-**Common Flags:**
+| Flag                    | Description            | Example               |
+|-------------------------|------------------------|-----------------------|
+| `-C, --config PATH`     | Config file path       | `-C config/cosmo.yml` |
+| `-c, --concurrency INT` | Worker threads         | `-c 20`               |
+| `-r, --require PATH`    | Auto-require directory | `-r ./app/jobs`       |
+| `-t, --timeout NUM`     | Shutdown timeout (sec) | `-t 60`               |
+| `-S, --setup`           | Setup streams & exit   | `--setup`             |
 
-| Flag | Description | Example |
-|------|-------------|---------|
-| `-C, --config PATH` | Config file path | `-C config/cosmo.yml` |
-| `-c, --concurrency INT` | Worker threads | `-c 20` |
-| `-r, --require PATH` | Auto-require directory | `-r ./app/jobs` |
-| `-t, --timeout NUM` | Shutdown timeout (sec) | `-t 60` |
-| `-S, --setup` | Setup streams & exit | `--setup` |
-
+---
 
 ## 🚢 Deployment
 
-**NATS Cluster:**
+**NATS Cluster config:**
 ```bash
 # nats-server.conf
 port: 4222
@@ -451,7 +450,7 @@ services:
     volumes:
       - ./nats.conf:/etc/nats/nats-server.conf
       - nats-data:/var/lib/nats
-  
+
   worker:
     build: .
     environment:
@@ -485,17 +484,15 @@ SyslogIdentifier=cosmo
 WantedBy=multi-user.target
 ```
 
-Enable and start:
 ```bash
-sudo systemctl enable cosmo
-sudo systemctl start cosmo
-sudo systemctl status cosmo
+sudo systemctl enable cosmo && sudo systemctl start cosmo
 ```
 
+---
 
 ## 📊 Monitoring
 
-**Structured Logging:**
+**Structured logs:**
 ```
 2026-01-23T10:15:30.123Z INFO pid=12345 tid=abc jid=def: start
 2026-01-23T10:15:32.456Z INFO pid=12345 tid=abc jid=def elapsed=2.333: done
@@ -511,15 +508,16 @@ info.state.bytes          # Total bytes
 info.state.consumer_count # Number of consumers
 ```
 
-**Prometheus:** NATS exposes metrics at `:8222/metrics`
-- `jetstream_server_store_msgs` - Messages in stream
-- `jetstream_consumer_delivered_msgs` - Delivered messages
-- `jetstream_consumer_ack_pending` - Pending acknowledgments
+**Prometheus** — NATS exposes metrics at `:8222/metrics`:
+- `jetstream_server_store_msgs` — Messages in stream
+- `jetstream_consumer_delivered_msgs` — Delivered messages
+- `jetstream_consumer_ack_pending` — Pending acknowledgments
 
+---
 
 ## 💼 Examples
 
-**Email Queue:**
+**Email queue with scheduling:**
 ```ruby
 class EmailJob
   include Cosmo::Job
@@ -550,7 +548,7 @@ class ImageProcessor
     message.ack
   rescue => e
     logger.error "Processing failed: #{e.message}"
-    message.nack(delay: 30_000_000_000)
+    message.nack(delay: 30_000_000_000) # retry in 30s
   end
 end
 
@@ -564,14 +562,14 @@ class AnalyticsAggregator
   options batch_size: 1000, consumer: { subjects: ["events.*.>"] }
 
   def process(messages)
-    events = messages.map(&:data)
-    aggregates = events.group_by { |e| e["type"] }.transform_values(&:count)
+    aggregates = messages.map(&:data).group_by { |e| e["type"] }.transform_values(&:count)
     Analytics.bulk_insert(aggregates)
     messages.each(&:ack)
   end
 end
 ```
 
+---
 
 <div align="center">
 
