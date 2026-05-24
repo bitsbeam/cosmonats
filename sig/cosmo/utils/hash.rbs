@@ -3,11 +3,15 @@ module Cosmo
     module Hash
       def self.symbolize_keys!: (untyped obj) -> (::Hash[Symbol, untyped] | Array[untyped] | untyped)
 
+      def self.stringify_keys: (untyped obj) -> (::Hash[String, untyped] | Array[untyped] | untyped)
+
       def self.dup: [T] (T hash) -> T
 
       def self.set: (::Hash[untyped, untyped] hash, *untyped keys, value: untyped) -> untyped
 
       def symbolize_keys!: (untyped obj) -> (::Hash[Symbol, untyped] | Array[untyped] | untyped)
+
+      def stringify_keys: (untyped obj) -> (::Hash[String, untyped] | Array[untyped] | untyped)
 
       def dup: [T] (T hash) -> T
 

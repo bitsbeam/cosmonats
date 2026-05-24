@@ -58,6 +58,10 @@ module Cosmo
 
       environment_path = File.expand_path("config/environment.rb")
       require environment_path if File.exist?(environment_path)
+
+      # Ensure the ActiveJob integration is loaded when ActiveJob is present
+      # but was not already pulled in by the app (e.g. non-Rails setup or the Railtie hasn't fired yet at this point).
+      require "cosmo/active_job" if defined?(::ActiveJob) && !defined?(Cosmo::ActiveJobAdapter::Executor)
     end
 
     def require_path(path)

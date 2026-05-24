@@ -23,6 +23,19 @@ module Cosmo
         end
       end
 
+      def stringify_keys(obj)
+        case obj
+        when ::Hash
+          obj.each_with_object({}) do |(key, value), result|
+            result[key.to_s] = stringify_keys(value)
+          end
+        when ::Array
+          obj.map { |v| stringify_keys(v) }
+        else
+          obj
+        end
+      end
+
       # deep set
       def set(hash, *keys, value)
         last_key = keys.pop

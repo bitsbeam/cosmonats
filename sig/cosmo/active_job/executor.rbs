@@ -1,0 +1,9 @@
+module Cosmo
+  module ActiveJobAdapter
+    class Executor
+      include Cosmo::Job
+
+      def perform: (Hash[Symbol, untyped] job_data) -> void
+    end
+  end
+end

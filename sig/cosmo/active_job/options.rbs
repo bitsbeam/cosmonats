@@ -1,0 +1,14 @@
+module Cosmo
+  module ActiveJobAdapter
+    VALID_OPTIONS: ::Array[::Symbol]
+
+    module Options
+      def self.included: (::Module base) -> void
+
+      module ClassMethods
+        def cosmo_options: (**untyped opts) -> ::Hash[::Symbol, untyped]
+        def get_cosmo_options: () -> ::Hash[::Symbol, untyped]
+      end
+    end
+  end
+end

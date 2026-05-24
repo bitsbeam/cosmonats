@@ -12,6 +12,7 @@ require "cosmo/stream"
 require "cosmo/cli"
 require "cosmo/engine"
 require "cosmo/api"
+require "cosmo/railtie" if defined?(Rails::Railtie)
 
 module Cosmo
   class Error < StandardError; end

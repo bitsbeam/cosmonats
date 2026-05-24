@@ -13,6 +13,7 @@ module Cosmo
       def options(stream: nil, retry: nil, dead: nil)
         default_options.merge!({ stream:, retry:, dead: }.compact)
       end
+      alias cosmo_options options
 
       def perform(*args, async: true, **options)
         data = Data.new(name, args, default_options.merge(options))

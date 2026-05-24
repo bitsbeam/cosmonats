@@ -16,6 +16,7 @@ module Cosmo
         register
         default_options.merge!({ stream:, consumer_name:, batch_size:, fetch_timeout:, start_position:, consumer:, publisher: }.compact)
       end
+      alias cosmo_options options
 
       def publish(data, subject: nil, **options)
         stream = default_options[:stream]
