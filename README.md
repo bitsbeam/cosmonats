@@ -170,28 +170,27 @@ map "/cosmo" { run Cosmo::Web }
 ### 1. Create `config/cosmo.yml`
 
 ```yaml
-concurrency: 5
-max_retries: 3
+concurrency: 5                     # Number of worker threads
 
-consumers:
-  jobs:
-    default:
-      ack_policy: explicit
-      max_deliver: 10
-      max_ack_pending: 10
-      ack_wait: 15
-      subject: jobs.%{name}.>
+consumers:                         # Declare consumer groups for streams, things that pull messages and process them
+  jobs:                            # Consumer configs for jobs (or streams)
+    default:                       # Stream name
+      ack_policy: explicit         # Acknowledgment required for each message, can be explicit, none, or all
+      max_deliver: 10              # Max retry attempts before sending to a dead stream
+      max_ack_pending: 10          # Max messages waiting for ack, if exceeded, the server will stop delivering new messages until some are acked
+      ack_wait: 15                 # Seconds to wait for ack before redelivering
+      subject: jobs.%{name}.>      # Subject pattern for this consumer, %{name} replaced with stream name, becomes `jobs.default.>`
 
-setup:
-  jobs:
-    default:
-      storage: file
-      retention: workqueue
-      subjects: ["jobs.%{name}.>"]
-      allow_direct: true
+setup:                             # Initial stream creation only `cosmo -S`
+  jobs:                            # Stream configs for jobs (or streams)
+    default:                       # Stream name
+      storage: file                # Storage type (file or memory)
+      retention: workqueue         # Retention policy (limits, interest, workqueue). workqueue - deletes acked/nacked, limits - append only
+      subjects: ["jobs.%{name}.>"] # Subject pattern for this stream, %{name} replaced with stream name
+      allow_direct: true           # Allow direct messages to stream (required for web UI)
 ```
 
-### 2. Create streams in NATS (one-time)
+### 2. Create streams in NATS (one-time), grabs config from setup section of `config/cosmo.yml`
 
 ```bash
 bundle exec cosmo -S
