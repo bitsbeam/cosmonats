@@ -40,7 +40,7 @@ module Cosmo
         end
 
         def _table
-          streams = API::Stream.all.map { row_locals(_1) }
+          streams = API::Stream.all.reject { it.name.start_with?("KV_") || it.name == "cosmostats" }.map { row_locals(_1) }
           ok render("streams/_table", { streams: streams })
         end
 
