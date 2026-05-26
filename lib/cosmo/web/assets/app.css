@@ -448,6 +448,20 @@ time {
 .stream-link { color: var(--color-primary); font-weight: 600; }
 .stream-link:hover { text-decoration: underline; }
 
+/* ── Pagination ─────────────────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space);
+  padding: var(--space-2x) 0 var(--space);
+}
+.btn-disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* ── Actions ───────────────────────────────────────────────────────────── */
 .actions-form { display: flex; flex-direction: column; gap: var(--space-1-2); }
 

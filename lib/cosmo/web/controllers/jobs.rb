@@ -72,12 +72,16 @@ module Cosmo
           ok render("jobs/_busy", { jobs: jobs, total: API::Busy.instance.size })
         end
 
-        def _enqueued
+        def _enqueued # rubocop:disable Metrics/AbcSize
           stream_name, stream_names = streams
+          limit = (params["limit"] || API::Stream::LIMIT).to_i
+          page = [params["page"].to_i, 1].max
           stream = API::Stream.new(stream_name)
-          jobs = stream.messages(page: params["page"], limit: params["limit"])
+          total = stream.total
+          jobs = stream.messages(page:, limit:)
+          total_pages = (total.to_f / limit).ceil
 
-          ok render("jobs/_enqueued", { jobs:, total: stream.total, stream_name:, stream_names: })
+          ok render("jobs/_enqueued", { jobs:, total:, stream_name:, stream_names:, page:, limit:, total_pages: })
         end
 
         def _stats

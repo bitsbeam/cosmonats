@@ -56,10 +56,10 @@ module Cosmo
           break if current > last
 
           job = message(current)
-          break unless job
+          current += 1
+          next unless job
 
           yield job
-          current += 1
         end
       end
 

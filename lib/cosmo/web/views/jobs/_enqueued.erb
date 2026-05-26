@@ -1,60 +1,86 @@
-<div class="nav">
-  <% @stream_names.each do |stream_name| -%>
-    <button hx-get="<%= url_for('/jobs/enqueued', { stream_name: }) %>"
-            hx-target="#content"
-            hx-swap="innerHTML"
-            hx-push-url="true"
-            class="btn <%= "btn-primary" if @stream_name.to_s == stream_name.to_s %>">
-      <%= h(stream_name) %>
-    </button>
+<div id="enqueued-poller">
+  <div class="nav">
+    <% @stream_names.each do |stream_name| -%>
+      <button hx-get="<%= url_for('/jobs/enqueued', { stream_name: }) %>"
+              hx-target="#content"
+              hx-swap="innerHTML"
+              hx-push-url="true"
+              class="btn <%= "btn-primary" if @stream_name.to_s == stream_name.to_s %>">
+        <%= h(stream_name) %>
+      </button>
+    <% end -%>
+  </div>
+
+  <div class="pending">
+    <span></span>
+    <span class="text-muted"><%= @total %> message(s) pending</span>
+  </div>
+
+  <% if @jobs.empty? -%>
+    <div class="alert alert-success">Stream <code><%= h(@stream_name) %></code> is empty</div>
+  <% else -%>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>JID[Args]</th>
+            <th>Stream</th>
+            <th>Seq</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @jobs.each do |job| -%>
+          <tr>
+            <td>
+              <div class="job-class">
+                <%= h(job.data[:class].to_s) %>
+              </div>
+            </td>
+            <td>
+              <div class="job-id">
+                <details>
+                  <summary>
+                    <code><%= h(job.data[:jid].to_s) %></code>
+                  </summary>
+                  <code><%= h((JSON.pretty_generate(job.data[:args]) rescue job.data[:args].to_s)) %></code>
+                </details>
+              </div>
+            </td>
+            <td>
+              <code><%= h(job.stream) %></code>
+            </td>
+            <td>
+              <code><%= job.seq %></code>
+            </td>
+          </tr>
+          <% end -%>
+        </tbody>
+      </table>
+    </div>
+  <% end -%>
+
+  <% if @total_pages > 1 -%>
+  <div class="pagination">
+    <% if @page > 1 -%>
+      <a hx-get="<%= url_for('/jobs/_enqueued', stream_name: @stream_name, page: @page - 1, limit: @limit) %>"
+         hx-target="#enqueued-poller"
+         hx-swap="outerHTML"
+         class="btn">&#x2190; Prev</a>
+    <% else -%>
+      <span class="btn btn-disabled">&#x2190; Prev</span>
+    <% end -%>
+
+    <span class="text-muted">Page <%= @page %> of <%= @total_pages %></span>
+
+    <% if @page < @total_pages -%>
+      <a hx-get="<%= url_for('/jobs/_enqueued', stream_name: @stream_name, page: @page + 1, limit: @limit) %>"
+         hx-target="#enqueued-poller"
+         hx-swap="outerHTML"
+         class="btn">Next &#x2192;</a>
+    <% else -%>
+      <span class="btn btn-disabled">Next &#x2192;</span>
+    <% end -%>
+  </div>
   <% end -%>
 </div>
-
-<div class="pending">
-  <span></span>
-  <span class="text-muted"><%= @total %> message(s) pending</span>
-</div>
-
-<% if @jobs.empty? -%>
-  <div class="alert alert-success">Stream <code><%= h(@stream_name) %></code> is empty</div>
-<% else -%>
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Job</th>
-          <th>JID[Args]</th>
-          <th>Stream</th>
-          <th>Seq</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @jobs.each do |job| -%>
-        <tr>
-          <td>
-            <div class="job-class">
-              <%= h(job.data[:class].to_s) %>
-            </div>
-          </td>
-          <td>
-            <div class="job-id">
-              <details>
-                <summary>
-                  <code><%= h(job.data[:jid].to_s) %></code>
-                </summary>
-                <code><%= h((JSON.pretty_generate(job.data[:args]) rescue job.data[:args].to_s)) %></code>
-              </details>
-            </div>
-          </td>
-          <td>
-            <code><%= h(job.stream) %></code>
-          </td>
-          <td>
-            <code><%= job.seq %></code>
-          </td>
-        </tr>
-        <% end -%>
-      </tbody>
-    </table>
-  </div>
-<% end -%>

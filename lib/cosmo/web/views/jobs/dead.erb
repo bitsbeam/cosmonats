@@ -8,10 +8,11 @@
   </div>
 
   <div id="content">
-    <div hx-get="<%= url_for('/jobs/_dead') %>"
-         hx-trigger="load, every 5s"
-         hx-swap="innerHTML">
-      <div class="alert alert-info">Loading dead jobs…</div>
+    <div id="dead-poller"
+         hx-get="<%= url_for('/jobs/_dead') %>"
+         hx-trigger="load"
+         hx-swap="outerHTML">
+      <div class="alert alert-info">Loading dead jobs&hellip;</div>
     </div>
   </div>
 </section>

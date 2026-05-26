@@ -7,10 +7,12 @@
     <div class="alert alert-info">Loading statistics…</div>
   </div>
 
-  <div id="content"
-       hx-get="<%= url_for('/jobs/_busy') %>"
-       hx-trigger="load, every 5s"
-       hx-swap="innerHTML">
-    <div class="alert alert-info">Loading busy jobs&hellip;</div>
+  <div id="content">
+    <div id="busy-poller"
+         hx-get="<%= url_for('/jobs/_busy') %>"
+         hx-trigger="load"
+         hx-swap="outerHTML">
+      <div class="alert alert-info">Loading busy jobs&hellip;</div>
+    </div>
   </div>
 </section>
