@@ -56,6 +56,7 @@ bundle exec cosmo -C config/cosmo.yml -c 20 jobs    # Run jobs
 bundle exec cosmo -C config/cosmo.yml -c 20         # Run both
 ```
 
+![webui.gif](webui.gif)
 
 ## 📖 Index
 
