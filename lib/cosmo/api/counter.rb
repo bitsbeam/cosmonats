@@ -38,7 +38,7 @@ module Cosmo
       def get(key)
         raw = client.get_message(STREAM_NAME, direct: true, subject: subject(key))
         Utils::Json.parse(raw.data, default: { "val" => 0 })[:val].to_i
-      rescue NATS::JetStream::Error::NotFound, NATS::JetStream::Error::ServiceUnavailable
+      rescue NATS::JetStream::Error::NotFound, NATS::JetStream::Error::ServiceUnavailable, NATS::IO::Timeout
         0
       end
 
