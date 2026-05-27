@@ -7,7 +7,7 @@ module Cosmo
     class Busy
       TTL = 70
       HEARTBEAT = 30
-      BUCKET = "cosmostats"
+      BUCKET = "cosmo_jobs_busy"
 
       def self.instance
         @instance ||= new
@@ -40,7 +40,7 @@ module Cosmo
       end
 
       def list(limit: 25)
-        @kv.keys(limit:).filter_map { Utils::Json.parse(@kv.get(_1)) }.map { _1.merge(data: Utils::Json.parse(_1[:data])) }
+        @kv.keys(limit:).filter_map { Utils::Json.parse(@kv.get(_1)&.value) }.map { _1.merge(data: Utils::Json.parse(_1[:data])) }
       end
 
       def size

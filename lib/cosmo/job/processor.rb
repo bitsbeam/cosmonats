@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "timeout"
+
 module Cosmo
   module Job
     class Processor < ::Cosmo::Processor
@@ -44,7 +46,7 @@ module Cosmo
         end
       end
 
-      def process(messages, _) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+      def process(messages, _) # rubocop:disable Metrics/MethodLength
         message = messages.first
         Logger.debug "received messages #{messages.inspect}"
         data = Utils::Json.parse(message.data)
@@ -61,28 +63,59 @@ module Cosmo
           return
         end
 
+        if worker_class.limits_concurrency?
+          slot = acquire_concurrency_slot(worker_class, message, data)
+          return if slot == false
+        end
+
+        duration = worker_class.default_options[:limit]&.dig(:duration)&.to_i
+
         with_stats(message) do
           sw = stopwatch
           Logger.with(jid: data[:jid])
           Logger.info "start"
           instance = worker_class.new
           instance.jid = data[:jid]
-          instance.perform(*data[:args])
+          if duration
+            Timeout.timeout(duration) { instance.perform(*data[:args]) }
+          else
+            instance.perform(*data[:args])
+          end
           message.ack
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
           true
+        rescue Timeout::Error
+          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[timeout]" }
+          dropped = handle_failure(message, data)
+          false if dropped
         rescue StandardError => e
           Logger.debug e
-          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
+          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[error]" }
           dropped = handle_failure(message, data)
           false if dropped
         rescue Exception # rubocop:disable Lint/RescueException
-          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
+          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[exception]" }
           raise
         end
       ensure
+        Limit.instance.release(slot) if slot
         Logger.without(:jid)
         Logger.debug "processed message #{message.inspect}"
+      end
+
+      # Tries to acquire a concurrency slot for the job.
+      # Returns the slot key (String) on success, or false if all slots are
+      # taken (message is NAK'd with a delay equal to +duration+ before returning).
+      def acquire_concurrency_slot(worker_class, message, data)
+        options = worker_class.concurrency_options
+        key = worker_class.concurrency_key(data[:args])
+
+        slot = Limit.instance.acquire(key, jid: data[:jid], limit: options[:limit], duration: options[:duration])
+        return slot if slot
+
+        message.nak(delay: options[:duration] * Config::NANO)
+        Logger.debug "concurrency limit reached for #{data[:class]}, re-queueing back #{data[:jid]}"
+        false
       end
 
       def handle_failure(message, data) # rubocop:disable Naming/PredicateMethod
@@ -93,7 +126,7 @@ module Cosmo
           # NATS will auto-retry with delay (exponential backoff based on current attempt).
           # When max_deliver is reached, NATS stops redelivering the message and marks it as "max deliveries exceeded".
           # The message is effectively abandoned by NATS — it stays in the stream (consuming a slot) but will never be delivered again to that consumer.
-          delay_ns = ((current_attempt**4) + 15) * 1_000_000_000
+          delay_ns = ((current_attempt**4) + 15) * Config::NANO
           message.nak(delay: delay_ns)
           return false
         end

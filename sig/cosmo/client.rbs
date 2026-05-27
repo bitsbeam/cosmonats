@@ -41,8 +41,12 @@ module Cosmo
 
     def purge: (::String stream_name, ::String? subject) -> ::Integer?
 
-    def kv: (::String name, **untyped opts) -> NATS::KeyValue
+    def kv: (::String name, ?allow_msg_ttl: bool, **untyped opts) -> untyped
 
     def close: -> void
+
+    private
+
+    def create_kv_with_msg_ttl: (::String name, **untyped opts) -> untyped
   end
 end

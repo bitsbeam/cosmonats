@@ -6,14 +6,43 @@ RSpec.describe Cosmo::API::KV do
   before { destroy_streams }
   after { destroy_streams }
 
-  describe "#set and #get" do
-    it "stores and retrieves a value" do
-      kv.set("mykey", "myvalue")
-      expect(kv.get("mykey")).to eq("myvalue")
-    end
-
+  describe "#get" do
     it "returns nil for missing key" do
       expect(kv.get("nonexistent")).to be_nil
+    end
+  end
+
+  describe "#set" do
+    let(:ttl_kv) { described_class.new("test_kv_ttl_bucket", allow_msg_ttl: true) }
+
+    it "stores and retrieves a value" do
+      kv.set("mykey", "myvalue")
+      expect(kv.get("mykey")&.value).to eq("myvalue")
+    end
+
+    it "creates a new key and returns an entry" do
+      entry = ttl_kv.set("slot/0", "job-1", ttl: 30)
+      expect(entry).not_to be_nil
+      expect(ttl_kv.get("slot/0")&.value).to eq("job-1")
+    end
+
+    it "raises error when the key is already live" do
+      ttl_kv.set("slot/0", "job-1", ttl: 30)
+      expect { ttl_kv.set("slot/0", "job-2", ttl: 30) }.to raise_error(NATS::KeyValue::KeyWrongLastSequenceError)
+    end
+
+    it "reclaims a deleted key atomically" do
+      ttl_kv.set("slot/0", "job-1", ttl: 30)
+      ttl_kv.delete("slot/0")
+      ttl_kv.set("slot/0", "job-2", ttl: 30)
+      expect(ttl_kv.get("slot/0")&.value).to eq("job-2")
+    end
+
+    it "reclaims a purged key atomically" do
+      ttl_kv.set("slot/0", "job-1", ttl: 30)
+      ttl_kv.purge("slot/0")
+      ttl_kv.set("slot/0", "job-2", ttl: 30)
+      expect(ttl_kv.get("slot/0")&.value).to eq("job-2")
     end
   end
 

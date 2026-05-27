@@ -98,14 +98,35 @@ module Cosmo
       result["purged"] # number of messages purged
     end
 
-    def kv(name, **options)
+    def kv(name, allow_msg_ttl: false, **options)
       js.key_value(name)
     rescue NATS::KeyValue::BucketNotFoundError
-      js.create_key_value({ bucket: name }.merge(options))
+      allow_msg_ttl ? create_kv_with_msg_ttl(name, **options) : js.create_key_value({ bucket: name }.merge(options))
     end
 
     def close
       nc.close
+    end
+
+    private
+
+    # NOTE: KV manager in nats-pure hardcodes the fields it copies into StreamConfig,
+    # so `allow_msg_ttl` is never forwarded via create_key_value. Send the raw stream-create API request instead.
+    def create_kv_with_msg_ttl(name, **options)
+      payload = Utils::Json.dump({
+        name: "KV_#{name}",
+        subjects: ["$KV.#{name}.>"],
+        storage: "file",
+        allow_direct: true,
+        allow_msg_ttl: true,
+        allow_rollup_hdrs: true,
+        max_msgs_per_subject: 1
+      }.merge(options))
+      resp = nc.request("$JS.API.STREAM.CREATE.KV_#{name}", payload)
+      result = Utils::Json.parse(resp.data, symbolize_names: false)
+      raise NATS::JetStream::Error, result.dig("error", "description") if result&.dig("error")
+
+      js.key_value(name)
     end
   end
 end

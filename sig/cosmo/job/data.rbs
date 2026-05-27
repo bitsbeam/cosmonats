@@ -1,7 +1,7 @@
 module Cosmo
   module Job
     class Data
-      DEFAULTS: { stream: Symbol, retry: Integer | bool, dead: bool }
+      DEFAULTS: { stream: Symbol, retry: Integer, dead: bool, limit: nil }
 
       @class_name: ::String
       @args: Array[untyped]

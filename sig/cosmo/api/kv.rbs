@@ -5,11 +5,13 @@ module Cosmo
       @options: Hash[Symbol, untyped]
       @kv: untyped
 
+      attr_reader kv: untyped
+
       def initialize: (::String name, ?Hash[Symbol, untyped]? options) -> void
 
-      def set: (::String | ::Integer key, ::String value) -> untyped
+      def set: (::String | ::Integer key, untyped value, ?ttl: ::Integer?) -> untyped
 
-      def get: (::String | ::Integer key) -> ::String?
+      def get: (::String | ::Integer key) -> untyped
 
       def delete: (::String | ::Integer key) -> untyped
 
@@ -21,10 +23,6 @@ module Cosmo
 
       def count: () -> ::Integer
       alias size count
-
-      private
-
-      def kv: () -> untyped
     end
   end
 end
