@@ -1,7 +1,7 @@
 # 🚀 Cosmonats
 
-Background jobs + event streaming for Ruby — unified, in one gem, backed by NATS.
-No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ever silently dropped.
+Background jobs + real-time event streaming for Ruby — unified, in one gem, backed by NATS.  
+**No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ever silently dropped.**
 
 <div align="center">
 
@@ -13,29 +13,15 @@ No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ev
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](LICENSE.txt)
 [![Build Status](https://github.com/bitsbeam/cosmonats/actions/workflows/ci.yml/badge.svg)](https://github.com/bitsbeam/cosmonats/actions)
 
+*Battle-tested in production. Tens of millions of jobs processed.*
+
 </div>
 
 
 ## ⚡ Taste it
 
 ```ruby
-# Process a continuous event stream
-class ClicksProcessor
-  include Cosmo::Stream
-  options stream: :clickstream, batch_size: 100,
-          consumer: { subjects: ["events.clicks.>"] }
-
-  def process_one
-    Analytics.track(message.data)
-    message.ack
-  end
-end
-
-ClicksProcessor.publish({ user_id: 123, page: "/home" }, subject: "events.clicks.homepage")
-```
-
-```ruby
-# Define a job
+# Define a job with a familiar look
 class SendEmailJob
   include Cosmo::Job
   options stream: :default, retry: 3, dead: true
@@ -50,10 +36,26 @@ SendEmailJob.perform_async(123, "welcome")
 SendEmailJob.perform_in(1.day, 123, "followup")
 ```
 
+```ruby
+# Process a continuous real-time event stream
+class ClicksProcessor
+  include Cosmo::Stream
+  options stream: :clickstream, batch_size: 100,
+          consumer: { subjects: ["events.clicks.>"] }
+
+  def process_one
+    Analytics.track(message.data)
+    message.ack
+  end
+end
+
+ClicksProcessor.publish({ user_id: 123, page: "/home" }, subject: "events.clicks.homepage")
+```
+
 ```bash
-bundle exec cosmo -C config/cosmo.yml -c 20 streams # Run streams
-bundle exec cosmo -C config/cosmo.yml -c 20 jobs    # Run jobs
-bundle exec cosmo -C config/cosmo.yml -c 20         # Run both
+bundle exec cosmo -C config/cosmo.yml -c 20         # Run jobs + streams with 20 threads
+bundle exec cosmo -C config/cosmo.yml -c 20 jobs    # Jobs only
+bundle exec cosmo -C config/cosmo.yml -c 20 streams # Streams only
 ```
 
 ![webui.gif](webui.gif)
@@ -77,10 +79,27 @@ bundle exec cosmo -C config/cosmo.yml -c 20         # Run both
 
 ## 🎯 Why?
 
-Most background job libraries use Redis or Postgres — tools that were never designed for this.
+Most background job libraries use Redis or Postgres — tools that were never designed for this. Think of NATS as Redis — but Redis is KV first then messaging;
+NATS is messaging first, then KV. What NATS is:
 
-NATS is a messaging system in a single ~20MB binary with a ~10MB memory footprint — yet it delivers disk-backed persistent streams, Pub/Sub, KV store, and true
-horizontal clustering at millions of messages per second.
+- **~20 MB binary, ~10 MB RAM at idle** Trivial to run anywhere.
+- **Disk-backed persistent streams** Messages survive restarts, don't require RAM to fit.
+- **True horizontal clustering** Lose a node — other nodes take over, zero message loss.
+- **Multilingual** Official clients for Ruby, Go, Python, Rust, Java, .NET, and more. Any service can publish or consume.
+
+One NATS server replaces your message broker, job queue, and KV store — with lower operational overhead.
+
+|                   | Redis/DB-backed               | NATS/Cosmonats             |
+|-------------------|-------------------------------|----------------------------|
+| Persistence       | In-memory / DB bloat          | Disk-backed, TB-scale      |
+| Scaling           | Sentinel only / Vertical only | True horizontal clustering |
+| Background jobs   | Yes                           | Yes                        |
+| Real-time stream  | No                            | Yes                        |
+| Zero message loss | No                            | Yes                        |
+| Message replay    | No                            | Yes                        |
+| Backpressure      | No, grow unbounded            | Yes                        |
+| Multi-DC          | Complex setup                 | Native geo-distribution    |
+
 
 ### Killer Features:
 
@@ -108,18 +127,6 @@ afterthought.
 NATS deduplicates messages at the **broker** — same-ID messages within the configured window are dropped before they ever reach a worker. No uniqueness gems,
 no advisory locks, no extra round-trips. It also ships a built-in Key/Value store usable for distributed locks and rate limiting — no Redis, no Memcached,
 nothing else to run.
-
-|                   | Redis/DB-backed               | NATS                       |
-|-------------------|-------------------------------|----------------------------|
-| Persistence       | In-memory / DB bloat          | Disk-backed, TB-scale      |
-| Scaling           | Sentinel only / Vertical only | True horizontal clustering |
-| Background jobs   | Yes                           | Yes                        |
-| Stream processing | No                            | Yes                        |
-| Message replay    | No                            | Yes                        |
-| Backpressure      | No, grow unbounded            | Yes                        |
-| Multi-DC          | Complex setup                 | Native geo-distribution    |
-
-One NATS server replaces your message broker, job queue, and KV store — with lower operational overhead.
 
 
 ## ✨ Features
@@ -149,9 +156,20 @@ gem "cosmonats"
 
 **Requirements:** Ruby ≥ 3.1, NATS Server ([install guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
 
-Spin up NATS instantly with Docker:
+Spin up NATS instantly with Docker — one command, that's it:
 ```bash
 docker run -p 4222:4222 -p 8222:8222 nats:alpine -js
+```
+
+Or add it to your existing `docker-compose.yml`:
+```yaml
+services:
+  nats:
+    image: nats:alpine
+    command: -js
+    ports:
+      - "4222:4222"
+      - "8222:8222"
 ```
 
 Mount the monitoring UI in your Rack app:
@@ -291,6 +309,9 @@ message.term                         # Permanent failure, no retry
 ```
 
 ### Configuration
+
+**NATS subjects** follow a dot-separated hierarchy (`events.clicks.homepage`).
+The `>` wildcard matches everything after that prefix. Think of subjects as topic names — flexible routing with no extra configuration.
 
 **Full `config/cosmo.yml` example:**
 ```yaml
