@@ -7,12 +7,24 @@ RSpec.describe Cosmo::Job::Processor do
   let(:processor)   { described_class.new(pool, running, {}) }
   let(:results)     { Results.instance }
 
-  around(:example) do |example|
-    prepare_streams do
-      processor.run
-      example.run
-      processor.stop
-    end
+  before do
+    Cosmo::Config.load("spec/support/cosmo.yml")
+    # Keep the scheduler fetch timeout short so teardown
+    # isn't blocked by the default 5-second NATS pull window.
+    ENV["COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT"] = "0.5"
+    # Keep the empty-stream backoff cap small so re-delivered messages
+    # (after a NAK delay) are picked up quickly. Without this the
+    # processor can sleep up to 5 s after the NAK delay expires, causing
+    # the retry test to exceed its timeout (16 s NAK + 5 s sleep > 20 s).
+    ENV["COSMO_STREAM_EMPTY_BACKOFF_MAX"] = "0.5"
+    create_streams(Cosmo::Config.dig(:setup, :jobs))
+    processor.run
+  end
+
+  after do
+    processor.stop
+    ENV.delete("COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT")
+    ENV.delete("COSMO_STREAM_EMPTY_BACKOFF_MAX")
   end
 
   context "with successful job execution" do

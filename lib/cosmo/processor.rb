@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Cosmo
-  class Processor # rubocop:disable Metrics/ClassLength
+  class Processor
     STREAM_PAUSED_RECHECK_TTL = 5.0 # Seconds a stream's paused state is cached before re-checking (override via COSMO_STREAM_PAUSED_RECHECK_TTL)
     STREAMS_PAUSED_IDLE_SLEEP = 1.0 # Seconds to sleep when every stream is paused, preventing a tight CPU spin (override via COSMO_STREAMS_PAUSED_IDLE_SLEEP)
     STREAM_EMPTY_BACKOFF_MAX = 5.0  # Max seconds to sleep between empty fetches (override via COSMO_STREAM_EMPTY_BACKOFF_MAX)

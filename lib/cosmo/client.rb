@@ -124,8 +124,12 @@ module Cosmo
       }.merge(options))
       resp = nc.request("$JS.API.STREAM.CREATE.KV_#{name}", payload)
       result = Utils::Json.parse(resp.data, symbolize_names: false)
-      raise NATS::JetStream::Error, result.dig("error", "description") if result&.dig("error")
-
+      if result&.dig("error")
+        msg = result.dig("error", "description").to_s
+        # Two worker processes starting simultaneously can both attempt creation.
+        # If another process won the race, fall back to looking up the existing bucket.
+        raise NATS::JetStream::Error, msg unless msg.match?(/already in use|already exists/i)
+      end
       js.key_value(name)
     end
   end

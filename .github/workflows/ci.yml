@@ -42,7 +42,7 @@ jobs:
             -p 6222:6222 \
             -p 8222:8222 \
             nats:alpine \
-            -js -m 8222
+            -js -m 8222 -DV
           echo "NATS container started with JetStream enabled"
 
       - name: Wait for NATS to be ready
@@ -61,3 +61,15 @@ jobs:
         run: bundle exec rspec
         env:
           NATS_URL: nats://localhost:4222
+
+      - name: Capture NATS logs
+        if: always()
+        run: docker logs nats > /tmp/nats-${{ matrix.ruby-version }}.log 2>&1
+
+      - name: Upload NATS logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nats-log-ruby-${{ matrix.ruby-version }}
+          path: /tmp/nats-${{ matrix.ruby-version }}.log
+          retention-days: 2

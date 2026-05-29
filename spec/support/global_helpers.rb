@@ -9,25 +9,13 @@ RSpec.shared_context "Global helpers" do
     Cosmo::API::Stream.new(name.to_s).size
   end
 
-  def prepare_streams
-    Cosmo::Config.load("spec/support/cosmo.yml")
+  def cleanup_state
+    Results.instance.clear
     Cosmo::Config.internal[:streams] = []
     Cosmo::API::Busy.instance_variable_set(:@instance, nil)
     Cosmo::API::Counter.instance_variable_set(:@instance, nil)
     Cosmo::Publisher.instance_variable_set(:@instance, nil)
-
-    # Keep the scheduler fetch timeout short so teardown isn't blocked by the default 5-second NATS pull window.
-    ENV["COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT"] = "0.5"
-    destroy_streams
-    Results.instance.clear
-    create_streams(Cosmo::Config.dig(:setup, :jobs))
-
-    yield
-
-    destroy_streams
-    Results.instance.clear
-    ENV.delete("COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT")
-    Cosmo::Config.internal[:streams] = []
+    Cosmo::Job::Limit.instance_variable_set(:@instance, nil)
   end
 
   def wait_until(timeout:)

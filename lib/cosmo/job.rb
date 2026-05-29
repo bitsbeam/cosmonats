@@ -59,7 +59,7 @@ module Cosmo
         return unless config
 
         base = Utils::String.underscore(name)
-        suffix = config[:key]&.then { it.call(*args) }
+        suffix = config[:key]&.call(*args)
         suffix ? "#{base}/#{suffix}" : base
       end
 

@@ -13,7 +13,7 @@ Background jobs + real-time event streaming for Ruby — unified, in one gem, ba
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](LICENSE.txt)
 [![Build Status](https://github.com/bitsbeam/cosmonats/actions/workflows/ci.yml/badge.svg)](https://github.com/bitsbeam/cosmonats/actions)
 
-*Battle-tested in production. Tens of millions of jobs processed.*
+*Battle-tested in production. Tens of millions of jobs processed and counting.*
 
 </div>
 

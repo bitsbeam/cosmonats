@@ -43,7 +43,7 @@ module Cosmo
       # Release a previously acquired slot.
       def release(slot)
         @kv.delete(slot)
-      rescue StandardError
+      rescue NATS::Error
         # best effort — slot TTL will reclaim it if delete fails
       end
     end

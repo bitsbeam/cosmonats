@@ -12,10 +12,6 @@ RSpec.describe Cosmo::Stream::Processor do
     client.create_stream(name, config.merge(subjects: ["#{name}.>"]))
   end
 
-  around(:example) do |example|
-    prepare_streams { example.run }
-  end
-
   context "with successful job execution" do
     context "with #process_one" do
       before do

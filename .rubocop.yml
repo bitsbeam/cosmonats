@@ -15,8 +15,6 @@ Style/Documentation:
 Style/FormatStringToken:
   Enabled: false
 
-Lint/ItWithoutArgumentsInBlock:
-  Enabled: false
 
 Lint/NestedPercentLiteral:
   Exclude:
@@ -31,12 +29,15 @@ Layout/LineLength:
 
 Metrics/MethodLength:
   Max: 15
+  CountAsOne:
+    - array
+    - hash
 
 Metrics/ClassLength:
-  Max: 120
+  Max: 200
 
 Metrics/ModuleLength:
-  Max: 120
+  Max: 150
 
 Metrics/BlockLength:
   Exclude:

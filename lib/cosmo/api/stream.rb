@@ -36,7 +36,7 @@ module Cosmo
 
       def total
         info[:state].messages.to_i
-      rescue StandardError
+      rescue NATS::Error
         0
       end
       alias size total

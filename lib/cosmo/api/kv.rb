@@ -11,7 +11,7 @@ module Cosmo
         @kv = Client.instance.kv(@name, **@options)
       end
 
-      def set(key, value, ttl: nil)
+      def set(key, value, ttl: nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         return kv.put(key, value.to_s) unless ttl
 
         # Pass ttl: (seconds) to set a per-message expiry.

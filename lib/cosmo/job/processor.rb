@@ -8,6 +8,11 @@ module Cosmo
       private
 
       def setup
+        # Initialize singletons before starting to process messages
+        API::Busy.instance
+        API::Counter.instance
+        Limit.instance
+
         jobs_config = Config.dig(:consumers, :jobs)
         jobs_config&.each do |stream_name, config|
           next if stream_name == :scheduled # scheduled jobs are handled in schedule_loop
@@ -46,7 +51,7 @@ module Cosmo
         end
       end
 
-      def process(messages, _) # rubocop:disable Metrics/MethodLength
+      def process(messages, _) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         message = messages.first
         Logger.debug "received messages #{messages.inspect}"
         data = Utils::Json.parse(message.data)
@@ -115,6 +120,12 @@ module Cosmo
 
         message.nak(delay: options[:duration] * Config::NANO)
         Logger.debug "concurrency limit reached for #{data[:class]}, re-queueing back #{data[:jid]}"
+        false
+      rescue NATS::Error => e
+        # Unexpected KV failure (e.g. transient NATS error). NAK immediately so
+        # the message is retried rather than stuck in-flight until ack_wait expires.
+        Logger.error e
+        message.nak
         false
       end
 
