@@ -4,7 +4,7 @@ require "yaml"
 require "optparse"
 
 module Cosmo
-  class CLI # rubocop:disable Metrics/ClassLength
+  class CLI
     def self.run
       instance.run
     end

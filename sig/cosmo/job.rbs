@@ -5,7 +5,14 @@ module Cosmo
     module ClassMethods
       @default_options: Hash[Symbol, untyped]
 
-      def options: (?stream: Symbol?, ?retry: Integer?, ?dead: bool?) -> Hash[Symbol, untyped]
+      def options: (**untyped config) -> Hash[Symbol, untyped]
+      alias cosmo_options options
+
+      def concurrency_options: () -> { limit: Integer, key: Proc?, duration: Integer }?
+
+      def concurrency_key: (Array[untyped] args) -> ::String?
+
+      def limits_concurrency?: () -> bool
 
       def perform: (*untyped args, ?async: bool, **untyped options) -> (::String | nil)
 
@@ -24,9 +31,7 @@ module Cosmo
       def client: () -> Client
     end
 
-    attr_reader jid: ::String
-
-    def jid=: (::String) -> ::String
+    attr_accessor jid: ::String
 
     def perform: (*untyped) -> untyped
 

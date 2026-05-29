@@ -3,7 +3,7 @@
 module Cosmo
   module API
     class Counter
-      STREAM_NAME = "cosmostats"
+      STREAM_NAME = "_cosmostats"
 
       def self.instance
         @instance ||= new("jobs")

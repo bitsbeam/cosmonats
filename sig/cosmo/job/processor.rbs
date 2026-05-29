@@ -17,7 +17,7 @@ module Cosmo
 
       def process: (Array[untyped] messages, untyped processor) -> void
 
-      def handle_failure: (untyped message, Hash[Symbol, untyped] data) -> void
+      def handle_failure: (untyped message, Hash[Symbol, untyped] data) -> bool
 
       def subscribe: (Symbol stream_name, Hash[Symbol, untyped] config) -> [untyped, Hash[Symbol, untyped], nil]
 
@@ -26,6 +26,8 @@ module Cosmo
       def move_message: (untyped message, ?Hash[Symbol, untyped]? data) -> void
 
       def with_stats: (untyped message) { () -> untyped } -> void
+
+      def acquire_concurrency_slot: (untyped worker_class, untyped message, Hash[Symbol, untyped] data) -> (::String | false)
     end
   end
 end

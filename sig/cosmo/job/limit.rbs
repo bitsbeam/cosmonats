@@ -1,0 +1,18 @@
+module Cosmo
+  module Job
+    class Limit
+      BUCKET: ::String
+
+      self.@instance: Limit
+
+      def self.instance: () -> Limit
+
+      def initialize: () -> void
+
+      def acquire: (::String key, jid: ::String, limit: ::Integer, duration: ::Integer) -> ::String?
+
+      def release: (::String slot) -> void
+    end
+  end
+end
+

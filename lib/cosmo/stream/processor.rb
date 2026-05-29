@@ -17,7 +17,7 @@ module Cosmo
         @configs.each { @consumers << subscribe(nil, _1) }
       end
 
-      def process(messages, processor) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      def process(messages, processor) # rubocop:disable Metrics/AbcSize
         metadata = messages.last.metadata
         serializer = processor.class.default_options.dig(:publisher, :serializer)
         messages = messages.map { Message.new(_1, serializer:) }

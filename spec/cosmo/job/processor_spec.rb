@@ -7,12 +7,24 @@ RSpec.describe Cosmo::Job::Processor do
   let(:processor)   { described_class.new(pool, running, {}) }
   let(:results)     { Results.instance }
 
-  around(:example) do |example|
-    prepare_streams do
-      processor.run
-      example.run
-      processor.stop
-    end
+  before do
+    Cosmo::Config.load("spec/support/cosmo.yml")
+    # Keep the scheduler fetch timeout short so teardown
+    # isn't blocked by the default 5-second NATS pull window.
+    ENV["COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT"] = "0.5"
+    # Keep the empty-stream backoff cap small so re-delivered messages
+    # (after a NAK delay) are picked up quickly. Without this the
+    # processor can sleep up to 5 s after the NAK delay expires, causing
+    # the retry test to exceed its timeout (16 s NAK + 5 s sleep > 20 s).
+    ENV["COSMO_STREAM_EMPTY_BACKOFF_MAX"] = "0.5"
+    create_streams(Cosmo::Config.dig(:setup, :jobs))
+    processor.run
+  end
+
+  after do
+    processor.stop
+    ENV.delete("COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT")
+    ENV.delete("COSMO_STREAM_EMPTY_BACKOFF_MAX")
   end
 
   context "with successful job execution" do
@@ -126,6 +138,103 @@ RSpec.describe Cosmo::Job::Processor do
         expect(results).not_to include(:future_ran)
         expect(stream_size("scheduled")).to eq(1)
         expect(stream_size("default")).to eq(0)
+      end
+    end
+
+    context "with limit options" do
+      let(:concurrency) { 5 }
+
+      around(:example) do |example|
+        Cosmo::Job::Limit.instance_variable_set(:@instance, nil)
+        example.run
+        Cosmo::Job::Limit.instance_variable_set(:@instance, nil)
+      end
+
+      context "with a global concurrency limit" do
+        before do
+          stub_const("SlowConcurrentJob", Class.new do
+            include Cosmo::Job
+
+            options stream: :default, retry: 0, limit: { duration: 2, concurrency: 2 }
+
+            def perform(id)
+              Results.instance << "start:#{id}"
+              sleep 0.5
+              Results.instance << "end:#{id}"
+            end
+          end)
+        end
+
+        it "allows up to the limit to run concurrently and queues the rest" do
+          4.times { |i| SlowConcurrentJob.perform_async(i) }
+
+          wait_until(timeout: 15) { results.count { _1.start_with?("end:") } >= 4 }
+
+          first_end_idx = results.index { _1.start_with?("end:") }
+          starts_before_first_end = results[0...first_end_idx].count { _1.start_with?("start:") }
+          expect(starts_before_first_end).to be <= 2
+        end
+      end
+
+      context "with a key-scoped concurrency limit" do
+        before do
+          stub_const("PerUserConcurrentJob", Class.new do
+            include Cosmo::Job
+
+            options stream: :default, retry: 0,
+                    limit: { duration: 2, concurrency: { to: 1, key: ->(user_id) { user_id } } }
+
+            def perform(user_id)
+              Results.instance << "start:#{user_id}"
+              sleep 0.4
+              Results.instance << "end:#{user_id}"
+            end
+          end)
+        end
+
+        it "allows parallel execution for different keys" do
+          PerUserConcurrentJob.perform_async("user-A")
+          PerUserConcurrentJob.perform_async("user-B")
+
+          wait_until(timeout: 10) { results.count { _1.start_with?("end:") } >= 2 }
+
+          expect(results).to include("start:user-A", "end:user-A", "start:user-B", "end:user-B")
+        end
+
+        it "serialises two jobs for the same key" do
+          2.times { PerUserConcurrentJob.perform_async("user-X") }
+
+          wait_until(timeout: 15) { results.count { _1 == "end:user-X" } >= 2 }
+
+          ends   = results.each_with_index.filter_map { |r, i| i if r == "end:user-X" }
+          starts = results.each_with_index.filter_map { |r, i| i if r == "start:user-X" }
+
+          expect(starts.size).to eq(2)
+          expect(ends.size).to eq(2)
+          expect(ends.first).to be < starts.last
+        end
+      end
+
+      context "with a duration limit (execution timeout)" do
+        before do
+          stub_const("SlowJob", Class.new do
+            include Cosmo::Job
+
+            options stream: :default, retry: 0, dead: true, limit: { duration: 1 }
+
+            def perform = sleep(30)
+          end)
+        end
+
+        it "kills the job after duration and moves it to DLQ" do
+          started_at = Time.now
+          SlowJob.perform_async
+          wait_until(timeout: 8) { stream_size("dead") >= 1 }
+
+          expect(Time.now - started_at).to be < 5
+          expect(stream_size("dead")).to eq(1)
+          expect(stream_size("default")).to eq(0)
+        end
       end
     end
   end

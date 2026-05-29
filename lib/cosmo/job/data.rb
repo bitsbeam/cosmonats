@@ -5,7 +5,7 @@ require "json"
 module Cosmo
   module Job
     class Data
-      DEFAULTS = { stream: :default, retry: 3, dead: true }.freeze
+      DEFAULTS = { stream: :default, retry: 3, dead: true, limit: nil }.freeze
 
       attr_reader :jid
 

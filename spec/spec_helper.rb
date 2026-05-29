@@ -18,4 +18,9 @@ RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end
+
+  config.before(:example) do
+    cleanup_state
+    destroy_streams
+  end
 end
