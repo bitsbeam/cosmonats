@@ -42,6 +42,27 @@ module Cosmo
       js.update_stream(name: name, **config)
     end
 
+    # Create/update a stream, falling back to create when there's no stream.
+    # @param name [String] Stream name
+    # @param config [Hash] Full desired stream configuration
+    def setup_stream(name, config)
+      update_stream(name, config)
+    rescue NATS::JetStream::Error::StreamNotFound
+      create_stream(name, config)
+    end
+
+    # Return all subjects in +stream_name+ that match +filter+ using NATS's
+    # subjects_filter on STREAM.INFO (requires NATS ≥ 2.9).
+    # @return [Array<String>]
+    def cron_subjects_in_stream(stream_name, filter)
+      payload = Utils::Json.dump({ subjects_filter: filter })
+      resp = nc.request("$JS.API.STREAM.INFO.#{stream_name}", payload)
+      data = Utils::Json.parse(resp.data, symbolize_names: false)
+      (data&.dig("state", "subjects") || {}).keys
+    rescue StandardError
+      []
+    end
+
     def list_streams
       response = nc.request("$JS.API.STREAM.LIST", "")
       data = Utils::Json.parse(response.data, symbolize_names: false)

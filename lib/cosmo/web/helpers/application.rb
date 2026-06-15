@@ -73,6 +73,10 @@ module Cosmo
           request_path == path
         end
 
+        def path_prefix?(*values)
+          values.any? { |v| @request.path_info.start_with?(v) }
+        end
+
         def referrer?(path)
           referrer_uri  = URI(@request.referrer)
           referrer_path = referrer_uri.path

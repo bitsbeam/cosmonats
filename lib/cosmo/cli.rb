@@ -4,6 +4,7 @@ require "yaml"
 require "optparse"
 
 module Cosmo
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
   class CLI
     def self.run
       instance.run
@@ -75,8 +76,8 @@ module Cosmo
       require_files("app/streams") if File.directory?("app/streams")
     end
 
-    def flags_parser(flags) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-      OptionParser.new do |o| # rubocop:disable Metrics/BlockLength
+    def flags_parser(flags)
+      OptionParser.new do |o|
         o.banner = "Usage: cosmo [flags] [command] [options]"
         o.separator ""
         o.separator "Command:"
@@ -102,20 +103,31 @@ module Cosmo
           flags[:config_file] = arg
         end
 
-        o.on "-S", "--setup", "Load config, create streams and exit" do
+        o.on "-S", "--setup", "Create/update streams and sync cron schedules, then exit" do
           load_config(flags)
           boot_application
 
-          Config[:setup]&.each_value do |configs|
+          Config[:setup]&.each do |type, configs|
+            next if type == :cron
+
+            first_line = true
             configs.each do |name, config|
-              Client.instance.stream_info(name)
-            rescue NATS::JetStream::Error::NotFound
-              meta = { metadata: { "_cosmo.type" => "jobs" } }
-              Client.instance.create_stream(name, config.merge(meta))
+              meta = { metadata: { "_cosmo.type" => "jobs" } } if type == :jobs
+              Client.instance.setup_stream(name.to_s, config.merge(Hash(meta)))
+              first_line ? print("Stream is ready: #{name}") : print(", #{name}")
+              first_line = false
             end
           end
 
-          puts "Cosmo streams were created successfully"
+          puts
+          schedules = Config.dig(:setup, :cron)&.reduce(0) do |sum, (name, entry)|
+            class_name = entry.delete(:class)
+            API::Cron.instance.upsert!(**entry, name: name, class_name: class_name)
+            sum + 1
+          end
+
+          puts "Cron sync complete: #{schedules} schedule(s) registered" unless schedules.zero?
+          puts "Cosmo streams#{" and cron schedules" unless schedules.zero?} set up successfully."
           exit(0)
         end
 
@@ -238,4 +250,5 @@ module Cosmo
     end
     # rubocop:enable Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
 end

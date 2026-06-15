@@ -1,0 +1,58 @@
+<% if @schedules.empty? -%>
+  <div class="alert alert-success">
+    No cron schedules deployed in NATS.<br>
+    Add a <code>cron:</code> section to <code>cosmo.yml</code> and run
+    <code>cosmo --setup</code> to publish them.
+  </div>
+<% else -%>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Expression</th>
+          <th>Timezone</th>
+          <th>Args</th>
+          <th>Stream</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @schedules.each do |s| -%>
+        <tr id="cron-row-<%= h(s[:registry_key].to_s.gsub("/", "-")) %>">
+          <td>
+            <div class="job-class"><%= h(s[:class].to_s) %></div>
+            <% if s[:name] -%>
+              <code class="text-muted" style="font-size:0.8em;"><%= h(s[:name].to_s) %></code>
+            <% end -%>
+            <div style="font-size:0.75em; color:#888; margin-top:2px;">
+              <code><%= h(s[:schedule_subject].to_s) %></code>
+            </div>
+          </td>
+          <td><code class="subject-tag"><%= h(s[:schedule].to_s) %></code></td>
+          <td><%= h(s[:timezone] || "UTC") %></td>
+          <td>
+            <% if s[:args]&.any? -%>
+              <code><%= h(s[:args].inspect) %></code>
+            <% else -%>
+              <span class="text-muted">&mdash;</span>
+            <% end -%>
+          </td>
+          <td><code><%= h(s[:stream].to_s) %></code></td>
+          <td style="white-space:nowrap;">
+            <a hx-post="<%= url_for('/crons/run', { subject: u(s[:schedule_subject].to_s) }) %>"
+               class="btn btn-success btn-sm"
+               title="Dispatch this job now, bypassing the schedule timer">&#x25BA; Run Now</a>
+            <a hx-delete="<%= url_for('/crons/delete', { subject: u(s[:schedule_subject].to_s) }) %>"
+               hx-target="#crons-table"
+               hx-swap="innerHTML"
+               hx-confirm="Delete '<%= h(s[:schedule_subject].to_s) %>'? NATS will stop firing it."
+               class="btn btn-danger btn-sm"
+               title="Purge schedule from NATS">&#x1F5D1; Delete</a>
+          </td>
+        </tr>
+        <% end -%>
+      </tbody>
+    </table>
+  </div>
+<% end -%>

@@ -31,11 +31,20 @@ module Cosmo
       end
 
       config[:setup]&.each_key do |type|
+        next if type == :cron
+
         config[:setup][type]&.each_key do |name|
           c = config[:setup][type][name]
           c[:max_age] = c[:max_age].to_i * NANO if c[:max_age]
           c[:duplicate_window] = c[:duplicate_window].to_i * NANO if c[:duplicate_window]
           c[:subjects] = c[:subjects].map { |s| format(s, name: name) } if c[:subjects]
+
+          next unless type == :jobs # Every jobs stream supports NATS 2.14 message scheduling.
+
+          c[:allow_msg_schedules] = true
+          cron_subject = "#{API::Cron::Entry::SUBJECT_PREFIX}.#{name}.>"
+          c[:subjects] = Array(c[:subjects])
+          c[:subjects] << cron_subject unless c[:subjects].include?(cron_subject)
         end
       end
     end

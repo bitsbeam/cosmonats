@@ -14,7 +14,7 @@
         <a href="<%= url_for('/jobs') %>" class="navbar-brand">🚀 Cosmo</a>
         <ul class="nav-list">
           <li>
-            <a href="<%= url_for('/jobs') %>" class="<%= "active" if current_page?('/jobs') %>">Jobs</a>
+            <a href="<%= url_for('/jobs') %>" class="<%= "active" if path_prefix?('/jobs', '/crons') %>">Jobs</a>
           </li>
           <li>
             <a href="<%= url_for('/streams') %>" class="<%= "active" if current_page?('/streams') %>">Streams</a>

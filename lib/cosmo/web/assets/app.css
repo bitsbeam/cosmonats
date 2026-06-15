@@ -292,6 +292,34 @@ section > header {
   z-index: auto;
 }
 
+/* ── Section tabs ───────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: var(--space-3x);
+}
+
+.tabs a {
+  padding: var(--space) var(--space-3x);
+  text-decoration: none;
+  color: var(--color-text-light);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-weight: 500;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tabs a:hover {
+  color: var(--color-text);
+  border-bottom-color: var(--color-border);
+}
+
+.tabs a.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
 section .nav {
   display: flex;
   gap: var(--space);

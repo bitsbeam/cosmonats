@@ -1,0 +1,6 @@
+<nav class="tabs">
+  <a href="<%= url_for('/jobs') %>"
+     class="<%= 'active' if path_prefix?('/jobs') %>">&#x1F4CB; Dashboard</a>
+  <a href="<%= url_for('/crons') %>"
+     class="<%= 'active' if path_prefix?('/crons') %>">&#x23F0; Crons</a>
+</nav>

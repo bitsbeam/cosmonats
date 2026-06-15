@@ -35,7 +35,9 @@ module Cosmo
       end
 
       def total
-        info[:state].messages.to_i
+        all_msgs = info[:state].messages.to_i
+        cron_count = Client.instance.cron_subjects_in_stream(name, "#{Cron::Entry::SUBJECT_PREFIX}.#{name}.>").size
+        [all_msgs - cron_count, 0].max
       rescue NATS::Error
         0
       end
@@ -84,7 +86,10 @@ module Cosmo
       end
 
       def message(seq)
-        Job.new(name, client.get_message(name, seq: seq, direct: true))
+        job = Job.new(name, client.get_message(name, seq: seq, direct: true))
+        return if job.subject.to_s.start_with?(Cron::Entry::SUBJECT_PREFIX)
+
+        job
       rescue NATS::JetStream::Error::NotFound
         # nop, acked/nacked
       end

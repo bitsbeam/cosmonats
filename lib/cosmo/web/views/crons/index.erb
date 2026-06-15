@@ -1,0 +1,10 @@
+<section>
+  <header><%= render('jobs/_tabs') %></header>
+
+  <div id="crons-table"
+       hx-get="<%= url_for('/crons/_table') %>"
+       hx-trigger="load, every 10s"
+       hx-swap="innerHTML">
+    <div class="alert alert-info">Loading cron schedules&hellip;</div>
+  </div>
+</section>
