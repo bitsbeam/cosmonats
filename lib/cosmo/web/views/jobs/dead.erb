@@ -1,5 +1,5 @@
 <section>
-  <header></header>
+  <header><%= render('jobs/_tabs') %></header>
 
   <div hx-get="<%= url_for('/jobs/_stats') %>"
        hx-trigger="load, every 5s"

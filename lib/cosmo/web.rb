@@ -9,6 +9,7 @@ require "cosmo/web/controllers/application"
 require "cosmo/web/controllers/jobs"
 require "cosmo/web/controllers/streams"
 require "cosmo/web/controllers/actions"
+require "cosmo/web/controllers/crons"
 
 module Cosmo
   class Web
@@ -43,6 +44,10 @@ module Cosmo
                  in [:get,    "/streams/_info"]         then [Controllers::Streams, :_info]
                  in [:patch,  "/streams/pause"]         then [Controllers::Streams, :pause]
                  in [:patch,  "/streams/unpause"]       then [Controllers::Streams, :unpause]
+                 in [:get,    "/crons"]                 then [Controllers::Crons,   :index]
+                 in [:get,    "/crons/_table"]          then [Controllers::Crons,   :_table]
+                 in [:delete, "/crons/delete"]          then [Controllers::Crons,   :delete]
+                 in [:post,   "/crons/run"]             then [Controllers::Crons,   :run_now]
                  in [:get,    "/actions"]               then [Controllers::Actions, :index]
                  in [:get,    "/assets/htmx.min.js.gz"] then serve("htmx.2.0.8.min.js.gz",
                                                                    "application/javascript",

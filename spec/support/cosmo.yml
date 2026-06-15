@@ -61,6 +61,18 @@ setup:
       max_msgs: 10000
       max_age: 604800 # 7d
       description: Broken jobs (DLQ)
+  # Cron schedules — supported >= NATS 2.14
+  # cron:
+  #   daily_report:
+  #     class: ReportJob
+  #     schedule: "@daily"
+  #     stream: default
+  #   weekday_digest:
+  #     class: DigestJob
+  #     schedule: "0 9 * * 1-5"
+  #     stream: default
+  #     timezone: America/New_York
+  #     args: [weekday]
 
 development:
   verbose: false

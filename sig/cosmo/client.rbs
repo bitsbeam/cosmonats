@@ -23,6 +23,10 @@ module Cosmo
 
     def update_stream: (::String | Symbol name, Hash[Symbol, untyped] config) -> untyped
 
+    def setup_stream: (::String name, Hash[Symbol, untyped] config) -> untyped
+
+    def cron_subjects_in_stream: (::String stream_name, ::String filter) -> Array[::String]
+
     def list_streams: () -> Array[Hash[::String, untyped]]
 
     def pause_stream: (::String name) -> void

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 Cosmo::Utils::Warnings.silence do
-  members = NATS::JetStream::API::StreamConfig.members + [:allow_msg_counter]
+  members = NATS::JetStream::API::StreamConfig.members + %i[allow_msg_counter allow_msg_schedules]
   NATS::JetStream::API::StreamConfig = Struct.new(*members, keyword_init: true) do
     def initialize(opts = {})
       rem = opts.keys - members

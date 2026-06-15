@@ -1,0 +1,30 @@
+module Cosmo
+  module API
+    class Cron
+      class Entry
+        SUBJECT_PREFIX: ::String
+
+        attr_reader class_name: ::String
+        attr_reader stream: ::String
+        attr_reader expression: ::String
+        attr_reader args: ::Array[untyped]
+        attr_reader timezone: ::String?
+        attr_reader name: ::String?
+
+        def self.normalize_expression: (untyped expr) -> ::String
+
+        def initialize: (class_name: ::String, stream: ::String, expression: ::String,
+                          ?args: ::Array[untyped], ?timezone: ::String?, ?name: (::String | ::Symbol)?) -> void
+
+        def schedule_subject: () -> ::String
+        def target_subject: () -> ::String
+        def job_name: () -> ::String
+        def job_payload: () -> ::String
+        def as_json: () -> Hash[Symbol, untyped]
+        def to_s: () -> ::String
+        alias inspect to_s
+      end
+    end
+  end
+end
+
