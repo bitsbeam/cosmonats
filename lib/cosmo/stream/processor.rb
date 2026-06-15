@@ -49,7 +49,7 @@ module Cosmo
       end
 
       def dynamic_config
-        Config.internal[:streams].map { _1.default_options.merge(class: _1) }
+        Config.internal[:streams]&.map { _1.default_options.merge(class: _1) }.to_a
       end
 
       def subscribe(_stream_name, config)
