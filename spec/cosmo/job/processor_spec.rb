@@ -344,7 +344,7 @@ RSpec.describe Cosmo::Job::Processor do
 
     before(:all) do
       require "sentry-ruby"
-      require "cosmo/sentry/auto"
+      require "cosmo/sentry/job_processor_middleware"
 
       Sentry.init do |config|
         config.dsn = "http://12345:67890@sentry.localdomain/sentry/42"
