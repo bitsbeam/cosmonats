@@ -79,13 +79,10 @@ module Cosmo
           sw = stopwatch
           Logger.with(jid: data[:jid])
           Logger.info "start"
-          instance = worker_class.new
-          instance.jid = data[:jid]
-          if duration
-            Timeout.timeout(duration) { instance.perform(*data[:args]) }
-          else
-            instance.perform(*data[:args])
-          end
+
+          instance = worker_class.new.tap { |w| w.jid = data[:jid] }
+          perform_job(instance, data: data, duration: duration)
+
           message.ack
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
           true
@@ -188,6 +185,17 @@ module Cosmo
       def with_stats(message, &block)
         API::Busy.instance.with(message) do
           API::Counter.instance.with(&block)
+        end
+      end
+
+      # @param job_instance [Cosmo::Job]
+      # @param data [Hash]
+      # @param duration [Float, nil]
+      def perform_job(job_instance, data:, duration: nil)
+        if duration
+          Timeout.timeout(duration) { job_instance.perform(*data[:args]) }
+        else
+          job_instance.perform(*data[:args])
         end
       end
     end
