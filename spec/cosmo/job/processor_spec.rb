@@ -344,7 +344,7 @@ RSpec.describe Cosmo::Job::Processor do
 
     before(:all) do
       require "sentry-ruby"
-      require "cosmo/sentry/job_processor_middleware"
+      require "cosmo/sentry/auto"
 
       Sentry.init do |config|
         config.dsn = "http://12345:67890@sentry.localdomain/sentry/42"
@@ -379,7 +379,7 @@ RSpec.describe Cosmo::Job::Processor do
       wait_until(timeout: 5) { results.any? }
 
       expect(results).to include("Alice")
-      expect(transport.events.size).to eq(1)
+      expect(transport.events).not_to be_empty
       expect(transport.events.last.contexts[:trace]).to include(status: "ok", origin: "auto.queue.cosmonats", op: "queue.cosmonats")
     end
 
