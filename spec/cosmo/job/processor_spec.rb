@@ -332,4 +332,91 @@ RSpec.describe Cosmo::Job::Processor do
       end
     end
   end
+
+  context "with Sentry integration" do
+    let(:processor_class) do
+      stub_const("Cosmo::Job::SentryProcessor", Class.new(Cosmo::Job::Processor) do
+        prepend Cosmo::Sentry::JobProcessorMiddleware
+      end)
+    end
+    let(:processor) { processor_class.new(pool, running, {}) }
+    let(:transport) { Sentry.get_current_client.transport }
+
+    before(:all) do
+      require "sentry-ruby"
+      require "cosmo/sentry/job_processor_middleware"
+
+      Sentry.init do |config|
+        config.dsn = "http://12345:67890@sentry.localdomain/sentry/42"
+        config.background_worker_threads = 0
+        config.traces_sample_rate = 1.0
+        config.transport.transport_class = Sentry::DummyTransport
+      end
+    end
+
+    before do
+      transport.events.clear
+
+      stub_const("GreeterJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(name) = Results.instance << name
+      end)
+
+      stub_const("GreeterJobFail", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(_name) = raise "Boom!"
+      end)
+    end
+
+    it "calls successfully" do
+      GreeterJob.perform_async("Alice")
+      wait_until(timeout: 5) { results.any? }
+
+      expect(results).to include("Alice")
+      expect(transport.events).not_to be_empty
+      expect(transport.events.last.contexts[:trace]).to include(
+        status: "ok",
+        origin: "auto.queue.cosmonats",
+        op: "queue.cosmonats"
+      )
+      expect(transport.events.last.contexts[:trace][:data]).to include(
+        "messaging.message.id" => be_kind_of(String),
+        "messaging.destination.name" => "default:jobs.default.greeter_job",
+        "messaging.message.retry.count" => 0,
+        "http.response.status_code" => 200
+      )
+    end
+
+    it "handles error" do
+      GreeterJobFail.perform_async("Alice")
+      wait_until(timeout: 5) { transport.events.size > 1 }
+
+      error = transport.events.find { _1.instance_of?(Sentry::ErrorEvent) }
+      expect(error.contexts[:cosmonats]).to include(
+        class: "GreeterJobFail",
+        args: ["Alice"],
+        nats_stream: "default",
+        nats_subject: "jobs.default.greeter_job_fail"
+      )
+      expect(error.contexts[:trace]).to include(trace_id: a_kind_of(String), span_id: a_kind_of(String))
+      expect(error.exception.values.first.type).to eq("RuntimeError")
+      expect(error.exception.values.first.value).to match("Boom!")
+
+      error = transport.events.find { _1.instance_of?(Sentry::TransactionEvent) }
+      expect(error.contexts[:trace]).to include(status: "internal_error", origin: "auto.queue.cosmonats", op: "queue.cosmonats")
+      expect(error.contexts[:trace]).to include(trace_id: a_kind_of(String), span_id: a_kind_of(String))
+      expect(error.contexts[:trace][:data]).to include(
+        "messaging.message.id" => be_kind_of(String),
+        "messaging.destination.name" => "default:jobs.default.greeter_job_fail",
+        "messaging.message.retry.count" => 0,
+        "http.response.status_code" => 500
+      )
+    end
+  end
 end

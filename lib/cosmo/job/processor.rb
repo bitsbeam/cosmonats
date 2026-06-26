@@ -79,13 +79,10 @@ module Cosmo
           sw = stopwatch
           Logger.with(jid: data[:jid])
           Logger.info "start"
-          instance = worker_class.new
-          instance.jid = data[:jid]
-          if duration
-            Timeout.timeout(duration) { instance.perform(*data[:args]) }
-          else
-            instance.perform(*data[:args])
-          end
+
+          instance = worker_class.new.tap { |w| w.jid = data[:jid] }
+          perform_job(instance, data: data, message: message, duration: duration)
+
           message.ack
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
           true
@@ -190,6 +187,21 @@ module Cosmo
           API::Counter.instance.with(&block)
         end
       end
+
+      # @param job_instance [Cosmo::Job]
+      # @param data [Hash]
+      # @param message [NATS::Msg]
+      # @param duration [Float, nil]
+      #
+      # rubocop:disable Lint/UnusedMethodArgument
+      def perform_job(job_instance, data:, message:, duration: nil)
+        if duration
+          Timeout.timeout(duration) { job_instance.perform(*data[:args]) }
+        else
+          job_instance.perform(*data[:args])
+        end
+      end
+      # rubocop:enable Lint/UnusedMethodArgument
     end
   end
 end
