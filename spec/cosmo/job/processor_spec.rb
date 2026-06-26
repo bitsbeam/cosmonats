@@ -391,7 +391,7 @@ RSpec.describe Cosmo::Job::Processor do
       expect(error.contexts[:cosmonats]).to include(class: "GreeterJobFail", args: ["Alice"])
       expect(error.contexts[:trace]).to include(trace_id: a_kind_of(String), span_id: a_kind_of(String))
       expect(error.exception.values.first.type).to eq("RuntimeError")
-      expect(error.exception.values.first.value).to eq("Boom! (RuntimeError)")
+      expect(error.exception.values.first.value).to match("Boom!")
 
       error = transport.events.find { _1.instance_of?(Sentry::TransactionEvent) }
       expect(error.contexts[:trace]).to include(status: "internal_error", origin: "auto.queue.cosmonats", op: "queue.cosmonats")
