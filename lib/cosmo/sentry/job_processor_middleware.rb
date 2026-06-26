@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength
+# rubocop:disable Metrics/MethodLength, Metrics/AbcSize
 module Cosmo
   module Sentry
     module JobProcessorMiddleware
@@ -12,8 +12,9 @@ module Cosmo
 
       # @param job_instance [Cosmo::Job]
       # @param data [Hash]
+      # @param message [NATS::Msg]
       # @param duration [Float, nil]
-      def perform_job(job_instance, data:, duration: nil)
+      def perform_job(job_instance, data:, message:, duration: nil)
         unless ::Sentry.initialized?
           super
           return
@@ -29,6 +30,9 @@ module Cosmo
           op: OP_NAME,
           origin: SPAN_ORIGIN
         )
+        transaction&.set_data("messaging.message.id", data[:jid])
+        transaction&.set_data("messaging.destination.name", "#{message.metadata.stream}:#{message.subject}")
+        transaction&.set_data("messaging.message.retry.count", data[:retry] || 0)
 
         begin
           super
@@ -38,8 +42,17 @@ module Cosmo
         rescue StandardError => e
           ::Sentry.capture_exception(
             e,
-            contexts: { cosmonats: data, duration: duration },
-            hint: { background: true, integration: "cosmonats" }
+            contexts: {
+              cosmonats: data.merge(
+                nats_stream: message.metadata.stream,
+                nats_subject: message.subject,
+                timeout_duration: duration
+              )
+            },
+            hint: {
+              background: true,
+              integration: "cosmonats"
+            }
           )
           transaction&.set_http_status(STATUS_FAIL)
           transaction&.finish
@@ -50,4 +63,4 @@ module Cosmo
     end
   end
 end
-# rubocop:enable Metrics/MethodLength
+# rubocop:enable Metrics/MethodLength, Metrics/AbcSize

@@ -380,7 +380,17 @@ RSpec.describe Cosmo::Job::Processor do
 
       expect(results).to include("Alice")
       expect(transport.events).not_to be_empty
-      expect(transport.events.last.contexts[:trace]).to include(status: "ok", origin: "auto.queue.cosmonats", op: "queue.cosmonats")
+      expect(transport.events.last.contexts[:trace]).to include(
+        status: "ok",
+        origin: "auto.queue.cosmonats",
+        op: "queue.cosmonats"
+      )
+      expect(transport.events.last.contexts[:trace][:data]).to include(
+        "messaging.message.id" => be_kind_of(String),
+        "messaging.destination.name" => "default:jobs.default.greeter_job",
+        "messaging.message.retry.count" => 0,
+        "http.response.status_code" => 200
+      )
     end
 
     it "handles error" do
@@ -388,7 +398,12 @@ RSpec.describe Cosmo::Job::Processor do
       wait_until(timeout: 5) { transport.events.size > 1 }
 
       error = transport.events.find { _1.instance_of?(Sentry::ErrorEvent) }
-      expect(error.contexts[:cosmonats]).to include(class: "GreeterJobFail", args: ["Alice"])
+      expect(error.contexts[:cosmonats]).to include(
+        class: "GreeterJobFail",
+        args: ["Alice"],
+        nats_stream: "default",
+        nats_subject: "jobs.default.greeter_job_fail"
+      )
       expect(error.contexts[:trace]).to include(trace_id: a_kind_of(String), span_id: a_kind_of(String))
       expect(error.exception.values.first.type).to eq("RuntimeError")
       expect(error.exception.values.first.value).to match("Boom!")
@@ -396,6 +411,12 @@ RSpec.describe Cosmo::Job::Processor do
       error = transport.events.find { _1.instance_of?(Sentry::TransactionEvent) }
       expect(error.contexts[:trace]).to include(status: "internal_error", origin: "auto.queue.cosmonats", op: "queue.cosmonats")
       expect(error.contexts[:trace]).to include(trace_id: a_kind_of(String), span_id: a_kind_of(String))
+      expect(error.contexts[:trace][:data]).to include(
+        "messaging.message.id" => be_kind_of(String),
+        "messaging.destination.name" => "default:jobs.default.greeter_job_fail",
+        "messaging.message.retry.count" => 0,
+        "http.response.status_code" => 500
+      )
     end
   end
 end

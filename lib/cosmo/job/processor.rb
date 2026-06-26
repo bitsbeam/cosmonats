@@ -81,7 +81,7 @@ module Cosmo
           Logger.info "start"
 
           instance = worker_class.new.tap { |w| w.jid = data[:jid] }
-          perform_job(instance, data: data, duration: duration)
+          perform_job(instance, data: data, message: message, duration: duration)
 
           message.ack
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
@@ -190,14 +190,18 @@ module Cosmo
 
       # @param job_instance [Cosmo::Job]
       # @param data [Hash]
+      # @param message [NATS::Msg]
       # @param duration [Float, nil]
-      def perform_job(job_instance, data:, duration: nil)
+      #
+      # rubocop:disable Lint/UnusedMethodArgument
+      def perform_job(job_instance, data:, message:, duration: nil)
         if duration
           Timeout.timeout(duration) { job_instance.perform(*data[:args]) }
         else
           job_instance.perform(*data[:args])
         end
       end
+      # rubocop:enable Lint/UnusedMethodArgument
     end
   end
 end
