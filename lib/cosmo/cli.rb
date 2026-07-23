@@ -124,7 +124,7 @@ module Cosmo
             class_name = entry.delete(:class)
             API::Cron.instance.upsert!(**entry, name: name, class_name: class_name)
             sum + 1
-          end
+          end.to_i
 
           puts "Cron sync complete: #{schedules} schedule(s) registered" unless schedules.zero?
           puts "Cosmo streams#{" and cron schedules" unless schedules.zero?} set up successfully."
