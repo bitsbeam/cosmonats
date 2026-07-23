@@ -5,6 +5,7 @@
               hx-target="#content"
               hx-swap="innerHTML"
               hx-push-url="true"
+              hx-indicator="#global-spinner"
               class="btn <%= "btn-primary" if @stream_name.to_s == stream_name.to_s %>">
         <%= h(stream_name) %>
       </button>
@@ -66,6 +67,7 @@
       <a hx-get="<%= url_for('/jobs/_enqueued', stream_name: @stream_name, page: @page - 1, limit: @limit) %>"
          hx-target="#enqueued-poller"
          hx-swap="outerHTML"
+         hx-indicator="#global-spinner"
          class="btn">&#x2190; Prev</a>
     <% else -%>
       <span class="btn btn-disabled">&#x2190; Prev</span>
@@ -77,6 +79,7 @@
       <a hx-get="<%= url_for('/jobs/_enqueued', stream_name: @stream_name, page: @page + 1, limit: @limit) %>"
          hx-target="#enqueued-poller"
          hx-swap="outerHTML"
+         hx-indicator="#global-spinner"
          class="btn">Next &#x2192;</a>
     <% else -%>
       <span class="btn btn-disabled">Next &#x2192;</span>

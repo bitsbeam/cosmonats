@@ -509,6 +509,23 @@ details code { display: block; max-width: 400px; white-space: pre-wrap; }
 .htmx-request .htmx-indicator,
 .htmx-request.htmx-indicator   { opacity: 1; }
 
+#global-spinner {
+  position: fixed;
+  top: var(--space-2x);
+  right: var(--space-2x);
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  z-index: 100;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .nav            { flex-wrap: wrap; }
