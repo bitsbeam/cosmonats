@@ -19,7 +19,8 @@
       <a href="<%= url_for('/jobs/busy') %>"
          hx-get="<%= url_for('/jobs/busy') %>"
          hx-target="#content"
-         hx-push-url="true">&#x23F3; Busy</a>
+         hx-push-url="true"
+         hx-indicator="#global-spinner">&#x23F3; Busy</a>
     </p>
   </article>
   <article class="stat-card">
@@ -29,6 +30,7 @@
          hx-get="<%= url_for('/jobs/enqueued') %>"
          hx-target="#content"
          hx-push-url="true"
+         hx-indicator="#global-spinner"
          class="<%= 'active' if referrer?('/jobs/enqueued') %>">&#x1F4EC; Enqueued</a>
     </p>
   </article>
@@ -39,6 +41,7 @@
          hx-get="<%= url_for('/jobs/scheduled') %>"
          hx-target="#content"
          hx-push-url="true"
+         hx-indicator="#global-spinner"
          class="<%= 'active' if referrer?('/jobs/scheduled') %>">&#x23F0; Scheduled</a>
     </p>
   </article>
@@ -49,6 +52,7 @@
          hx-get="<%= url_for('/jobs/dead') %>"
          hx-target="#content"
          hx-push-url="true"
+         hx-indicator="#global-spinner"
          class="<%= 'active' if referrer?('/jobs/dead') %>">&#x1F480; Dead</a>
     </p>
   </article>
