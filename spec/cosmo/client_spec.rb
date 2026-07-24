@@ -146,6 +146,11 @@ RSpec.describe Cosmo::Client do
 
       expect(client.list_streams.map { _1.dig("config", "name") }).to eq([stream_name])
     end
+
+    it "returns [] when NATS times out" do
+      allow(client.nc).to receive(:request).and_raise(NATS::IO::Timeout)
+      expect(client.list_streams).to eq([])
+    end
   end
 
   describe "#get_message" do

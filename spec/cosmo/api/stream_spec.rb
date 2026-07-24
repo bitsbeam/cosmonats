@@ -54,6 +54,15 @@ RSpec.describe Cosmo::API::Stream do
     end
   end
 
+  describe "#retries" do
+    subject(:stream) { described_class.new(stream_name) }
+
+    it "returns 0 when NATS times out listing consumers" do
+      allow(client).to receive(:list_consumers).and_raise(NATS::IO::Timeout)
+      expect(stream.retries).to eq(0)
+    end
+  end
+
   describe "#message" do
     subject(:stream) { described_class.new(stream_name) }
 

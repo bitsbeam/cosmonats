@@ -45,6 +45,8 @@ module Cosmo
 
       def retries
         client.list_consumers(name).sum { _1["num_redelivered"].to_i }
+      rescue NATS::Error
+        0
       end
 
       def each

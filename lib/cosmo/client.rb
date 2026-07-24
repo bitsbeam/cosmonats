@@ -69,6 +69,8 @@ module Cosmo
       return [] if data.nil? || data["streams"].nil?
 
       data["streams"]
+    rescue NATS::Error
+      []
     end
 
     def pause_stream(name)
