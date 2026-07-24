@@ -101,8 +101,8 @@ module Cosmo
       js.consumer_info(stream_name, consumer_name)
     end
 
-    def get_message(name, **options)
-      js.get_msg(name, **options)
+    def get_message(stream_name, **options)
+      js.get_msg(stream_name, **options)
     end
 
     def delete_message(name, seq)

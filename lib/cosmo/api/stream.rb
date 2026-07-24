@@ -50,16 +50,17 @@ module Cosmo
       def each
         return if total.zero?
 
-        state = info[:state]
-        current = @offset || state.first_seq.to_i
-        last = state.last_seq.to_i
+        candidates = {}
+        current, last, subjects = scan_range
 
         loop do
           break if current > last
 
-          job = message(current)
-          current += 1
-          next unless job
+          subject, job = next_candidate(subjects, candidates, current)
+          break unless job
+
+          candidates.delete(subject)
+          current = job.seq.to_i + 1
 
           yield job
         end
@@ -119,6 +120,33 @@ module Cosmo
       end
 
       private
+
+      def scan_range
+        data = info
+        state = data[:state]
+        current = @offset || state.first_seq.to_i
+        subjects = Array(data[:config].subjects).reject { _1.start_with?(Cron::Entry::SUBJECT_PREFIX) }
+        [current, state.last_seq.to_i, subjects]
+      end
+
+      # Lowest-seq message at or after current across all job subject filters,
+      # caching each subject's next candidate so it isn't re-queried every step.
+      def next_candidate(subjects, candidates, current)
+        subjects.each do |subject|
+          next if candidates.key?(subject)
+
+          candidates[subject] = next_message(subject, current)
+        end
+
+        candidates.compact.min_by { |_, msg| msg.seq.to_i }
+      end
+
+      # Jump straight to the next message on the subject after seq, skipping any acked/deleted gaps
+      def next_message(subject, seq)
+        Job.new(name, client.get_message(name, next: true, seq: seq, subject: subject, direct: true))
+      rescue NATS::JetStream::Error::NotFound
+        nil
+      end
 
       def client
         self.class.client
