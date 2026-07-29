@@ -71,6 +71,13 @@ bundle exec cosmo -C config/cosmo.yml -c 20 streams # Streams only
   - [Streams](#streams)
   - [Configuration](#configuration)
 - [Advanced Usage](#-advanced-usage)
+  - [Cron](#cron)
+  - [Priority Queues](#priority-queues)
+  - [Concurrency Limiting](#concurrency-limiting)
+  - [Custom Serializers](#custom-serializers)
+  - [Error Handling](#error-handling)
+  - [Testing](#testing)
+  - [Integrations](#integrations)
 - [CLI Reference](#-cli-reference)
 - [Deployment](#-deployment)
 - [Monitoring](#-monitoring)
@@ -138,6 +145,8 @@ nothing else to run.
 - **Automatic retries** — exponential backoff, configurable attempts
 - **Dead letter queue** — capture permanently failed jobs
 - **Job uniqueness** — prevent duplicate execution
+- **Concurrency limits** — cap simultaneous executions per class or per key
+- **Cron scheduling** — recurring jobs manageable live from the web UI
 
 ### 🌊 Stream Processing
 - **Real-time event streams** — process continuous data feeds
@@ -145,6 +154,7 @@ nothing else to run.
 - **Message replay** — reprocess from any point in time
 - **Consumer groups** — load-balanced across workers
 - **Custom serialization** — JSON, MessagePack, Protobuf
+- **Pause / resume** — stop and restart a stream's processing without losing its position
 
 
 ## 📦 Installation
@@ -407,7 +417,48 @@ export COSMO_STREAMS_FETCH_TIMEOUT=0.1
 
 ## 🔧 Advanced Usage
 
-**Priority Queues:**
+### Cron
+
+Recurring jobs, without a separate scheduler process. A schedule is just a message parked in the
+job's own NATS stream (requires NATS Server 2.14+) — NATS fires it on the cron expression, and it
+lands back in the stream as a regular job. Deploy it once; whatever's in NATS is exactly what runs
+and exactly what shows up in the web UI's **Crons** tab, where each entry can be inspected, run
+immediately, or deleted.
+
+Declare schedules right in `config/cosmo.yml`:
+
+```yaml
+setup:
+  cron:
+    daily_report:
+      class: ReportJob
+      schedule: "@daily"        # @-shortcuts are passed straight through to NATS
+      stream: default
+    weekday_digest:
+      class: ReportJob
+      schedule: "0 9 * * 1-5"   # 6-field NATS cron (seconds first); 5-field UNIX cron is auto-normalized
+      stream: default
+      args: ["daily"]
+      timezone: America/New_York # optional, cron expressions only
+```
+
+`cosmo -C config/cosmo.yml -S` syncs it — whatever's in the file is exactly what ends up scheduled in NATS, same as streams.
+
+Prefer to manage schedules at runtime instead? The same operations are available from Ruby:
+
+```ruby
+Cosmo::API::Cron.instance.upsert!(
+  class_name: "ReportJob", stream: "default", schedule: "0 9 * * 1-5",
+  args: ["daily"], timezone: "America/New_York", name: "weekday_report"
+)
+
+Cosmo::API::Cron.instance.all                                    # every schedule currently deployed
+Cosmo::API::Cron.instance.run_now!("cosmo.cron.default.report_job.weekday_report")  # bypass the timer
+Cosmo::API::Cron.instance.delete!("cosmo.cron.default.report_job.weekday_report")   # stop future firings
+```
+
+### Priority Queues
+
 ```ruby
 class UrgentJob
   include Cosmo::Job
@@ -415,7 +466,30 @@ class UrgentJob
 end
 ```
 
-**Custom Serializers:**
+### Concurrency Limiting
+
+```ruby
+class ThirdPartyApiJob
+  include Cosmo::Job
+  # At most 3 instances of this job run at once, cluster-wide.
+  # Jobs that lose the race are NAK'd with a delay equal to `duration`
+  # so they aren't redelivered until a slot is guaranteed free.
+  options limit: { duration: 30, concurrency: 3 }
+end
+
+class PerAccountSyncJob
+  include Cosmo::Job
+  # Scope the cap per key instead of class-wide — e.g. one concurrent sync per account.
+  options limit: { duration: 30, concurrency: { to: 1, key: ->(account_id) { account_id } } }
+
+  def perform(account_id)
+    Account.find(account_id).sync!
+  end
+end
+```
+
+### Custom Serializers
+
 ```ruby
 module MessagePackSerializer
   def self.serialize(data) = MessagePack.pack(data)
@@ -428,7 +502,8 @@ class FastStream
 end
 ```
 
-**Error Handling:**
+### Error Handling
+
 ```ruby
 class ResilientJob
   include Cosmo::Job
@@ -446,7 +521,8 @@ class ResilientJob
 end
 ```
 
-**Testing:**
+### Testing
+
 ```ruby
 # Synchronous — no NATS needed
 SendEmailJob.perform_sync(123, "test")
@@ -455,6 +531,40 @@ SendEmailJob.perform_sync(123, "test")
 jid = SendEmailJob.perform_async(123, "welcome")
 assert_kind_of String, jid
 ```
+
+
+### Integrations
+
+**ActiveJob:**
+```ruby
+# config/application.rb
+config.active_job.queue_adapter = :cosmonats
+```
+The ActiveJob queue name maps directly to a Cosmo stream. Use `cosmo_options` for anything
+Cosmo-specific — retries, DLQ behavior, or overriding the target stream:
+```ruby
+class ReportJob < ApplicationJob
+  cosmo_options retry: 5, dead: false, stream: :critical
+
+  def perform(report_id)
+    Report.find(report_id).generate!
+  end
+end
+```
+Inside a Rails app this is wired up automatically by the bundled Railtie — it registers the
+adapter and loads `config/cosmo.yml` if present. Outside Rails:
+```ruby
+require "cosmo/active_job"
+ActiveJob::Base.queue_adapter = Cosmo::ActiveJobAdapter::Adapter.new
+```
+
+**Sentry:**
+```ruby
+require "cosmo/sentry/auto"
+```
+Wraps every job execution in a Sentry transaction (`queue.cosmonats`) and captures unhandled
+exceptions with the job's id, stream, subject, and retry count attached as context — no other
+setup beyond having `sentry-ruby` initialized.
 
 
 ## 🖥️ CLI Reference
@@ -541,6 +651,12 @@ sudo systemctl enable cosmo && sudo systemctl start cosmo
 
 
 ## 📊 Monitoring
+
+**Web UI** — mount `Cosmo::Web` (see [Installation](#-installation)) for a live, htmx-powered dashboard:
+- **Jobs** — enqueued, scheduled, busy, and dead views, with per-job retry and delete
+- **Streams** — per-stream state (messages, bytes, consumers) with pause/resume
+- **Crons** — every schedule deployed in NATS, with run-now and delete
+- Summary counters (processed / failed / busy / enqueued / retries / scheduled / dead) backed by a NATS KV counter, no separate metrics store needed
 
 **Structured logs:**
 ```
