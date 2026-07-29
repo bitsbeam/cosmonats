@@ -64,21 +64,36 @@
   <% if @total_pages > 1 -%>
   <div class="pagination">
     <% if @page > 1 -%>
-      <a hx-get="<%= url_for('/jobs/_enqueued', stream_name: @stream_name, page: @page - 1, limit: @limit) %>"
+      <a hx-get="<%= url_for('/jobs/enqueued', stream_name: @stream_name, page: @page - 1, limit: @limit) %>"
          hx-target="#enqueued-poller"
          hx-swap="outerHTML"
+         hx-push-url="true"
          hx-indicator="#global-spinner"
          class="btn">&#x2190; Prev</a>
     <% else -%>
       <span class="btn btn-disabled">&#x2190; Prev</span>
     <% end -%>
 
-    <span class="text-muted">Page <%= @page %> of <%= @total_pages %></span>
+    <% pages(@page, @total_pages).each do |p| -%>
+      <% if p == :gap -%>
+        <span class="pagination-gap">&hellip;</span>
+      <% elsif p == @page -%>
+        <span class="btn btn-primary btn-disabled"><%= p %></span>
+      <% else -%>
+        <a hx-get="<%= url_for('/jobs/enqueued', stream_name: @stream_name, page: p, limit: @limit) %>"
+           hx-target="#enqueued-poller"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           hx-indicator="#global-spinner"
+           class="btn"><%= p %></a>
+      <% end -%>
+    <% end -%>
 
     <% if @page < @total_pages -%>
-      <a hx-get="<%= url_for('/jobs/_enqueued', stream_name: @stream_name, page: @page + 1, limit: @limit) %>"
+      <a hx-get="<%= url_for('/jobs/enqueued', stream_name: @stream_name, page: @page + 1, limit: @limit) %>"
          hx-target="#enqueued-poller"
          hx-swap="outerHTML"
+         hx-push-url="true"
          hx-indicator="#global-spinner"
          class="btn">Next &#x2192;</a>
     <% else -%>

@@ -67,6 +67,21 @@ module Cosmo
           Rack::Utils.escape(value.to_s)
         end
 
+        # Build the list of page numbers to render around the current page, with
+        # `:gap` markers where numbers are skipped.
+        #   pages(5, 20) # => [1, :gap, 3, 4, 5, 6, 7, :gap, 20]
+        def pages(page, total_pages, window: 2)
+          return [] if total_pages <= 1
+
+          previous = nil
+          candidates = ([1, total_pages] + ((page - window)..(page + window)).to_a).grep(1..total_pages).uniq.sort
+          candidates.each_with_object([]) do |p, result|
+            pagination_fill_gap(result, previous, p)
+            result << p
+            previous = p
+          end
+        end
+
         def current_page?(path)
           request_path = @request.path_info
           request_path = "/" if request_path.empty?
@@ -84,6 +99,15 @@ module Cosmo
           referrer_path = referrer_path.delete_prefix(script_name) if script_name && !script_name.empty?
           referrer_path = "/" if referrer_path.empty?
           referrer_path == path
+        end
+
+        private
+
+        def pagination_fill_gap(result, previous, page)
+          return unless previous
+
+          result << (previous + 1) if page - previous == 2
+          result << :gap if page - previous > 2
         end
       end
     end

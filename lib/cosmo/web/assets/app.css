@@ -489,6 +489,13 @@ time {
   cursor: default;
   pointer-events: none;
 }
+.pagination .btn-primary.btn-disabled {
+  opacity: 1;
+}
+.pagination-gap {
+  color: var(--color-text-light);
+  padding: 0 var(--space-1-2);
+}
 
 /* ── Actions ───────────────────────────────────────────────────────────── */
 .actions-form { display: flex; flex-direction: column; gap: var(--space-1-2); }
