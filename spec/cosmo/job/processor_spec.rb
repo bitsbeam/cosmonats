@@ -86,6 +86,25 @@ RSpec.describe Cosmo::Job::Processor do
       end.not_to change { results.size }.from(1)
     end
 
+    it "exposes enqueued_at, attempt, and scheduled_by on the job instance" do
+      stub_const("MetaJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(tag) = Results.instance << { tag: tag, enqueued_at: enqueued_at, attempt: attempt, scheduled_by: scheduled_by }
+      end)
+
+      MetaJob.perform_async("meta")
+      wait_until(timeout: 5) { results.any? }
+
+      result = results.first
+      expect(result[:tag]).to eq("meta")
+      expect(result[:enqueued_at]).to be_within(5).of(Time.now)
+      expect(result[:attempt]).to eq(1)
+      expect(result[:scheduled_by]).to be_nil
+    end
+
     it "has subscriptions for all configured priority tiers and processes jobs from each" do
       %w[default high critical low].each do |stream_name|
         stub_const("#{stream_name.capitalize}TierJob", Class.new do

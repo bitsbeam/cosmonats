@@ -33,6 +33,12 @@ module Cosmo
 
     attr_accessor jid: ::String
 
+    attr_accessor enqueued_at: ::Time?
+
+    attr_accessor attempt: ::Integer?
+
+    attr_accessor scheduled_by: ::String?
+
     def perform: (*untyped) -> untyped
 
     def logger: () -> untyped

@@ -110,7 +110,7 @@ module Cosmo
       end
     end
 
-    attr_accessor :jid
+    attr_accessor :jid, :enqueued_at, :attempt, :scheduled_by
 
     def perform(...)
       raise NotImplementedError, "#{self.class}#perform must be implemented"

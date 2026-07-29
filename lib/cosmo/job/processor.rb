@@ -80,7 +80,12 @@ module Cosmo
           Logger.with(jid: data[:jid])
           Logger.info "start"
 
-          instance = worker_class.new.tap { |w| w.jid = data[:jid] }
+          instance = worker_class.new.tap do |worker|
+            worker.jid = data[:jid]
+            worker.enqueued_at = message.metadata.timestamp
+            worker.attempt = message.metadata.num_delivered
+            worker.scheduled_by = message.header&.dig("Nats-Scheduler")
+          end
           perform_job(instance, data: data, message: message, duration: duration)
 
           message.ack
