@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `retry_in` option for concurrency-limited jobs, to control the NAK delay when a slot can't be acquired (defaults to half of `duration`)
+- Page-number pagination with gap markers (`:gap`) for the enqueued jobs list, plus improved navigation
+- README examples for cron, concurrency limits, custom serializers, and integrations
+
+### Changed
+
+- `Cosmo::Api::Kv#set` now uses a single CAS publish instead of a get-then-retry sequence
+- Concurrency slots are released via a new tombstone-free `Kv#erase`, so a released slot is indistinguishable from one reclaimed by TTL expiry
+
 ## [0.4.1] - 2026-07-24
 
 ### Added
