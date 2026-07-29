@@ -20,9 +20,9 @@ RSpec.describe Cosmo::API::KV do
       expect(kv.get("mykey")&.value).to eq("myvalue")
     end
 
-    it "creates a new key and returns an entry" do
-      entry = ttl_kv.set("slot/0", "job-1", ttl: 30)
-      expect(entry).not_to be_nil
+    it "creates a new key and returns the new revision" do
+      seq = ttl_kv.set("slot/0", "job-1", ttl: 30)
+      expect(seq).to be_a(Integer)
       expect(ttl_kv.get("slot/0")&.value).to eq("job-1")
     end
 
@@ -31,18 +31,22 @@ RSpec.describe Cosmo::API::KV do
       expect { ttl_kv.set("slot/0", "job-2", ttl: 30) }.to raise_error(NATS::KeyValue::KeyWrongLastSequenceError)
     end
 
-    it "reclaims a deleted key atomically" do
+    it "reclaims an erased key atomically" do
       ttl_kv.set("slot/0", "job-1", ttl: 30)
-      ttl_kv.delete("slot/0")
+      ttl_kv.erase("slot/0")
       ttl_kv.set("slot/0", "job-2", ttl: 30)
       expect(ttl_kv.get("slot/0")&.value).to eq("job-2")
     end
 
-    it "reclaims a purged key atomically" do
+    it "reclaims none atomically because of a tombstone" do
+      # delete/purge are for non-ttl buckets. On a ttl bucket they leave a
+      # KV-Operation tombstone occupying the subject's next sequence, which a
+      # plain last_seq: 0 CAS can never satisfy -- use #erase instead (see
+      # Job::Limit#release). Documenting this on purpose so the limitation
+      # isn't rediscovered by surprise.
       ttl_kv.set("slot/0", "job-1", ttl: 30)
-      ttl_kv.purge("slot/0")
-      ttl_kv.set("slot/0", "job-2", ttl: 30)
-      expect(ttl_kv.get("slot/0")&.value).to eq("job-2")
+      ttl_kv.delete("slot/0")
+      expect { ttl_kv.set("slot/0", "job-2", ttl: 30) }.to raise_error(NATS::KeyValue::KeyWrongLastSequenceError)
     end
   end
 

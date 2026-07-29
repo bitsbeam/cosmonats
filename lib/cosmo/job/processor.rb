@@ -107,7 +107,7 @@ module Cosmo
 
       # Tries to acquire a concurrency slot for the job.
       # Returns the slot key (String) on success, or false if all slots are
-      # taken (message is NAK'd with a delay equal to +duration+ before returning).
+      # taken (a message is NAK'd with a delay of +retry_in+ before returning
       def acquire_concurrency_slot(worker_class, message, data)
         options = worker_class.concurrency_options
         key = worker_class.concurrency_key(data[:args])
@@ -115,7 +115,7 @@ module Cosmo
         slot = Limit.instance.acquire(key, jid: data[:jid], limit: options[:limit], duration: options[:duration])
         return slot if slot
 
-        message.nak(delay: options[:duration] * Config::NANO)
+        message.nak(delay: options[:retry_in] * Config::NANO)
         Logger.debug "concurrency limit reached for #{data[:class]}, re-queueing back #{data[:jid]}"
         false
       rescue NATS::Error => e

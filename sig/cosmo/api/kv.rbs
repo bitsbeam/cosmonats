@@ -19,10 +19,18 @@ module Cosmo
 
       def purge: (::String | ::Integer key) -> untyped
 
+      def erase: (::String | ::Integer key) -> ::Integer?
+
       def clean: () -> untyped
 
       def count: () -> ::Integer
       alias size count
+
+      private
+
+      def publish_cas: (::String | ::Integer key, ::String value, ::Integer? ttl, last_seq: ::Integer) -> untyped
+
+      def client: () -> Client
     end
   end
 end

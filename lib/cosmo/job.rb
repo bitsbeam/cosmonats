@@ -19,14 +19,19 @@ module Cosmo
       #   limit: { duration: 30 }
       #   limit: { duration: 30, concurrency: 3 }
       #   limit: { duration: 30, concurrency: { to: 3, key: ->(id) { id } } }
+      #   limit: { duration: 30, concurrency: 3, retry_in: 5 }
       #
       # @option config [Integer] :"limit[:duration]"    hard execution timeout in seconds. The job thread is
       #   killed after this many seconds and counts as a failed attempt (retried with exponential backoff,
       #   moved to DLQ after retries exhausted).
       # @option config [Integer, Hash] :"limit[:concurrency]"  caps how many instances run at once across all
-      #   workers. Jobs that cannot acquire a slot are NAK'd with a delay equal to +duration+ so they are not
-      #   re-delivered until the slot is guaranteed free. Requires +duration+.
+      #   workers. Jobs that cannot acquire a slot are NAK'd (see +retry_in+) so they are not re-delivered until
+      #   the slot is likely free. Requires +duration+.
       #   Pass an Integer for a class-wide cap, or <tt>{ to: N, key: ->(args) {} }</tt> to scope per key.
+      # @option config [Integer] :"limit[:retry_in]"    seconds to wait before NATS redelivers a job that was
+      #   NAK'd for lack of a concurrency slot (default: half of +duration+). Counts against the same delivery
+      #   counter as any other retry -- a job stuck behind the concurrency limit for enough consecutive
+      #   attempts is dropped/DLQ'd exactly like one that keeps failing outright.
       def options(**config)
         if config[:limit] && config.dig(:limit, :concurrency) && !config.dig(:limit, :duration).to_i.positive?
           raise ArgumentError, "limit: duration is required when concurrency is set"
@@ -41,15 +46,17 @@ module Cosmo
       end
 
       # Returns a normalized concurrency config hash, or +nil+ when not configured.
-      # Always contains +:limit+, +:key+, and +:duration+.
+      # Always contains +:limit+, +:key+, +:duration+, and +:retry_in+.
       def concurrency_options
         value = default_options.dig(:limit, :concurrency)
-        duration = default_options.dig(:limit, :duration).to_i
         return unless value
 
+        duration = default_options.dig(:limit, :duration).to_i
+        retry_in = default_options.dig(:limit, :retry_in)&.to_i || (duration / 2)
+
         case value
-        when Integer then { limit: value, key: nil, duration: duration }
-        when Hash    then { limit: value.fetch(:to), key: value[:key], duration: duration }
+        when Integer then { limit: value, key: nil, duration: duration, retry_in: retry_in }
+        when Hash    then { limit: value.fetch(:to), key: value[:key], duration: duration, retry_in: retry_in }
         end
       end
 

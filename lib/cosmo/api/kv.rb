@@ -8,39 +8,15 @@ module Cosmo
       def initialize(name, options = nil)
         @name = name
         @options = Hash(options)
-        @kv = Client.instance.kv(@name, **@options)
+        @kv = client.kv(@name, **@options)
       end
 
-      def set(key, value, ttl: nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      def set(key, value, ttl: nil)
         return kv.put(key, value.to_s) unless ttl
 
-        # Pass ttl: (seconds) to set a per-message expiry.
+        # Pass ttl: (seconds) to set per-message expiry.
         # Raises `NATS::KeyValue::KeyWrongLastSequenceError` when the key is live.
-        begin
-          value = value.to_s
-          put = lambda do |last_seq:|
-            headers = { "Nats-Expected-Last-Subject-Sequence" => last_seq.to_s, "Nats-TTL" => "#{ttl.to_i}s" }
-            Client.instance.js.publish("$KV.#{@name}.#{key}", value, header: headers)
-          rescue NATS::JetStream::Error::APIError => e
-            raise NATS::KeyValue::KeyWrongLastSequenceError, e.description if e.err_code == 10_071
-
-            raise
-          end
-
-          put.call(last_seq: 0)
-          kv.send(:_get, key) # fetch the created entry to get its revision
-        rescue NATS::KeyValue::KeyWrongLastSequenceError
-          # `kv.get` converts KeyDeletedError → KeyNotFoundError, hiding tombstone info.
-          # Use private _get instead — it raises KeyDeletedError with the entry's revision
-          begin
-            kv.send(:_get, key)
-          rescue NATS::KeyValue::KeyDeletedError => e
-            put.call(last_seq: e.entry.revision)
-            return kv.send(:_get, key)
-          end
-
-          raise
-        end
+        publish_cas(key, value.to_s, ttl, last_seq: 0).seq
       end
 
       def get(key)
@@ -49,6 +25,9 @@ module Cosmo
         # nop
       end
 
+      # Writes a KV-Operation tombstone. On a ttl-bearing bucket this leaves the
+      # subject occupied, so a subsequent #set(ttl:) CAS with last_seq: 0 will
+      # keep failing -- use #erase on those buckets instead.
       def delete(key)
         kv.delete(key)
       end
@@ -66,12 +45,21 @@ module Cosmo
         results
       end
 
+      # Writes a KV-Operation tombstone (same issue as #delete on ttl buckets).
       def purge(key)
         kv.purge(key)
       end
 
+      # Removes +key+ leaving no trace at all -- unlike #delete/#purge, which
+      # write a KV-Operation tombstone message. Mirrors how per-message
+      # Nats-TTL expiry removes a key, so callers never have to distinguish
+      # "deleted" from "TTL-expired" on read.
+      def erase(key)
+        client.purge("KV_#{@name}", "$KV.#{@name}.#{key}")
+      end
+
       def clean
-        Client.instance.purge("KV_#{@name}", ">")
+        client.purge("KV_#{@name}", ">")
       end
 
       def count
@@ -80,6 +68,26 @@ module Cosmo
         0
       end
       alias size count
+
+      private
+
+      # CAS = Compare-And-Swap: publish +value+ with a per-message Nats-TTL,
+      # but only if the subject's current last sequence matches +last_seq+
+      # (sent as the Nats-Expected-Last-Subject-Sequence header). Raises
+      # NATS::KeyValue::KeyWrongLastSequenceError if it doesn't match --
+      # e.g. last_seq: 0 means "only publish if nothing exists here yet".
+      def publish_cas(key, value, ttl, last_seq:)
+        headers = { "Nats-Expected-Last-Subject-Sequence" => last_seq.to_s, "Nats-TTL" => "#{ttl.to_i}s" }
+        client.js.publish("$KV.#{@name}.#{key}", value, header: headers)
+      rescue NATS::JetStream::Error::APIError => e
+        raise NATS::KeyValue::KeyWrongLastSequenceError, e.description if e.err_code == 10_071
+
+        raise
+      end
+
+      def client
+        Client.instance
+      end
     end
   end
 end

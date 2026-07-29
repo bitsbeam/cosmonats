@@ -9,8 +9,9 @@ module Cosmo
     #
     # Acquiring a slot is a single atomic `set` (CAS with last-revision=0).
     # Only one worker can win a given slot; losers try the next number.
-    # When a job finishes the slot is deleted; if the worker crashes NATS
-    # expires it automatically via the per-message Nats-TTL header.
+    # When a job finishes, the slot is erased; if the worker crashes, NATS
+    # expires it automatically via the per-message Nats-TTL header. Both
+    # paths leave the slot equally empty -- no tombstone, no delete marker.
     class Limit
       BUCKET = "cosmo_jobs_limits"
 
@@ -40,11 +41,14 @@ module Cosmo
         nil # all slots occupied
       end
 
-      # Release a previously acquired slot.
+      # Release a previously acquired slot. Erases the slot entirely (no
+      # tombstone left behind) so a released slot looks identical to one
+      # reclaimed by Nats-TTL expiry -- callers never have to special-case a
+      # delete marker.
       def release(slot)
-        @kv.delete(slot)
+        @kv.erase(slot)
       rescue NATS::Error
-        # best effort — slot TTL will reclaim it if delete fails
+        # best effort — slot TTL will reclaim it if erase fails
       end
     end
   end
