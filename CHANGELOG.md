@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `retry: false` is now accepted as an alias for `retry: 0` (no retries), for both `Cosmo::Job` and the ActiveJob adapter's `cosmo_options`
+
 ## [0.4.3] - 2026-07-30
 
 ### Added

@@ -63,7 +63,10 @@ module Cosmo
       end
 
       def retries
-        @options[:retry].nil? ? DEFAULTS[:retry] : @options[:retry]
+        return DEFAULTS[:retry] if @options[:retry].nil?
+        return 0 if @options[:retry] == false
+
+        @options[:retry]
       end
 
       def dead

@@ -272,8 +272,21 @@ RSpec.describe Cosmo::Job::Processor do
 
         ImmediatelyDeadJob.perform_async("trigger")
         wait_until(timeout: 5) { stream_size("dead") >= 1 }
+        expect(stream_size("default")).to eq(0)
+      end
 
-        expect(stream_size("dead")).to eq(1)
+      it "treats retry: false as retry: 0 and moves the failing job straight to DLQ" do
+        stub_const("NoRetryJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: false, dead: true
+
+          def perform(...) = raise "intentional failure"
+        end)
+        expect(stream_size("dead")).to eq(0)
+
+        NoRetryJob.perform_async("trigger")
+        wait_until(timeout: 5) { stream_size("dead") >= 1 }
         expect(stream_size("default")).to eq(0)
       end
 

@@ -27,7 +27,7 @@ module Cosmo
 
       def validate!: () -> void
 
-      def retries: () -> (Integer | bool)
+      def retries: () -> Integer
 
       def dead: () -> bool
     end

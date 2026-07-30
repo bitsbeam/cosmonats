@@ -11,24 +11,25 @@ module Cosmo
     end
 
     module ClassMethods
-      # @option config [Symbol]  :stream  NATS stream to publish to (default: :default)
-      # @option config [Integer] :retry   max delivery attempts before giving up (default: 3)
-      # @option config [Boolean] :dead    move to dead-letter stream after retries exhausted (default: true)
-      # @option config [Hash]    :limit   execution limits:
+      # @option config [Symbol] :stream NATS stream to publish to (default: :default)
+      # @option config [Integer, Boolean] :retry max delivery attempts before giving up (default: 3).
+      #   +false+ is treated as 0 (no retries).
+      # @option config [Boolean] :dead move to dead-letter stream after retries exhausted (default: true)
+      # @option config [Hash] :limit execution limits:
       #
       #   limit: { duration: 30 }
       #   limit: { duration: 30, concurrency: 3 }
       #   limit: { duration: 30, concurrency: { to: 3, key: ->(id) { id } } }
       #   limit: { duration: 30, concurrency: 3, retry_in: 5 }
       #
-      # @option config [Integer] :"limit[:duration]"    hard execution timeout in seconds. The job thread is
+      # @option config [Integer] :"limit[:duration]" hard execution timeout in seconds. The job thread is
       #   killed after this many seconds and counts as a failed attempt (retried with exponential backoff,
       #   moved to DLQ after retries exhausted).
-      # @option config [Integer, Hash] :"limit[:concurrency]"  caps how many instances run at once across all
+      # @option config [Integer, Hash] :"limit[:concurrency]" caps how many instances run at once across all
       #   workers. Jobs that cannot acquire a slot are NAK'd (see +retry_in+) so they are not re-delivered until
       #   the slot is likely free. Requires +duration+.
       #   Pass an Integer for a class-wide cap, or <tt>{ to: N, key: ->(args) {} }</tt> to scope per key.
-      # @option config [Integer] :"limit[:retry_in]"    seconds to wait before NATS redelivers a job that was
+      # @option config [Integer] :"limit[:retry_in]" seconds to wait before NATS redelivers a job that was
       #   NAK'd for lack of a concurrency slot (default: half of +duration+). Counts against the same delivery
       #   counter as any other retry -- a job stuck behind the concurrency limit for enough consecutive
       #   attempts is dropped/DLQ'd exactly like one that keeps failing outright.

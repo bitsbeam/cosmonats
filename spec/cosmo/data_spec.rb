@@ -22,6 +22,13 @@ RSpec.describe Cosmo::Job::Data do
     expect(data.as_json).to eq({ args: "args", class: "MyJob", dead: true, jid: "jid", retry: 3 })
   end
 
+  it "#as_json treats retry: false as 0" do
+    data = described_class.new("MyJob", "args", stream: "default", retry: false)
+    allow(data).to receive(:jid).and_return("jid")
+
+    expect(data.as_json).to eq({ args: "args", class: "MyJob", dead: true, jid: "jid", retry: 0 })
+  end
+
   it "#to_json" do
     allow(data).to receive(:jid).and_return("jid")
 

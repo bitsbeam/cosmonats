@@ -63,6 +63,16 @@ class OverriddenJob < CriticalJob
   cosmo_options retry: 1
 end
 
+class NoRetryJob < ActiveJob::Base
+  cosmo_options retry: false
+
+  def initialize
+    super
+    @queue_name = "default"
+    @arguments  = []
+  end
+end
+
 RSpec.describe Cosmo::ActiveJobAdapter do
   describe Cosmo::ActiveJobAdapter::Options do
     it "sets cosmo_options on the class" do
@@ -143,6 +153,19 @@ RSpec.describe Cosmo::ActiveJobAdapter do
             expect(payload[:dead]).to eq(false)
             expect(data.to_args[2][:stream]).to eq(:critical)
           end.and_return("jid-4")
+
+          adapter.enqueue(job)
+        end
+      end
+
+      context "when cosmo_options sets retry: false" do
+        let(:job) { NoRetryJob.new }
+
+        it "publishes retry: 0 in the payload" do
+          expect(Cosmo::Publisher).to receive(:publish_job) do |data|
+            payload = Cosmo::Utils::Json.parse(data.to_args[1])
+            expect(payload[:retry]).to eq(0)
+          end.and_return("jid-no-retry")
 
           adapter.enqueue(job)
         end

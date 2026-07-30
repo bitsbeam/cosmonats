@@ -13,7 +13,7 @@ module Cosmo
     #   end
     #
     # Options mirror those accepted by +Cosmo::Job+:
-    #   retry:  [Integer]  Number of retries before giving up (default: 3)
+    #   retry:  [Integer, Boolean]  Number of retries before giving up (default: 3). +false+ means 0 (no retries)
     #   dead:   [Boolean]  Move to DLQ when retries exhausted? (default: true)
     #   stream: [Symbol]   Override the NATS stream (default: derived from queue_name)
     module Options
