@@ -45,6 +45,12 @@ module Cosmo
               delay_ns = (execute_at - now) * 1_000_000_000
               message.nak(delay: delay_ns)
             end
+          rescue StandardError => e
+            # A transient failure here (e.g. a JetStream publish timeout) must not be allowed
+            # to escape #each and kill this thread — schedule_loop only runs once per processor,
+            # so an unhandled exception would silently stop all future scheduled-job dispatch.
+            Logger.error e
+            message.nak rescue nil
           end
 
           break unless running?

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `retry: false` is now accepted as an alias for `retry: 0` (no retries), for both `Cosmo::Job` and the ActiveJob adapter's `cosmo_options`
 
+### Fixed
+
+- A transient error while dispatching an overdue scheduled job (e.g. a slow JetStream publish) no longer kills the scheduler thread; the message is logged and NAK'd instead, so scheduled-job dispatch keeps running
+
 ## [0.4.3] - 2026-07-30
 
 ### Added
