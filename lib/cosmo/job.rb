@@ -33,10 +33,23 @@ module Cosmo
       #   NAK'd for lack of a concurrency slot (default: half of +duration+). Counts against the same delivery
       #   counter as any other retry -- a job stuck behind the concurrency limit for enough consecutive
       #   attempts is dropped/DLQ'd exactly like one that keeps failing outright.
+      # @option config [Proc] :retry_in <tt>->(count, exception) { }</tt> returns a number of seconds to
+      #   wait before redelivering a *failed* job. +count+ is a 1-based delivery attempt that just failed.
+      #   Falls back to the default backoff (<tt>attempt**4 + 15</tt> seconds) if not set or the proc returns
+      #   a non-numeric/non-positive value, or if it raises.
+      #
+      #   Caveat when combined with +limit[:concurrency]+: when there's no free slot to run in, the message is
+      #   put back on the stream using the +limit[:retry_in]+ delay described above, and that counts as an
+      #   attempt too -- the same +count+ goes up whether the job was turned away for lack of a free slot (via
+      #   +limit[:retry_in]+) or actually ran and failed. So a job that gets turned away twice for lack of a
+      #   slot, then finally runs and fails, calls this handler with +count == 3+, not 1. Don't read +count+ as
+      #   "how many times perform has actually run and failed" when concurrency limits are in play.
       def options(**config)
         if config[:limit] && config.dig(:limit, :concurrency) && !config.dig(:limit, :duration).to_i.positive?
           raise ArgumentError, "limit: duration is required when concurrency is set"
         end
+
+        raise ArgumentError, "retry_in must be callable, e.g. ->(count, exception) { ... }" if config[:retry_in] && !config[:retry_in].respond_to?(:call)
 
         default_options.merge!(config)
       end
@@ -44,6 +57,13 @@ module Cosmo
 
       def limits_concurrency?
         !!concurrency_options
+      end
+
+      # Returns the +retry_in+ Proc/lambda (taking +(count, exception)+) configured for this job class, or
+      # +nil+ when unset. Overridable by wrapper job classes (e.g. the ActiveJob executor) that need to
+      # resolve it from something other than +self+.
+      def retry_in(_data = nil)
+        default_options[:retry_in]
       end
 
       # Returns a normalized concurrency config hash, or +nil+ when not configured.

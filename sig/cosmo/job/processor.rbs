@@ -17,7 +17,11 @@ module Cosmo
 
       def process: (Array[untyped] messages, untyped processor) -> void
 
-      def handle_failure: (untyped message, Hash[Symbol, untyped] data) -> bool
+      def handle_failure: (untyped worker_class, untyped message, Hash[Symbol, untyped] data, Exception? exception) -> bool
+
+      def retry_delay: (untyped worker_class, Hash[Symbol, untyped] data, Integer current_attempt, Exception? exception) -> Numeric
+
+      def default_retry_delay: (Integer current_attempt) -> Integer
 
       def subscribe: (Symbol stream_name, Hash[Symbol, untyped] config) -> [untyped, Hash[Symbol, untyped], nil]
 

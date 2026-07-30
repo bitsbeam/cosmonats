@@ -73,6 +73,16 @@ class NoRetryJob < ActiveJob::Base
   end
 end
 
+class RetryInActiveJob < ActiveJob::Base
+  cosmo_options retry_in: ->(count, _exception) { count * 5 }
+
+  def initialize
+    super
+    @queue_name = "default"
+    @arguments  = []
+  end
+end
+
 RSpec.describe Cosmo::ActiveJobAdapter do
   describe Cosmo::ActiveJobAdapter::Options do
     it "sets cosmo_options on the class" do
@@ -121,6 +131,29 @@ RSpec.describe Cosmo::ActiveJobAdapter do
           )
         end
         executor.perform(job_data)
+      end
+    end
+
+    describe ".retry_in" do
+      it "resolves the retry_in proc from the underlying ActiveJob class's cosmo_options" do
+        data = { args: [{ job_class: "RetryInActiveJob" }] }
+
+        handler = described_class.retry_in(data)
+
+        expect(handler).to be_a(Proc)
+        expect(handler.call(3, nil)).to eq(15)
+      end
+
+      it "returns nil when the job class has no retry_in configured" do
+        data = { args: [{ job_class: "TestActiveJob" }] }
+
+        expect(described_class.retry_in(data)).to be_nil
+      end
+
+      it "falls back gracefully when the job class cannot be constantized" do
+        data = { args: [{ job_class: "TotallyUnknownJobXYZ" }] }
+
+        expect(described_class.retry_in(data)).to be_nil
       end
     end
   end

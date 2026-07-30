@@ -315,6 +315,53 @@ RSpec.describe Cosmo::Job::Processor do
         expect(stream_size("dead")).to eq(1)
       end
 
+      it "uses the job class's custom retry_in handler, passing it the attempt count and exception" do
+        stub_const("CustomRetryInJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 1, dead: true, retry_in: lambda { |count, exception|
+            Results.instance << { count: count, message: exception.message }
+            1
+          }
+
+          def perform
+            raise StandardError, "still broken"
+          end
+        end)
+
+        CustomRetryInJob.perform_async
+
+        # With the default backoff this would take ~16s; the custom retry_in returns 1s.
+        wait_until(timeout: 5) { stream_size("dead") >= 1 }
+        expect(results).to eq([{ count: 1, message: "still broken" }])
+        expect(stream_size("dead")).to eq(1)
+      end
+
+      it "falls back to the default backoff when retry_in raises or returns garbage" do
+        stub_const("BrokenRetryInJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 1, dead: true, retry_in: ->(count, _exception) { count.odd? ? "not a number" : (raise "boom") }
+
+          def perform
+            Results.instance << "attempt-#{Results.instance.counter}"
+            Results.instance.increment
+
+            raise StandardError, "still broken"
+          end
+        end)
+
+        BrokenRetryInJob.perform_async
+
+        wait_until(timeout: 5) { results.any? }
+        expect(results).to eq(["attempt-0"])
+
+        # Both the "not a number" and the raising cases fall back to the default ~16s backoff.
+        wait_until(timeout: 20) { stream_size("dead") >= 1 }
+        expect(results).to eq(%w[attempt-0 attempt-1])
+        expect(stream_size("dead")).to eq(1)
+      end
+
       it "skips a malformed JSON payload and keeps processing" do
         stub_const("CanaryJob", Class.new do
           include Cosmo::Job

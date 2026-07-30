@@ -5,7 +5,7 @@ module Cosmo
     # Adds +cosmo_options+ to ActiveJob classes.
     #
     #   class MyJob < ApplicationJob
-    #     cosmo_options retry: 5, dead: false
+    #     cosmo_options retry: 5, dead: false, retry_in: ->(count, exception) { count * 30 }
     #
     #     def perform(user_id)
     #       # ...
@@ -13,11 +13,14 @@ module Cosmo
     #   end
     #
     # Options mirror those accepted by +Cosmo::Job+:
-    #   retry:  [Integer, Boolean]  Number of retries before giving up (default: 3). +false+ means 0 (no retries)
-    #   dead:   [Boolean]  Move to DLQ when retries exhausted? (default: true)
-    #   stream: [Symbol]   Override the NATS stream (default: derived from queue_name)
+    #   retry:    [Integer, Boolean]  Number of retries before giving up (default: 3). +false+ means 0 (no retries)
+    #   dead:     [Boolean]  Move to DLQ when retries exhausted? (default: true)
+    #   stream:   [Symbol]   Override the NATS stream (default: derived from queue_name)
+    #   retry_in: [Proc]     <tt>->(count, exception) { }</tt> computing seconds to wait before redelivering a
+    #             failed job (+count+ is the 1-based delivery attempt that just failed). Falls back to the
+    #             default backoff if unset, non-numeric/non-positive, or raising.
     module Options
-      VALID_OPTIONS = %i[retry dead stream].freeze
+      VALID_OPTIONS = %i[retry dead stream retry_in].freeze
 
       def self.included(base)
         base.extend(ClassMethods)

@@ -14,6 +14,8 @@ module Cosmo
 
       def limits_concurrency?: () -> bool
 
+      def retry_in: (?Hash[Symbol, untyped]? data) -> Proc?
+
       def perform: (*untyped args, ?async: bool, **untyped options) -> (::String | nil)
 
       def perform_async: (*untyped args) -> ::String

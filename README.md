@@ -521,6 +521,22 @@ class ResilientJob
 end
 ```
 
+By default, a failed job is redelivered after `attempt**4 + 15` seconds. Override that per job class
+with `retry_in`, given the 1-based attempt count and the exception that was raised:
+```ruby
+class ThrottledApiJob
+  include Cosmo::Job
+  options retry: 5, retry_in: ->(count, exception) { exception.is_a?(RateLimitedError) ? 60 : count * 10 }
+
+  def perform(...)
+    # ...
+  end
+end
+```
+If the proc returns something non-numeric/non-positive, or raises, the default backoff is used
+instead. Note: if this job class also sets `limit: { concurrency: ... }` (see above), `count`
+includes deliveries that were turned away for lack of a free slot, not just failed attempts.
+
 ### Testing
 
 ```ruby
@@ -541,10 +557,10 @@ assert_kind_of String, jid
 config.active_job.queue_adapter = :cosmonats
 ```
 The ActiveJob queue name maps directly to a Cosmo stream. Use `cosmo_options` for anything
-Cosmo-specific — retries, DLQ behavior, or overriding the target stream:
+Cosmo-specific — retries, DLQ behavior, overriding the target stream, or a custom retry delay:
 ```ruby
 class ReportJob < ApplicationJob
-  cosmo_options retry: 5, dead: false, stream: :critical
+  cosmo_options retry: 5, dead: false, stream: :critical, retry_in: ->(count, exception) { count * 10 }
 
   def perform(report_id)
     Report.find(report_id).generate!

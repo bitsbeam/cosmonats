@@ -97,14 +97,14 @@ module Cosmo
           message.ack
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
           true
-        rescue Timeout::Error
+        rescue Timeout::Error => e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[timeout]" }
-          dropped = handle_failure(message, data)
+          dropped = handle_failure(worker_class, message, data, e)
           false if dropped
         rescue StandardError => e
           Logger.debug e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[error]" }
-          dropped = handle_failure(message, data)
+          dropped = handle_failure(worker_class, message, data, e)
           false if dropped
         rescue Exception # rubocop:disable Lint/RescueException
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[exception]" }
@@ -137,21 +137,37 @@ module Cosmo
         false
       end
 
-      def handle_failure(message, data) # rubocop:disable Naming/PredicateMethod
+      def handle_failure(worker_class, message, data, exception) # rubocop:disable Naming/PredicateMethod
         current_attempt = message.metadata.num_delivered
         max_retries = data[:retry].to_i + 1
 
         if current_attempt < max_retries
-          # NATS will auto-retry with delay (exponential backoff based on current attempt).
-          # When max_deliver is reached, NATS stops redelivering the message and marks it as "max deliveries exceeded".
-          # The message is effectively abandoned by NATS — it stays in the stream (consuming a slot) but will never be delivered again to that consumer.
-          delay_ns = ((current_attempt**4) + 15) * Config::NANO
+          # The message is NAK'd with an explicit delay (default backoff, or the job class's own
+          # +retry_in+ handler). When max_deliver is reached, NATS stops redelivering the message and
+          # marks it as "max deliveries exceeded" — it stays in the stream (consuming a slot) but is
+          # never delivered again to this consumer.
+          delay_ns = (retry_delay(worker_class, data, current_attempt, exception) * Config::NANO).to_i
           message.nak(delay: delay_ns)
           return false
         end
 
         data[:dead] ? move_message(message, data) : drop_message(message, data)
         true
+      end
+
+      def retry_delay(worker_class, data, current_attempt, exception)
+        handler = worker_class.retry_in(data)
+        return default_retry_delay(current_attempt) unless handler
+
+        delay = handler.call(current_attempt, exception)
+        delay.is_a?(Numeric) && delay.positive? ? delay : default_retry_delay(current_attempt)
+      rescue StandardError => e
+        Logger.error e
+        default_retry_delay(current_attempt)
+      end
+
+      def default_retry_delay(current_attempt)
+        (current_attempt**4) + 15
       end
 
       def subscribe(stream_name, config)

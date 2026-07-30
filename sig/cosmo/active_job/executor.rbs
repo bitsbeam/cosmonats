@@ -3,6 +3,8 @@ module Cosmo
     class Executor
       include Cosmo::Job
 
+      def self.retry_in: (Hash[Symbol, untyped] data) -> Proc?
+
       def perform: (Hash[Symbol, untyped] job_data) -> void
     end
   end
