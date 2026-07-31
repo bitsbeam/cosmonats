@@ -59,7 +59,7 @@ module Cosmo
 
           stream_name = config[:stream].to_s
           ttl = ENV.fetch("COSMO_STREAM_PAUSED_RECHECK_TTL", STREAM_PAUSED_RECHECK_TTL).to_f
-          if @cache.fetch(stream_name, ttl:) { API::Stream.new(stream_name).paused? }
+          if @cache.fetch("#{stream_name}:paused", ttl:) { API::Stream.new(stream_name).paused? }
             Logger.debug "stream #{stream_name} is paused, skipping fetch"
             next
           end

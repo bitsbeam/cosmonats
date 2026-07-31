@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - A transient error while dispatching an overdue scheduled job (e.g. a slow JetStream publish) no longer kills the scheduler thread; the message is logged and NAK'd instead, so scheduled-job dispatch keeps running
+- `max_retries` in `cosmo.yml` is now actually used as the default retry count for jobs that don't set their own `retry:` (previously it was inert)
+- A job's `retry:` exceeding its stream's consumer `max_deliver` no longer leaves the message stranded in the stream forever; it's now capped and dead-lettered (or terminated) a delivery early, with a warning logged
+
+### Changed
+
+- Sample `cosmo.yml`'s `max_deliver` raised from 10 to 30 per tier, and documented as a coarse safety ceiling against runaway redelivery rather than a per-job retry budget
 
 ## [0.4.3] - 2026-07-30
 

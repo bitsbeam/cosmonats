@@ -84,7 +84,7 @@ module Cosmo
                              jid: SecureRandom.hex(12),
                              class: @class_name,
                              args: @args,
-                             retry: ::Cosmo::Job::Data::DEFAULTS[:retry],
+                             retry: ::Cosmo::Job::Data.default_retry,
                              dead: ::Cosmo::Job::Data::DEFAULTS[:dead]
                            })
         end

@@ -3,6 +3,8 @@ module Cosmo
     class Data
       DEFAULTS: { stream: Symbol, retry: Integer, dead: bool, limit: nil }
 
+      def self.default_retry: () -> Integer
+
       @class_name: ::String
       @args: Array[untyped]
       @options: Hash[Symbol, untyped]

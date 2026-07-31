@@ -12,8 +12,10 @@ module Cosmo
 
     module ClassMethods
       # @option config [Symbol] :stream NATS stream to publish to (default: :default)
-      # @option config [Integer, Boolean] :retry max delivery attempts before giving up (default: 3).
-      #   +false+ is treated as 0 (no retries).
+      # @option config [Integer, Boolean] :retry max delivery attempts before giving up (default: +max_retries+
+      #   from cosmo.yml, or 3 if unset). +false+ is treated as 0 (no retries). Should stay comfortably under
+      #   the assigned stream's consumer +max_deliver+ (a coarse, shared safety ceiling, not a per-job budget) --
+      #   a job whose +retry:+ exceeds it is capped and dead-lettered a delivery early, with a warning logged.
       # @option config [Boolean] :dead move to dead-letter stream after retries exhausted (default: true)
       # @option config [Hash] :limit execution limits:
       #
@@ -121,7 +123,7 @@ module Cosmo
       end
 
       def default_options
-        @default_options ||= (superclass.respond_to?(:default_options) ? superclass.default_options : Data::DEFAULTS).dup
+        @default_options ||= (superclass.respond_to?(:default_options) ? superclass.default_options : Data::DEFAULTS.merge(retry: Data.default_retry)).dup
       end
 
       private

@@ -139,20 +139,41 @@ module Cosmo
 
       def handle_failure(worker_class, message, data, exception) # rubocop:disable Naming/PredicateMethod
         current_attempt = message.metadata.num_delivered
-        max_retries = data[:retry].to_i + 1
+        desired_retries = data[:retry].to_i + 1
+        capped_at = deliver_cap(message.metadata.stream, desired_retries)
 
-        if current_attempt < max_retries
-          # The message is NAK'd with an explicit delay (default backoff, or the job class's own
-          # +retry_in+ handler). When max_deliver is reached, NATS stops redelivering the message and
-          # marks it as "max deliveries exceeded" — it stays in the stream (consuming a slot) but is
-          # never delivered again to this consumer.
-          delay_ns = (retry_delay(worker_class, data, current_attempt, exception) * Config::NANO).to_i
-          message.nak(delay: delay_ns)
+        if current_attempt < (capped_at || desired_retries)
+          nak_message(worker_class, message, data, current_attempt, exception)
           return false
         end
 
+        warn_capped(message, data, capped_at) if capped_at
         data[:dead] ? move_message(message, data) : drop_message(message, data)
         true
+      end
+
+      # The message is NAK'd with an explicit delay (default backoff, or the job class's own +retry_in+ handler).
+      def nak_message(worker_class, message, data, current_attempt, exception)
+        delay_ns = (retry_delay(worker_class, data, current_attempt, exception) * Config::NANO).to_i
+        message.nak(delay: delay_ns)
+      end
+
+      def warn_capped(message, data, capped_at)
+        consumer_name = consumer_entry(message.metadata.stream)&.dig(1, :consumer)
+        Logger.warn "#{data[:class]} configured retry: #{data[:retry]} exceeds max_deliver: #{capped_at} " \
+                    "on #{consumer_name}; giving up early to avoid a stranded message"
+      end
+
+      # Returns the consumer's configured +max_deliver+ when it's lower than the job's own configured
+      # retry count (so we should give up a bit early instead of NAK'ing into a redelivery that'll never
+      # come), or +nil+ when the job's own retry count is already the binding constraint.
+      def deliver_cap(stream_name, desired_retries)
+        max_deliver = consumer_entry(stream_name)&.dig(1, :max_deliver).to_i
+        max_deliver if max_deliver.positive? && max_deliver < desired_retries
+      end
+
+      def consumer_entry(stream_name)
+        @consumers.find { |(_, config, _)| config[:stream].to_s == stream_name.to_s }
       end
 
       def retry_delay(worker_class, data, current_attempt, exception)
@@ -174,8 +195,8 @@ module Cosmo
         config = config.dup
         config[:batch_size] = 1
         config[:stream] = stream_name
-        consumer_name = "consumer-#{stream_name}"
-        subscription = client.subscribe(config[:subject], consumer_name, config.except(:subject, :priority, :stream, :batch_size))
+        config[:consumer] = "consumer-#{stream_name}"
+        subscription = client.subscribe(config[:subject], config[:consumer], config.except(:subject, :priority, :stream, :batch_size, :consumer))
         [subscription, config, nil]
       end
 

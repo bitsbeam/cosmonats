@@ -13,7 +13,7 @@ stream_config: &stream_config
 
 consumer_config: &consumer_config
   ack_policy: explicit    # ack policy (explicit, none, all), each individual message must be acknowledged
-  max_deliver: 10         # maximum number of times a message will be delivered before it's considered failed
+  max_deliver: 30         # maximum number of times a message will be delivered before it's considered failed; keep it above all job classes' retries, it is capped and dead-lettered early with a warning if exceeded
   max_ack_pending: 20     # maximum number of messages with pending ack for this consumer
   ack_wait: 60            # time in seconds to wait for an ack before redelivering the message
   subject: jobs.%{name}.> # subject pattern for consumer, %{name} will be replaced with stream name

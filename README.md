@@ -204,8 +204,8 @@ concurrency: 5                     # Number of worker threads
 consumers:                         # Declare consumer groups for streams, things that pull messages and process them
   jobs:                            # Consumer configs for jobs (or streams)
     default:                       # Stream name
-      ack_policy: explicit         # Acknowledgment required for each message, can be explicit, none, or all
-      max_deliver: 10              # Max retry attempts before sending to a dead stream
+      ack_policy: explicit         # Acknowledgment required for each message can be explicit, none, or all
+      max_deliver: 30              # Max retry attempts before sending to a dead stream. Safety ceiling only, keep it above every job class's own retry
       max_ack_pending: 10          # Max messages waiting for ack, if exceeded, the server will stop delivering new messages until some are acked
       ack_wait: 15                 # Seconds to wait for ack before redelivering
       subject: jobs.%{name}.>      # Subject pattern for this consumer, %{name} replaced with stream name, becomes `jobs.default.>`
@@ -340,7 +340,7 @@ stream_config: &stream_config
 
 consumer_config: &consumer_config
   ack_policy: explicit    # ack policy (explicit, none, all), each individual message must be acknowledged
-  max_deliver: 10         # maximum number of times a message will be delivered before it's considered failed
+  max_deliver: 30         # maximum number of times a message will be delivered before it's considered failed. keep it above every job class's own retry; a job that still exceeds it is capped and dead-lettered early with a warning
   max_ack_pending: 20     # maximum number of messages with pending ack for this consumer
   ack_wait: 60            # time in seconds to wait for an ack before redelivering the message
   subject: jobs.%{name}.> # subject pattern for consumer, %{name} will be replaced with stream name

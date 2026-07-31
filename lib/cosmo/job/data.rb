@@ -7,6 +7,10 @@ module Cosmo
     class Data
       DEFAULTS = { stream: :default, retry: 3, dead: true, limit: nil }.freeze
 
+      def self.default_retry
+        Config[:max_retries] || DEFAULTS[:retry]
+      end
+
       attr_reader :jid
 
       def initialize(class_name, args, options = nil)
@@ -63,7 +67,7 @@ module Cosmo
       end
 
       def retries
-        return DEFAULTS[:retry] if @options[:retry].nil?
+        return self.class.default_retry if @options[:retry].nil?
         return 0 if @options[:retry] == false
 
         @options[:retry]

@@ -65,7 +65,7 @@ module Cosmo
                                      jid: SecureRandom.hex(12),
                                      class: body[:class],
                                      args: body[:args] || [],
-                                     retry: body[:retry] || Job::Data::DEFAULTS[:retry],
+                                     retry: body[:retry] || Job::Data.default_retry,
                                      dead: body[:dead].nil? ? Job::Data::DEFAULTS[:dead] : body[:dead]
                                    })
         client.publish(target, payload, stream: stream_name)
