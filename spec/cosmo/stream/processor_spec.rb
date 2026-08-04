@@ -307,7 +307,8 @@ RSpec.describe Cosmo::Stream::Processor do
 
       it "does not consume messages while the stream is paused" do
         PauseTestProcessor.publish({ event: "after-unpause" }, subject: "test_pause.item")
-        sleep(Cosmo::Processor::STREAMS_PAUSED_IDLE_SLEEP + 0.2) # ensure the processor has time to check the paused state at least once
+        # ensure the processor has time to check the paused state at least once
+        sleep(Cosmo::Utils::Duration.parse(Cosmo::Processor::STREAMS_PAUSED_IDLE_SLEEP) + 0.2)
         expect(results).to be_empty
         expect(stream_size("test_pause")).to eq(1)
 

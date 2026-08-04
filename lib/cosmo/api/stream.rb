@@ -15,8 +15,8 @@ module Cosmo
 
       def self.jobs
         client.list_streams.select { _1.dig("config", "metadata", "_cosmo.type") == "jobs" }
-                           .reject { %w[scheduled dead].include?(_1.dig("config", "name")) }
-                           .map { new(_1.dig("config", "name")) }
+              .reject { %w[scheduled dead].include?(_1.dig("config", "name")) }
+              .map { new(_1.dig("config", "name")) }
       end
 
       def self.client

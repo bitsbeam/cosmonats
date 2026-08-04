@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-08-04
+
+### Fixed
+
+- Pause-stream spec for `Cosmo::Stream::Processor` no longer raises `TypeError`; it now parses `STREAMS_PAUSED_IDLE_SLEEP` via `Cosmo::Utils::Duration.parse` before adding to it, instead of treating the duration string as a Float
+
 ## [0.5.0] - 2026-08-04
 
 ### Added
@@ -165,6 +171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release: background jobs and stream processing for Ruby, backed by NATS JetStream.
 
+[0.5.1]: https://github.com/bitsbeam/cosmonats/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/bitsbeam/cosmonats/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/bitsbeam/cosmonats/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/bitsbeam/cosmonats/compare/v0.4.1...v0.4.2
