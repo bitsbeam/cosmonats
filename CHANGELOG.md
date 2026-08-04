@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-08-04
 
 ### Added
 
@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Cosmo::API::Counter#increment`/`#decrement` accept `msg_id:` to make a redelivered notification idempotent (backed by the counter stream's `duplicate_window`)
 - `retry: false` is now accepted as an alias for `retry: 0` (no retries), for both `Cosmo::Job` and the ActiveJob adapter's `cosmo_options`
 - `retry_in` option to customize the delay before a failed job is redelivered
+- Parse human-readable time duration to seconds
 
 ### Fixed
 
@@ -164,6 +165,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release: background jobs and stream processing for Ruby, backed by NATS JetStream.
 
+[0.5.0]: https://github.com/bitsbeam/cosmonats/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/bitsbeam/cosmonats/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/bitsbeam/cosmonats/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/bitsbeam/cosmonats/compare/v0.4.0...v0.4.1
