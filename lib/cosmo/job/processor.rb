@@ -42,8 +42,7 @@ module Cosmo
               client.publish(subject, message.data, headers: headers)
               message.ack
             else
-              delay_ns = (execute_at - now) * 1_000_000_000
-              message.nak(delay: delay_ns)
+              message.nak(delay: Config.to_ns(execute_at - now))
             end
           rescue StandardError => e
             # A transient failure here (e.g. a JetStream publish timeout) must not be allowed
@@ -133,7 +132,7 @@ module Cosmo
         slot = Limit.instance.acquire(key, jid: data[:jid], limit: options[:limit], duration: options[:duration])
         return slot if slot
 
-        message.nak(delay: options[:retry_in] * Config::NANO)
+        message.nak(delay: Config.to_ns(options[:retry_in]))
         Logger.debug "concurrency limit reached for #{data[:class]}, re-queueing back #{data[:jid]}"
         false
       rescue NATS::Error => e
@@ -168,8 +167,7 @@ module Cosmo
 
       # The message is NAK'd with an explicit delay (default backoff, or the job class's own +retry_in+ handler).
       def nak_message(worker_class, message, data, current_attempt, exception)
-        delay_ns = (retry_delay(worker_class, data, current_attempt, exception) * Config::NANO).to_i
-        message.nak(delay: delay_ns)
+        message.nak(delay: Config.to_ns(retry_delay(worker_class, data, current_attempt, exception)))
       end
 
       def warn_capped(message, data, capped_at)

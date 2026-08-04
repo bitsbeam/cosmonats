@@ -1,0 +1,11 @@
+module Cosmo
+  module Utils
+    module Duration
+      UNITS: ::Hash[::String, ::Integer]
+
+      def self.parse: (Numeric | ::String value) -> Numeric
+
+      def parse: (Numeric | ::String value) -> Numeric
+    end
+  end
+end

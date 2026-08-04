@@ -1,8 +1,8 @@
 module Cosmo
   class Processor
-    STREAM_PAUSED_RECHECK_TTL: Float
-    STREAMS_PAUSED_IDLE_SLEEP: Float
-    STREAM_EMPTY_BACKOFF_MAX: Float
+    STREAM_PAUSED_RECHECK_TTL: ::String
+    STREAMS_PAUSED_IDLE_SLEEP: ::String
+    STREAM_EMPTY_BACKOFF_MAX: ::String
 
     @pool: Utils::ThreadPool
     @running: untyped

@@ -3,7 +3,7 @@ module Cosmo
     extend Dispatcher
 
     BUCKET: ::String
-    DEFAULT_EXPIRY: ::Integer
+    DEFAULT_EXPIRY: ::String
     EVENTS: ::Array[Symbol]
 
     self.@counter: API::Counter

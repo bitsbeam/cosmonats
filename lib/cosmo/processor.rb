@@ -2,9 +2,9 @@
 
 module Cosmo
   class Processor
-    STREAM_PAUSED_RECHECK_TTL = 5.0 # Seconds a stream's paused state is cached before re-checking (override via COSMO_STREAM_PAUSED_RECHECK_TTL)
-    STREAMS_PAUSED_IDLE_SLEEP = 1.0 # Seconds to sleep when every stream is paused, preventing a tight CPU spin (override via COSMO_STREAMS_PAUSED_IDLE_SLEEP)
-    STREAM_EMPTY_BACKOFF_MAX = 5.0  # Max seconds to sleep between empty fetches (override via COSMO_STREAM_EMPTY_BACKOFF_MAX)
+    STREAM_PAUSED_RECHECK_TTL = "5s" # How long a stream's paused state is cached before re-checking (override via COSMO_STREAM_PAUSED_RECHECK_TTL)
+    STREAMS_PAUSED_IDLE_SLEEP = "1s" # How long to sleep when every stream is paused, preventing a tight CPU spin (override via COSMO_STREAMS_PAUSED_IDLE_SLEEP)
+    STREAM_EMPTY_BACKOFF_MAX = "5s"  # Max sleep between empty fetches (override via COSMO_STREAM_EMPTY_BACKOFF_MAX)
 
     def self.run(...)
       new(...).tap(&:run)
@@ -58,7 +58,7 @@ module Cosmo
           break unless running?
 
           stream_name = config[:stream].to_s
-          ttl = ENV.fetch("COSMO_STREAM_PAUSED_RECHECK_TTL", STREAM_PAUSED_RECHECK_TTL).to_f
+          ttl = Utils::Duration.parse(ENV.fetch("COSMO_STREAM_PAUSED_RECHECK_TTL", STREAM_PAUSED_RECHECK_TTL))
           if @cache.fetch("#{stream_name}:paused", ttl:) { API::Stream.new(stream_name).paused? }
             Logger.debug "stream #{stream_name} is paused, skipping fetch"
             next
@@ -86,7 +86,7 @@ module Cosmo
                 consumer_state.delete(stream_name)
                 process(messages, processor)
               else
-                max_backoff = ENV.fetch("COSMO_STREAM_EMPTY_BACKOFF_MAX", STREAM_EMPTY_BACKOFF_MAX).to_f
+                max_backoff = Utils::Duration.parse(ENV.fetch("COSMO_STREAM_EMPTY_BACKOFF_MAX", STREAM_EMPTY_BACKOFF_MAX))
                 consumer_state.compute(stream_name) do |current|
                   count = (current&.first || 0) + 1
                   backoff = [timeout * (2**(count - 1)), max_backoff].min
@@ -103,7 +103,7 @@ module Cosmo
         break unless running?
 
         if all_paused
-          period = ENV.fetch("COSMO_STREAMS_PAUSED_IDLE_SLEEP", STREAMS_PAUSED_IDLE_SLEEP).to_f
+          period = Utils::Duration.parse(ENV.fetch("COSMO_STREAMS_PAUSED_IDLE_SLEEP", STREAMS_PAUSED_IDLE_SLEEP))
           Logger.debug "all streams paused, sleep=#{period}"
           sleep(period)
         elsif all_empty

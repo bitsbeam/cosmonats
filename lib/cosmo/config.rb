@@ -14,6 +14,10 @@ module Cosmo
       delegate %i[[] fetch dig to_h set load] => :instance
     end
 
+    def self.to_ns(seconds)
+      (seconds.to_f * NANO).to_i
+    end
+
     def self.parse_file(path)
       YAML.load_file(path, aliases: true).tap { normalize!(_1) }
     end
@@ -21,10 +25,14 @@ module Cosmo
     def self.normalize!(config) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       Utils::Hash.symbolize_keys!(config)
 
+      config[:timeout] = Utils::Duration.parse(config[:timeout]) if config[:timeout]
+      config[:batch_expiry] = Utils::Duration.parse(config[:batch_expiry]) if config[:batch_expiry]
+
       config[:consumers]&.each_key do |name|
         config[:consumers][name].each do |stream_name, c|
           next unless c
 
+          c[:ack_wait] = Utils::Duration.parse(c[:ack_wait]) if c[:ack_wait]
           c[:subject] = format(c[:subject], { name: stream_name }) if c[:subject]
           c[:subjects] = c[:subjects].map { |s| format(s, name: stream_name) } if c[:subjects]
         end
@@ -35,8 +43,8 @@ module Cosmo
 
         config[:setup][type]&.each_key do |name|
           c = config[:setup][type][name]
-          c[:max_age] = c[:max_age].to_i * NANO if c[:max_age]
-          c[:duplicate_window] = c[:duplicate_window].to_i * NANO if c[:duplicate_window]
+          c[:max_age] = to_ns(Utils::Duration.parse(c[:max_age])) if c[:max_age]
+          c[:duplicate_window] = to_ns(Utils::Duration.parse(c[:duplicate_window])) if c[:duplicate_window]
           c[:subjects] = c[:subjects].map { |s| format(s, name: name) } if c[:subjects]
 
           next unless type == :jobs # Every jobs stream supports NATS 2.14 message scheduling.

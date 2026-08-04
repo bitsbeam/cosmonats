@@ -10,6 +10,8 @@ module Cosmo
 
     def self.internal: () -> Hash[Symbol, untyped]
 
+    def self.to_ns: (Numeric seconds) -> ::Integer
+
     def self.parse_file: (::String path) -> Hash[Symbol, untyped]
 
     def self.normalize!: (Hash[Symbol, untyped] config) -> void
