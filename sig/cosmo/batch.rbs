@@ -1,0 +1,49 @@
+module Cosmo
+  class Batch
+    extend Dispatcher
+
+    BUCKET: ::String
+    DEFAULT_EXPIRY: ::Integer
+    EVENTS: ::Array[Symbol]
+
+    self.@counter: API::Counter
+    self.@kv: API::KV
+
+    def self.current: () -> Batch?
+
+    def self.notify: (::String bid, ::String jid, success: bool) -> void
+
+    def self.counter: () -> API::Counter
+
+    def self.kv: () -> API::KV
+
+    @bid: ::String
+    @parent_id: ::String?
+
+    attr_reader bid: ::String
+
+    attr_reader parent_id: ::String?
+
+    def initialize: (?parent: ::String?) -> void
+
+    def jobs: () { () -> void } -> void
+
+    def on: (Symbol event, Class klass, **untyped) -> void
+
+    def register_job!: () -> void
+
+    def rollback_job!: () -> void
+
+    private
+
+    def counter: () -> API::Counter
+
+    def kv: () -> API::KV
+
+    def link: (::String parent_id) -> void
+
+    def release_pending: () -> void
+
+    def try_fire: (Symbol event) -> void
+  end
+end

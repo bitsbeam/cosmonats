@@ -1,0 +1,9 @@
+module Cosmo
+  class Batch
+    class Callback
+      include Cosmo::Job
+
+      def perform: (::String class_name, Symbol event, Hash[Symbol, untyped] status, Hash[Symbol, untyped] opts) -> void
+    end
+  end
+end

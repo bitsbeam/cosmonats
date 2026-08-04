@@ -1,0 +1,43 @@
+module Cosmo
+  module API
+    class Batch
+      LIMIT: ::Integer
+
+      def self.all: (?limit: ::Integer) -> Array[Batch]
+
+      def self.kv: () -> KV
+
+      def self.counter: () -> Counter
+
+      @bid: ::String
+
+      attr_reader bid: ::String
+
+      def initialize: (::String bid) -> void
+
+      def meta: () -> Hash[Symbol, untyped]
+
+      def parent_id: () -> ::String?
+
+      def created_at: () -> ::Integer?
+
+      def ready?: () -> bool
+
+      def stats: () -> Hash[Symbol, untyped]
+
+      def callback: (Symbol event) -> Hash[Symbol, untyped]?
+
+      def callbacks: () -> Hash[Symbol, Hash[Symbol, untyped]?]
+
+      def fired?: (Symbol event) -> bool
+
+      private
+
+      def live_stats: () -> Hash[Symbol, untyped]
+
+      def kv: () -> KV
+
+      def counter: () -> Counter
+    end
+  end
+end
