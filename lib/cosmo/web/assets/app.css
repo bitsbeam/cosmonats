@@ -515,7 +515,7 @@ details summary {
   font-size: var(--font-size-small);
   user-select: none;
 }
-details summary code { display: inline; }
+details summary code { display: inline; user-select: text; }
 details[open] summary { margin-bottom: var(--space); }
 details code { display: block; max-width: 400px; white-space: pre-wrap; }
 

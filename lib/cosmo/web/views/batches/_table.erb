@@ -30,7 +30,7 @@
               <% if !b.ready? -%>
                 <span class="badge badge-info">Open</span>
               <% elsif stats[:failed].to_i.positive? -%>
-                <span class="badge badge-danger">Complete (failures)</span>
+                <span class="badge badge-danger">Complete</span>
               <% else -%>
                 <span class="badge badge-success">Success</span>
               <% end -%>
