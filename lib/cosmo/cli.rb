@@ -16,6 +16,8 @@ module Cosmo
 
     def run
       flags, command, options = parse
+      return run_setup(flags) if flags[:setup]
+
       load_config(flags)
       puts self.class.banner
       boot_application
@@ -51,6 +53,34 @@ module Cosmo
       Config.load(path)
       Config.set(:concurrency, flags[:concurrency]) if flags[:concurrency]
       Config.set(:timeout, flags[:timeout]) if flags[:timeout]
+    end
+
+    def run_setup(flags)
+      load_config(flags)
+      boot_application
+
+      Config[:setup]&.each do |type, configs|
+        next if type == :cron
+
+        first_line = true
+        configs.each do |name, config|
+          meta = { metadata: { "_cosmo.type" => "jobs" } } if type == :jobs
+          Client.instance.setup_stream(name.to_s, config.merge(Hash(meta)))
+          first_line ? print("Stream is ready: #{name}") : print(", #{name}")
+          first_line = false
+        end
+      end
+
+      puts
+      schedules = Config.dig(:setup, :cron)&.reduce(0) do |sum, (name, entry)|
+        class_name = entry.delete(:class)
+        API::Cron.instance.upsert!(**entry, name: name, class_name: class_name)
+        sum + 1
+      end.to_i
+
+      puts "Cron sync complete: #{schedules} schedule(s) registered" unless schedules.zero?
+      puts "Cosmo streams#{" and cron schedules" unless schedules.zero?} set up successfully."
+      exit(0)
     end
 
     def boot_application
@@ -104,31 +134,7 @@ module Cosmo
         end
 
         o.on "-S", "--setup", "Create/update streams and sync cron schedules, then exit" do
-          load_config(flags)
-          boot_application
-
-          Config[:setup]&.each do |type, configs|
-            next if type == :cron
-
-            first_line = true
-            configs.each do |name, config|
-              meta = { metadata: { "_cosmo.type" => "jobs" } } if type == :jobs
-              Client.instance.setup_stream(name.to_s, config.merge(Hash(meta)))
-              first_line ? print("Stream is ready: #{name}") : print(", #{name}")
-              first_line = false
-            end
-          end
-
-          puts
-          schedules = Config.dig(:setup, :cron)&.reduce(0) do |sum, (name, entry)|
-            class_name = entry.delete(:class)
-            API::Cron.instance.upsert!(**entry, name: name, class_name: class_name)
-            sum + 1
-          end.to_i
-
-          puts "Cron sync complete: #{schedules} schedule(s) registered" unless schedules.zero?
-          puts "Cosmo streams#{" and cron schedules" unless schedules.zero?} set up successfully."
-          exit(0)
+          flags[:setup] = true
         end
 
         o.on_tail "-v", "--version", "Print version" do
