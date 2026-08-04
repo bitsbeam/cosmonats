@@ -42,6 +42,7 @@ Metrics/ModuleLength:
 Metrics/BlockLength:
   Exclude:
     - spec/**/*.rb
+    - cosmonats.gemspec
 
 Metrics/AbcSize:
   Exclude:
