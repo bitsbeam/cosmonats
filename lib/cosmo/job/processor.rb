@@ -71,6 +71,7 @@ module Cosmo
         unless worker_class
           Logger.error ArgumentError.new("#{data[:class]} class not found")
           move_message(message, data)
+          notify_batch(data, success: false)
           return
         end
 
@@ -86,15 +87,11 @@ module Cosmo
           Logger.with(jid: data[:jid])
           Logger.info "start"
 
-          instance = worker_class.new.tap do |worker|
-            worker.jid = data[:jid]
-            worker.enqueued_at = message.metadata.timestamp
-            worker.attempt = message.metadata.num_delivered
-            worker.scheduled_by = message.header&.dig("Nats-Scheduler")
-          end
+          instance = build_worker(worker_class, data, message)
           perform_job(instance, data: data, message: message, duration: duration)
 
           message.ack
+          notify_batch(data, success: true)
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
           true
         rescue Timeout::Error => e
@@ -114,6 +111,16 @@ module Cosmo
         Limit.instance.release(slot) if slot
         Logger.without(:jid)
         Logger.debug "processed message #{message.inspect}"
+      end
+
+      def build_worker(worker_class, data, message)
+        worker_class.new.tap do |worker|
+          worker.jid = data[:jid]
+          worker.enqueued_at = message.metadata.timestamp
+          worker.attempt = message.metadata.num_delivered
+          worker.scheduled_by = message.header&.dig("Nats-Scheduler")
+          worker.batch_id = data[:batch_id]
+        end
       end
 
       # Tries to acquire a concurrency slot for the job.
@@ -149,7 +156,14 @@ module Cosmo
 
         warn_capped(message, data, capped_at) if capped_at
         data[:dead] ? move_message(message, data) : drop_message(message, data)
+        notify_batch(data, success: false)
         true
+      end
+
+      def notify_batch(data, success:)
+        return unless data[:batch_id]
+
+        Batch.notify(data[:batch_id], data[:jid], success: success)
       end
 
       # The message is NAK'd with an explicit delay (default backoff, or the job class's own +retry_in+ handler).

@@ -127,6 +127,7 @@ docker compose up nats
 |---|---|
 | Default config values | `lib/cosmo/defaults.yml` |
 | Job mixin + ClassMethods | `lib/cosmo/job.rb` + `lib/cosmo/job/` |
+| Batch grouping + callbacks | `lib/cosmo/batch.rb` + `lib/cosmo/api/batch.rb` |
 | Stream mixin + registration | `lib/cosmo/stream.rb` + `lib/cosmo/stream/` |
 | Engine / signal handling | `lib/cosmo/engine.rb` |
 | NATS client wrapper | `lib/cosmo/client.rb` |

@@ -180,6 +180,14 @@ button:hover, .btn:hover {
   background: oklch(from var(--color-warning) l c h / 20%);
   color: oklch(from var(--color-warning) calc(l - 0.15) c h);
 }
+.badge-danger {
+  background: oklch(from var(--color-danger) l c h / 15%);
+  color: var(--color-danger);
+}
+.badge-info {
+  background: oklch(from var(--color-info) l c h / 15%);
+  color: var(--color-info);
+}
 
 /* ── Alerts ────────────────────────────────────────────────────────────── */
 .alert {

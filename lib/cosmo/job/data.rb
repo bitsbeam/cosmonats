@@ -26,6 +26,10 @@ module Cosmo
         @jid = SecureRandom.hex(12)
       end
 
+      def batch_id
+        @options[:batch_id]
+      end
+
       def stream(target: false)
         return @options[:stream] if target
 
@@ -37,13 +41,8 @@ module Cosmo
       end
 
       def as_json
-        {
-          jid: jid,
-          class: @class_name,
-          args: @args,
-          retry: retries,
-          dead: dead
-        }
+        json = { jid: jid, class: @class_name, args: @args, retry: retries, dead: dead }
+        batch_id ? json.merge(batch_id: batch_id) : json
       end
 
       def to_json(*_args)

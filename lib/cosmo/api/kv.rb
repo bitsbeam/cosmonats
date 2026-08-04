@@ -25,6 +25,13 @@ module Cosmo
         # nop
       end
 
+      # Creates +key+ if it does not already exist -- a plain CAS-if-absent with
+      # no per-message TTL involved. Raises NATS::KeyValue::KeyWrongLastSequenceError
+      # when the key is already live, so callers can use it as a fire-once gate.
+      def create(key, value)
+        kv.create(key, value.to_s)
+      end
+
       # Writes a KV-Operation tombstone. On a ttl-bearing bucket this leaves the
       # subject occupied, so a subsequent #set(ttl:) CAS with last_seq: 0 will
       # keep failing -- use #erase on those buckets instead.

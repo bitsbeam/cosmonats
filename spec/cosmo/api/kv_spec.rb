@@ -50,6 +50,19 @@ RSpec.describe Cosmo::API::KV do
     end
   end
 
+  describe "#create" do
+    it "creates a new key and returns the new revision" do
+      seq = kv.create("gate", "1")
+      expect(seq).to be_a(Integer)
+      expect(kv.get("gate")&.value).to eq("1")
+    end
+
+    it "raises when the key already exists" do
+      kv.create("gate", "1")
+      expect { kv.create("gate", "2") }.to raise_error(NATS::KeyValue::KeyWrongLastSequenceError)
+    end
+  end
+
   describe "#delete" do
     it "deletes a key" do
       kv.set("todelete", "val")

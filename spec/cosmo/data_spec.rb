@@ -16,17 +16,26 @@ RSpec.describe Cosmo::Job::Data do
     expect(data.subject).to eq(%w[jobs default my_job])
   end
 
-  it "#as_json" do
-    allow(data).to receive(:jid).and_return("jid")
+  describe "#as_json" do
+    it "returns defaults" do
+      allow(data).to receive(:jid).and_return("jid")
 
-    expect(data.as_json).to eq({ args: "args", class: "MyJob", dead: true, jid: "jid", retry: 3 })
-  end
+      expect(data.as_json).to eq({ args: "args", class: "MyJob", dead: true, jid: "jid", retry: 3 })
+    end
 
-  it "#as_json treats retry: false as 0" do
-    data = described_class.new("MyJob", "args", stream: "default", retry: false)
-    allow(data).to receive(:jid).and_return("jid")
+    it "treats retry: false as 0" do
+      data = described_class.new("MyJob", "args", stream: "default", retry: false)
+      allow(data).to receive(:jid).and_return("jid")
 
-    expect(data.as_json).to eq({ args: "args", class: "MyJob", dead: true, jid: "jid", retry: 0 })
+      expect(data.as_json).to eq({ args: "args", class: "MyJob", dead: true, jid: "jid", retry: 0 })
+    end
+
+    it "carries the batch_id when given" do
+      data = described_class.new("MyJob", "args", stream: "default", batch_id: "bid123")
+      allow(data).to receive(:jid).and_return("jid")
+
+      expect(data.as_json).to include(batch_id: "bid123")
+    end
   end
 
   it "#to_json" do

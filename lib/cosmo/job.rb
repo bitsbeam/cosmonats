@@ -94,6 +94,8 @@ module Cosmo
       end
 
       def perform(*args, async: true, **options)
+        batch = Batch.current if async
+        options[:batch_id] = batch.bid if batch
         data = Data.new(name, args, default_options.merge(options))
         unless async
           payload = Utils::Json.parse(data.to_args[1])
@@ -103,7 +105,19 @@ module Cosmo
           return
         end
 
+        publish(data, batch)
+      end
+
+      # The batch is reserved a pending slot before we know the publish will
+      # succeed (must happen in that order -- see Batch#jobs). Roll it back
+      # if it never actually made it onto the stream, so the batch doesn't
+      # hang waiting for a completion that will never arrive.
+      def publish(data, batch)
+        batch&.register_job!
         Publisher.publish_job(data)
+      rescue StandardError
+        batch&.rollback_job!
+        raise
       end
 
       def perform_async(*args)
@@ -133,7 +147,7 @@ module Cosmo
       end
     end
 
-    attr_accessor :jid, :enqueued_at, :attempt, :scheduled_by
+    attr_accessor :jid, :batch_id, :enqueued_at, :attempt, :scheduled_by
 
     def perform(...)
       raise NotImplementedError, "#{self.class}#perform must be implemented"

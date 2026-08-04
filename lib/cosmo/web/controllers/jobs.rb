@@ -76,10 +76,13 @@ module Cosmo
           stream_name, stream_names = streams
           limit = (params["limit"] || API::Stream::LIMIT).to_i
           page = [params["page"].to_i, 1].max
-          stream = API::Stream.new(stream_name)
-          total = stream.total
-          jobs = stream.messages(page:, limit:)
-          total_pages = (total.to_f / limit).ceil
+
+          unless stream_name.to_s.empty?
+            stream = API::Stream.new(stream_name)
+            total = stream.total
+            jobs = stream.messages(page:, limit:)
+            total_pages = (total.to_f / limit).ceil
+          end
 
           ok render("jobs/_enqueued", { jobs:, total:, stream_name:, stream_names:, page:, limit:, total_pages: })
         end

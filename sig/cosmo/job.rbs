@@ -31,6 +31,8 @@ module Cosmo
       private
 
       def client: () -> Client
+
+      def publish: (Data data, Batch? batch) -> void
     end
 
     attr_accessor jid: ::String

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Cosmo::Batch` — group jobs and fire a `:success`/`:complete` callback once the whole group finishes, including nested batches created from within a running job. The registered class is plain Ruby (`on_success(status, opts)`/`on_complete(status, opts)`), dispatched via an internal `Batch::Callback` job on the normal worker pool
+- `Cosmo::API::Batch` read-model and a **Batches** tab in the web UI, listing open/finished batches with pending/succeeded/failed counts
+- `Cosmo::API::KV#create` for CAS-if-absent writes without per-message TTL
+- `Cosmo::API::Counter#increment`/`#decrement` accept `msg_id:` to make a redelivered notification idempotent (backed by the counter stream's `duplicate_window`)
 - `retry: false` is now accepted as an alias for `retry: 0` (no retries), for both `Cosmo::Job` and the ActiveJob adapter's `cosmo_options`
 - `retry_in` option to customize the delay before a failed job is redelivered
 

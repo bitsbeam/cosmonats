@@ -139,6 +139,12 @@ end
 > anything unexpected. Avoid setting both for the same error class, or you will
 > get retries multiplied across both layers.
 
+> **`Cosmo::Batch` and ActiveJob** — the ActiveJob adapter enqueues through its
+> own `Job::Data` construction, not `Cosmo::Job#perform`, so `perform_later`
+> calls made inside a `batch.jobs { }` block are not currently tracked by the
+> batch. Use `Cosmo::Job`-based jobs (`perform_async`/`perform_at`/`perform_in`)
+> for anything that needs to participate in a batch.
+
 ## Running the worker
 
 The Cosmo worker is a separate process. In a Rails app the CLI auto-discovers

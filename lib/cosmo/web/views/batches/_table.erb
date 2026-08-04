@@ -1,0 +1,47 @@
+<% if @batches.empty? -%>
+  <div class="alert alert-success">No batches tracked.</div>
+<% else -%>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Batch</th>
+          <th>Parent</th>
+          <th>Status</th>
+          <th>Total</th>
+          <th>Succeeded</th>
+          <th>Failed</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @batches.each do |b| -%>
+          <% stats = b.stats -%>
+          <tr>
+            <td><code><%= h(b.bid) %></code></td>
+            <td>
+              <% if b.parent_id -%>
+                <code><%= h(b.parent_id) %></code>
+              <% else -%>
+                <span class="text-muted">&mdash;</span>
+              <% end -%>
+            </td>
+            <td>
+              <% if !b.ready? -%>
+                <span class="badge badge-info">Open</span>
+              <% elsif stats[:failed].to_i.positive? -%>
+                <span class="badge badge-danger">Complete (failures)</span>
+              <% else -%>
+                <span class="badge badge-success">Success</span>
+              <% end -%>
+            </td>
+            <td><%= format_numbers(stats[:total]) %></td>
+            <td><%= format_numbers(stats[:succeeded]) %></td>
+            <td><%= format_numbers(stats[:failed]) %></td>
+            <td><%= format_timestamp(b.created_at) %></td>
+          </tr>
+        <% end -%>
+      </tbody>
+    </table>
+  </div>
+<% end -%>

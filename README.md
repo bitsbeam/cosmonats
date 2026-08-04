@@ -73,6 +73,7 @@ bundle exec cosmo -C config/cosmo.yml -c 20 streams # Streams only
 - [Advanced Usage](#-advanced-usage)
   - [Cron](#cron)
   - [Priority Queues](#priority-queues)
+  - [Batches](#batches)
   - [Concurrency Limiting](#concurrency-limiting)
   - [Custom Serializers](#custom-serializers)
   - [Error Handling](#error-handling)
@@ -147,6 +148,7 @@ nothing else to run.
 - **Job uniqueness** — prevent duplicate execution
 - **Concurrency limits** — cap simultaneous executions per class or per key
 - **Cron scheduling** — recurring jobs manageable live from the web UI
+- **Batches** — group jobs and fire a callback once the whole group finishes, including nested batches
 
 ### 🌊 Stream Processing
 - **Real-time event streams** — process continuous data feeds
@@ -328,6 +330,7 @@ The `>` wildcard matches everything after that prefix. Think of subjects as topi
 timeout: 25                 # Shutdown timeout in seconds
 concurrency: &concurrency 1 # Number of worker threads
 max_retries: &max_retries 3 # Default max retries
+batch_expiry: 259200         # Seconds before a Batch's tracking data expires (default: 3 days)
 
 stream_config: &stream_config
   storage: file         # storage type (file or memory)
@@ -465,6 +468,58 @@ class UrgentJob
   options stream: :critical  # priority: 50 in config — polled most frequently
 end
 ```
+
+### Batches
+
+Group jobs together and fire a callback once every one of them has finished. The registered class
+is plain Ruby — it implements `on_complete(status, opts)` / `on_success(status, opts)`, not
+`perform` — and runs on the job worker pool, not inline on whichever thread finalized the batch.
+`status` is `{ bid:, total:, succeeded:, failed: }` and `opts` is whatever you passed to `#on`.
+
+```ruby
+batch = Cosmo::Batch.new
+batch.jobs do
+  ImportJob.perform_async(1)
+  ImportJob.perform_async(2)
+end
+batch.on(:complete, NotifyUser, user_id: 1)  # fires once every job has finished, pass or fail
+batch.on(:success, NotifyUser, user_id: 1)   # fires only if none of them failed
+
+class NotifyUser
+  def on_complete(status, opts)
+    UserMailer.batch_done(opts[:user_id], status[:succeeded], status[:total]).deliver_later
+  end
+
+  def on_success(status, opts)
+    UserMailer.batch_succeeded(opts[:user_id]).deliver_later
+  end
+end
+```
+
+- `#jobs` is the only place membership is tracked — jobs enqueued outside the block aren't part of
+  the batch. Call it at least once (an empty block is fine) to close the batch.
+- `:complete` always fires once every job is done. `:success` fires only if none were dead-lettered
+  or dropped after exhausting retries. Both can be registered before or after `#jobs` — a callback
+  registered after the batch has already finished still fires.
+
+**Nested batches** — a running job can spawn its own sub-batch, which counts as one pending unit
+  of its parent and propagates any failure upward as a single failure unit:
+
+  ```ruby
+  class ImportJob
+    include Cosmo::Job
+
+    def perform(account_id)
+      sub_batch = Cosmo::Batch.new(parent: batch_id)  # batch_id is this job's own batch, if any
+      sub_batch.jobs { SyncRecordJob.perform_async(account_id) }
+    end
+  end
+  ```
+- Batch tracking data (pending counts, callbacks, results) expires automatically after
+  `Config[:batch_expiry]` seconds (default: 3 days).
+- Open and finished batches — with pending/succeeded/failed counts — are listed live in the web UI's **Batches** tab.
+- Only `Cosmo::Job`-based jobs are tracked; the ActiveJob adapter doesn't currently participate in
+  batches (see [`docs/active_job.md`](docs/active_job.md)).
 
 ### Concurrency Limiting
 
@@ -672,6 +727,7 @@ sudo systemctl enable cosmo && sudo systemctl start cosmo
 - **Jobs** — enqueued, scheduled, busy, and dead views, with per-job retry and delete
 - **Streams** — per-stream state (messages, bytes, consumers) with pause/resume
 - **Crons** — every schedule deployed in NATS, with run-now and delete
+- **Batches** — open and finished batches with pending/succeeded/failed counts
 - Summary counters (processed / failed / busy / enqueued / retries / scheduled / dead) backed by a NATS KV counter, no separate metrics store needed
 
 **Structured logs:**

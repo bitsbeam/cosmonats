@@ -35,6 +35,24 @@ RSpec.describe Cosmo::API::Counter do
       counter.incr(:processed)
       expect(counter.get(:processed)).to eq(1)
     end
+
+    context "with message deduplication" do
+      it "returns the resulting value on the first publish" do
+        expect(counter.increment(:pending, msg_id: "job-1")).to eq(1)
+      end
+
+      it "returns nil for a duplicate msg_id instead of double-applying" do
+        counter.increment(:pending, msg_id: "job-1")
+        expect(counter.increment(:pending, msg_id: "job-1")).to be_nil
+        expect(counter.get(:pending)).to eq(1)
+      end
+
+      it "does not dedup across distinct msg_ids" do
+        counter.increment(:pending, msg_id: "job-1")
+        counter.increment(:pending, msg_id: "job-2")
+        expect(counter.get(:pending)).to eq(2)
+      end
+    end
   end
 
   describe "#decrement / #decr" do
