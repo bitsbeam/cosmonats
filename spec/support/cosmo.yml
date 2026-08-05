@@ -34,7 +34,10 @@ consumers:
       priority: 5
     scheduled:
       <<: *consumer_config
-      max_deliver: 1
+      # >1: the scheduler naks a not-yet-due message (redelivered once it's due) and
+      # also naks on a transient dispatch error to retry it - both need a 2nd delivery.
+      # 1 here would silently strand the message on either path.
+      max_deliver: 5
       max_ack_pending: 100
       ack_wait: 10
 

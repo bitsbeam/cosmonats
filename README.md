@@ -364,7 +364,7 @@ consumers:
       priority: 5
     scheduled:
       <<: *consumer_config
-      max_deliver: 1
+      max_deliver: 5
       max_ack_pending: 100
       ack_wait: 10
 
