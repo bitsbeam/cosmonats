@@ -1,5 +1,7 @@
 module Cosmo
   module Logger
+    TRACE: Integer
+
     module Context
       KEY: Symbol
 
@@ -20,6 +22,12 @@ module Cosmo
       def call: (::String severity, Time time, untyped _, ::String msg) -> ::String
     end
 
+    class Instance < ::Logger
+      def trace: (?::String? progname) ?{ () -> ::String } -> true
+
+      def format_severity: (Integer severity) -> ::String
+    end
+
     def self.info: (::String) -> void
 
     def self.error: (::String | Exception) -> void
@@ -29,6 +37,8 @@ module Cosmo
     def self.warn: (::String) -> void
 
     def self.fatal: (::String) -> void
+
+    def self.trace: (::String | Exception) -> void
 
     def self.with: (**untyped) ?{ () -> void } -> void
 

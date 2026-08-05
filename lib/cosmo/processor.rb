@@ -60,14 +60,14 @@ module Cosmo
           stream_name = config[:stream].to_s
           ttl = Utils::Duration.parse(ENV.fetch("COSMO_STREAM_PAUSED_RECHECK_TTL", STREAM_PAUSED_RECHECK_TTL))
           if @cache.fetch("#{stream_name}:paused", ttl:) { API::Stream.new(stream_name).paused? }
-            Logger.debug "stream #{stream_name} is paused, skipping fetch"
+            Logger.trace "stream #{stream_name} is paused, skipping fetch"
             next
           end
           all_paused = false
 
           _, skip_t = consumer_state[stream_name]
           if skip_t && Time.now < skip_t
-            Logger.debug "stream #{stream_name} is empty, backing off"
+            Logger.trace "stream #{stream_name} is empty, backing off"
             next
           end
           all_empty = false
@@ -79,9 +79,9 @@ module Cosmo
               next if skip_t && Time.now < skip_t
 
               timeout = fetch_timeout(config)
-              Logger.debug "fetching #{fetch_subjects(config).inspect}, timeout=#{timeout}"
+              Logger.trace "fetching #{fetch_subjects(config).inspect}, timeout=#{timeout}"
               messages = fetch(subscription, batch_size: config[:batch_size], timeout:)
-              Logger.debug "fetched (#{messages&.size.to_i}) messages"
+              Logger.trace "fetched (#{messages&.size.to_i}) messages"
               if messages&.any?
                 consumer_state.delete(stream_name)
                 process(messages, processor)
@@ -104,14 +104,14 @@ module Cosmo
 
         if all_paused
           period = Utils::Duration.parse(ENV.fetch("COSMO_STREAMS_PAUSED_IDLE_SLEEP", STREAMS_PAUSED_IDLE_SLEEP))
-          Logger.debug "all streams paused, sleep=#{period}"
+          Logger.trace "all streams paused, sleep=#{period}"
           sleep(period)
         elsif all_empty
           next_wake = consumer_state.values.filter_map { |_, t| t }.min
           next unless next_wake # entry was deleted concurrently (messages arrived), re-loop immediately
 
           remaining = [next_wake - Time.now, 0.01].max
-          Logger.debug "all streams empty, sleep=#{remaining}"
+          Logger.trace "all streams empty, sleep=#{remaining}"
           sleep(remaining)
         end
       end

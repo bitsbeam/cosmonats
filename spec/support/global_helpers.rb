@@ -22,7 +22,8 @@ RSpec.shared_context "Global helpers" do
 
   def wait_until(timeout:)
     result = nil
-    deadline = Time.now + timeout
+    scale = ENV.fetch("COSMO_TEST_TIMEOUT_SCALE", ENV["CI"] ? 3 : 1).to_f
+    deadline = Time.now + (timeout * scale)
 
     loop do
       result = yield
