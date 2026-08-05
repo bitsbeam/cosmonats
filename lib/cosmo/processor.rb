@@ -80,7 +80,7 @@ module Cosmo
 
               timeout = fetch_timeout(config)
               Logger.debug "fetching #{fetch_subjects(config).inspect}, timeout=#{timeout}"
-              messages = lock(stream_name) { fetch(subscription, batch_size: config[:batch_size], timeout:) }
+              messages = fetch(subscription, batch_size: config[:batch_size], timeout:)
               Logger.debug "fetched (#{messages&.size.to_i}) messages"
               if messages&.any?
                 consumer_state.delete(stream_name)
@@ -156,11 +156,6 @@ module Cosmo
 
     def stopwatch
       Utils::Stopwatch.new
-    end
-
-    def lock(stream_name, &)
-      @locks ||= Hash.new { |h, k| h[k] = Mutex.new }
-      @locks[stream_name].synchronize(&)
     end
 
     def consumer_state

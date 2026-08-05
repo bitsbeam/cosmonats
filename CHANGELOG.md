@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Vendored a fix for an upstream `nats-pure` bug (`NATS::JetStream::PullSubscription#fetch` raised
+  `TypeError: nil can't be coerced into Float` when called concurrently on the same subscription.
+  `Cosmo::Processor` no longer needs to serialize fetches per stream through a mutex to work around it,
+  so the existing priority-weighted consumer list now fetches in genuine parallel for busy streams,
+  as originally intended
+
 ## [0.5.1] - 2026-08-04
 
 ### Fixed

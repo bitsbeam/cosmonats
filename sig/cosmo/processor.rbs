@@ -10,7 +10,6 @@ module Cosmo
     @threads: Array[Thread]
     @cache: Utils::TTLCache
     @options: Hash[Symbol, untyped]
-    @locks: Hash[::String, Mutex]
     @consumer_state: untyped
 
     def self.run: (*untyped) -> Processor
@@ -48,8 +47,6 @@ module Cosmo
     def client: () -> Client
 
     def stopwatch: () -> Utils::Stopwatch
-
-    def lock: (::String stream_name) { () -> void } -> void
 
     def consumer_state: () -> untyped
   end
