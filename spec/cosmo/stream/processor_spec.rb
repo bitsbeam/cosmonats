@@ -12,6 +12,14 @@ RSpec.describe Cosmo::Stream::Processor do
     client.create_stream(name, config.merge(subjects: ["#{name}.>"]))
   end
 
+  # Keep the empty-stream backoff cap small, same as job/processor_spec.rb and batch_spec.rb.
+  # Without this, a consumer idle since #run can have backed off toward the 5s default by the
+  # time a spec's own publish happens (especially ones that sleep before publishing), so the
+  # message isn't even attempted until that backoff window elapses - which can eat into or
+  # exceed a `wait_until(timeout: 5)` on its own, regardless of how busy/slow the machine is.
+  before { ENV["COSMO_STREAM_EMPTY_BACKOFF_MAX"] = "0.5" }
+  after { ENV.delete("COSMO_STREAM_EMPTY_BACKOFF_MAX") }
+
   context "with successful job execution" do
     context "with #process_one" do
       before do

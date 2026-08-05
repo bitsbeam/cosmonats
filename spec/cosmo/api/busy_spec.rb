@@ -22,50 +22,54 @@ RSpec.describe Cosmo::API::Busy do
   describe "#add and #size" do
     before do
       allow(message).to receive_message_chain(:data).and_return("{}")
-      allow(Time).to receive(:now).and_return(double(to_i: 1_000_000))
     end
 
+    # #size reads back through a fresh KV#keys watch, which isn't guaranteed to reflect a
+    # just-published key the instant #add's publish is acked -- wait for it instead of reading
+    # #size synchronously right after, same reasoning as the batch_spec fix.
     it "tracks a message" do
-      expect { busy.add(message) }.to change { busy.size }.by(1)
+      before_size = busy.size
+      busy.add(message)
+      wait_until(timeout: 5) { busy.size == before_size + 1 }
     end
   end
 
   describe "#delete" do
     before do
       allow(message).to receive(:data).and_return("{}")
-      allow(Time).to receive(:now).and_return(double(to_i: 1_000_000))
       busy.add(message)
+      wait_until(timeout: 5) { busy.size == 1 }
     end
 
     it "removes the message" do
-      expect { busy.delete(message) }.to change { busy.size }.by(-1)
+      busy.delete(message)
+      wait_until(timeout: 5) { busy.size.zero? } # rubocop:disable Style/ZeroLengthPredicate -- Integer, not a collection
     end
   end
 
   describe "#with" do
     before do
       allow(message).to receive(:data).and_return("{}")
-      allow(Time).to receive(:now).and_return(double(to_i: 1_000_000))
     end
 
     it "tracks message while block executes and removes after" do
       busy.with(message) do
-        expect(busy.size).to eq(1)
+        wait_until(timeout: 5) { busy.size == 1 }
       end
-      expect(busy.size).to eq(0)
+      wait_until(timeout: 5) { busy.size.zero? } # rubocop:disable Style/ZeroLengthPredicate -- Integer, not a collection
     end
 
     it "removes message even if block raises" do
       expect { busy.with(message) { raise "error" } }.to raise_error("error")
-      expect(busy.size).to eq(0)
+      wait_until(timeout: 5) { busy.size.zero? } # rubocop:disable Style/ZeroLengthPredicate -- Integer, not a collection
     end
   end
 
   describe "#list" do
     before do
       allow(message).to receive(:data).and_return(Cosmo::Utils::Json.dump({ class: "MyWorker", args: [] }))
-      allow(Time).to receive(:now).and_return(double(to_i: 1_000_000))
       busy.add(message)
+      wait_until(timeout: 5) { busy.size == 1 }
     end
 
     it "returns list of busy entries" do

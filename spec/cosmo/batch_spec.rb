@@ -108,8 +108,10 @@ RSpec.describe Cosmo::Batch do
     batch = described_class.new
     batch.jobs { BatchWorkerJob.perform_async("fast") }
 
-    wait_until(timeout: 5) { results.any? { _1.is_a?(Hash) && _1[:tag] == "fast" } }
-    sleep 0.2 # let the processor ack and notify the batch before we register
+    # Wait on the actual "batch has finished" condition instead of guessing at timing with
+    # a fixed sleep - a sleep long enough on a fast dev machine isn't guaranteed to be long
+    # enough once the processor is competing for CPU/NATS with the rest of the suite.
+    wait_until(timeout: 5) { described_class.send(:kv).get("#{batch.bid}.finalized") }
 
     batch.on(:complete, CompleteCallback, late: true)
 
