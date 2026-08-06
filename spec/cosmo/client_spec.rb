@@ -100,6 +100,54 @@ RSpec.describe Cosmo::Client do
       expect(info.num_waiting).to eq(0)
       expect(info.num_pending).to eq(0)
     end
+
+    context "without a consumer name" do
+      let(:config) { { stream: stream_name, inactive_threshold: 60 } }
+
+      it "creates an ephemeral consumer with a server-assigned name" do
+        client.create_stream(stream_name, { subjects: subjects })
+
+        subscription = client.subscribe(subject_name, nil, config)
+
+        info = subscription.consumer_info
+        expect(info.stream_name).to eq(stream_name)
+        expect(info.name).not_to be_nil
+        expect(info.config.durable_name).to be_nil
+        expect(info.config.filter_subject).to eq(subject_name)
+        expect(info.config.inactive_threshold).to eq(60)
+      end
+
+      it "fetches messages published before subscribing" do
+        client.create_stream(stream_name, { subjects: subjects })
+        client.publish(subject_name, "payload")
+
+        subscription = client.subscribe(subject_name, nil, config)
+
+        messages = subscription.fetch(1, timeout: 2)
+        expect(messages.first.data).to eq("payload")
+      end
+
+      it "raises without :stream" do
+        expect { client.subscribe(subject_name, nil, { inactive_threshold: 60 }) }
+          .to raise_error(Cosmo::ArgumentError, /stream/)
+      end
+
+      it "raises without :inactive_threshold" do
+        expect { client.subscribe(subject_name, nil, { stream: stream_name }) }
+          .to raise_error(Cosmo::ArgumentError, /inactive_threshold/)
+      end
+    end
+  end
+
+  describe "#delete_consumer" do
+    it "deletes the named consumer" do
+      client.create_stream(stream_name, { subjects: subjects })
+      client.subscribe("test.subject", "consumer", { ack_policy: "explicit" })
+
+      client.delete_consumer(stream_name, "consumer")
+
+      expect(client.list_consumers(stream_name)).to eq([])
+    end
   end
 
   describe "#stream_info" do

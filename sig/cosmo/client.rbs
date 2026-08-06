@@ -13,7 +13,7 @@ module Cosmo
 
     def publish: (::String subject, ::String payload, **untyped params) -> untyped
 
-    def subscribe: (::String | Array[::String] subject, ::String consumer_name, Hash[Symbol, untyped] config) -> untyped
+    def subscribe: (::String | Array[::String] subject, ::String? consumer_name, Hash[Symbol, untyped] config) -> untyped
 
     def stream_info: (::String | Symbol name) -> untyped
 
@@ -39,6 +39,8 @@ module Cosmo
 
     def consumer_info: (::String stream_name, ::String consumer_name) -> NATS::JetStream::API::ConsumerInfo
 
+    def delete_consumer: (::String stream_name, ::String consumer_name) -> bool
+
     def get_message: (::String | Symbol name, **untyped options) -> NATS::JetStream::API::RawStreamMsg
 
     def delete_message: (::String name, ::Integer seq) -> Hash[::String, untyped]
@@ -50,6 +52,8 @@ module Cosmo
     def close: -> void
 
     private
+
+    def ephemeral_subscribe: (::String | Array[::String] subject, Hash[Symbol, untyped] config) -> untyped
 
     def create_kv_with_msg_ttl: (::String name, **untyped opts) -> untyped
   end

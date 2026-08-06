@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `TRACE` log level, below `DEBUG` — opt in with `COSMO_LOG_LEVEL=trace`
+- `Cosmo::Client#subscribe` creates an ephemeral (server-named) pull consumer when called with `consumer_name: nil`
+- `Cosmo::Client#delete_consumer` — explicit server-side consumer deletion
+
 ### Fixed
 
 - Vendored a fix for an upstream `nats-pure` bug (`NATS::JetStream::PullSubscription#fetch` raised
@@ -14,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Cosmo::Processor` no longer needs to serialize fetches per stream through a mutex to work around it,
   so the existing priority-weighted consumer list now fetches in genuine parallel for busy streams,
   as originally intended
+
+### Changed
+
+- Sample `cosmo.yml`/README's scheduled-job consumer `max_deliver` raised from 1 to 5
 
 ## [0.5.1] - 2026-08-04
 
