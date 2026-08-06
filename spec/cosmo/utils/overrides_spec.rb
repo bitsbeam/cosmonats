@@ -70,4 +70,35 @@ RSpec.describe "NATS::JetStream::PullSubscription#fetch patch" do
     expect(received.size).to eq(total)
     expect(received.uniq.size).to eq(total)
   end
+
+  # A second, distinct upstream bug lived in the same method: the post-wait timeout check
+  # used to fire even when the pop right above it had just grabbed a real, already-delivered
+  # message, discarding it for good (it's already removed from @pending_queue, so it's gone,
+  # not merely delayed). In practice this needs the wait to return a message right as elapsed
+  # time is perceived to have crossed the deadline -- a real race that's rare to hit through
+  # actual thread timing in a fast local test, so we force the exact condition deterministically
+  # instead of hoping to get lucky: fake MonotonicTime.since (only as observed by the thread
+  # running #fetch) into reporting the deadline already blown, then deliver a real message
+  # during the wait and confirm it's still returned rather than discarded. This is
+  # Cosmo::Job::Processor's steady state (idle worker threads polling one empty stream) when a
+  # scheduled/perform_at job comes due. See lib/cosmo/utils/overrides.rb.
+  it "returns a message fetched right as the deadline is perceived to have already passed" do
+    subscription = client.subscribe(subject, consumer, ack_policy: "explicit")
+
+    allow(NATS::MonotonicTime).to receive(:since).and_wrap_original do |original, arg|
+      Thread.current[:fake_deadline_blown] ? 1_000 : original.call(arg)
+    end
+
+    publisher = Thread.new do
+      sleep 0.05
+      client.publish(subject, "late-but-real")
+    end
+
+    Thread.current[:fake_deadline_blown] = true
+    messages = subscription.fetch(1, timeout: 0.2)
+    Thread.current[:fake_deadline_blown] = false
+    publisher.join
+
+    expect(messages.map(&:data)).to eq(["late-but-real"])
+  end
 end

@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Cosmo::Processor` no longer needs to serialize fetches per stream through a mutex to work around it,
   so the existing priority-weighted consumer list now fetches in genuine parallel for busy streams,
   as originally intended
+- Bug in that same vendored `#fetch`: a message fetched right as its deadline was perceived
+  to have passed got silently discarded instead of returned, occasionally dropping a job for good
+  under concurrent fetches on one subscription
 
 ### Changed
 

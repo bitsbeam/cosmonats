@@ -30,9 +30,21 @@ end
 # into Float` instead of the intended timeout/empty result. Reproduced deterministically
 # with N threads fetching in a loop against the same PullSubscription.
 #
+# Second, separate upstream bug in the same method: the post-wait timeout check below
+# (`raise ... if MonotonicTime.since(t) > timeout`) fires unconditionally, unlike every
+# other timeout check in this method (all guarded with `msgs.empty? &&`). If the unsynchronized
+# pop just above it succeeded in grabbing a real, already-delivered message -- which can happen
+# even after `timeout` has technically elapsed, since #dispatch's signal and this thread actually
+# resuming are two different moments -- that message is already gone from @pending_queue with
+# nowhere else to go, yet gets discarded here and a plain NATS::Timeout raised instead. Callers
+# (including Cosmo::Processor#fetch) treat NATS::Timeout as "no messages", so the message is lost
+# silently: never processed, never acked, and not redelivered until the consumer's ack_wait expires.
+# Reproduces reliably with several threads fetching (batch: 1) concurrently against the same
+# subscription, e.g. Cosmo::Job::Processor's thread pool.
+#
 # Vendored copy of nats-pure's PullSubscription#fetch, kept as close to
-# upstream as possible (one-line fix, see comment above), so it's easy to diff against the next
-# nats-pure release and drop once fixed there.
+# upstream as possible (two one-line fixes, see comments above), so it's easy to diff against the
+# next nats-pure release and drop once fixed there.
 
 # rubocop:disable all
 module NATS
@@ -77,7 +89,7 @@ module NATS
               msgs << msg
             end
 
-            raise ::NATS::Timeout.new("nats: fetch timeout") if MonotonicTime.since(t) > timeout
+            raise ::NATS::Timeout.new("nats: fetch timeout") if msgs.empty? && (MonotonicTime.since(t) > timeout)
 
             if JS.is_status_msg(msgs.first)
               msg = msgs.first
