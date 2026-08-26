@@ -39,6 +39,13 @@ module Cosmo
   # when everything succeeds. Always call #jobs at least once, even with nothing
   # in it - a batch that never gets a #jobs call never closes and never fires.
   #
+  # You can pass your own bid instead of letting one be generated - useful
+  # when something else (e.g. an ActiveRecord id) needs to match it:
+  #
+  #   Cosmo::Batch.new(bid: your_id)
+  #
+  # Same meaning as a plain #new either way - it's still a fresh batch.
+  #
   # == How this is actually stored in NATS
   #
   # Every batch has an id (bid, a random hex string). State lives
@@ -102,8 +109,8 @@ module Cosmo
 
     attr_reader :bid, :parent_id
 
-    def initialize(parent: nil)
-      @bid = SecureRandom.hex(8)
+    def initialize(bid: nil, parent: nil)
+      @bid = bid || SecureRandom.hex(8)
       @parent_id = parent
       kv.set("#{@bid}.meta", Utils::Json.dump({ parent_id: @parent_id, created_at: Time.now.to_i }))
       link(@parent_id) if @parent_id

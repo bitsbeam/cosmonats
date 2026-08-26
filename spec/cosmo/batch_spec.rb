@@ -169,6 +169,16 @@ RSpec.describe Cosmo::Batch do
     expect(callback_event(:complete, batch.bid)).to be_nil
   end
 
+  it "accepts a caller-supplied bid instead of generating one" do
+    batch = described_class.new(bid: "custom-bid")
+    batch.jobs { BatchWorkerJob.perform_async("custom") }
+    batch.on(:complete, CompleteCallback)
+
+    expect(batch.bid).to eq("custom-bid")
+    wait_until(timeout: 5) { callback_event(:complete, "custom-bid") }
+    expect(callback_event(:complete, "custom-bid")[:stats]).to eq(total: 1, succeeded: 1, failed: 0)
+  end
+
   context "nested batches" do
     before do
       stub_const("NestingJob", Class.new do
