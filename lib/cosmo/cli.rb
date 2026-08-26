@@ -4,7 +4,7 @@ require "yaml"
 require "optparse"
 
 module Cosmo
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength
   class CLI
     def self.run
       instance.run
@@ -155,6 +155,10 @@ module Cosmo
         OptionParser.new do |o|
           o.banner = "Usage: cosmo jobs [options]"
 
+          o.on "--streams NAMES", "Only subscribe to these job streams (comma-separated), instead of all configured streams" do |arg|
+            options[:streams] = arg.split(",")
+          end
+
           o.on "--stream NAME", "Job's stream" do |arg|
             options[:stream] = arg
           end
@@ -256,5 +260,5 @@ module Cosmo
     end
     # rubocop:enable Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength
 end

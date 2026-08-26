@@ -125,6 +125,36 @@ RSpec.describe Cosmo::Job::Processor do
       expect(results).to contain_exactly("default", "high", "critical", "low")
     end
 
+    context "with a stream filter (--streams)" do
+      let(:processor) { described_class.new(pool, running, { streams: ["default"] }) }
+
+      it "only subscribes to the given streams, leaving jobs on other streams unconsumed" do
+        stub_const("FilteredDefaultJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+        stub_const("FilteredHighJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :high, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+
+        FilteredDefaultJob.perform_async("in-scope")
+        FilteredHighJob.perform_async("out-of-scope")
+
+        wait_until(timeout: 5) { results.include?("in-scope") }
+        sleep 0.5
+
+        expect(results).to eq(["in-scope"])
+        expect(stream_size("high")).to eq(1)
+      end
+    end
+
     context "with scheduler" do
       before do
         stub_const("OverdueJob", Class.new do

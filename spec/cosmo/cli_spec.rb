@@ -174,6 +174,13 @@ RSpec.describe Cosmo::CLI do
       expect(parser).to be_a(OptionParser)
     end
 
+    it "parses --streams flag for jobs command" do
+      options = {}
+      parser = cli.send(:options_parser, "jobs", options)
+      parser.parse!(%w[--streams default,high])
+      expect(options[:streams]).to eq(%w[default high])
+    end
+
     it "parses --processors flag for streams command" do
       options = {}
       parser = cli.send(:options_parser, "streams", options)

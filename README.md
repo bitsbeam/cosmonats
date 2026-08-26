@@ -641,19 +641,42 @@ setup beyond having `sentry-ruby` initialized.
 ## 🖥️ CLI Reference
 
 ```bash
-cosmo -C config/cosmo.yml --setup                  # Create streams in NATS (idempotent)
-cosmo -C config/cosmo.yml -c 20 -r ./app/jobs jobs # Jobs only
-cosmo -C config/cosmo.yml -c 20 streams            # Streams only
-cosmo -C config/cosmo.yml -c 20                    # Both
+cosmo -C config/cosmo.yml --setup                     # Create streams in NATS (idempotent)
+cosmo -C config/cosmo.yml -c 20 -r ./app/jobs jobs    # Jobs only
+cosmo -C config/cosmo.yml -c 20 streams               # Streams only
+cosmo -C config/cosmo.yml -c 20                       # Both
+cosmo -C config/cosmo.yml jobs --streams default,high # Jobs, limited to these streams
 ```
 
-| Flag                    | Description            | Example               |
-|-------------------------|------------------------|-----------------------|
-| `-C, --config PATH`     | Config file path       | `-C config/cosmo.yml` |
-| `-c, --concurrency INT` | Worker threads         | `-c 20`               |
-| `-r, --require PATH`    | Auto-require directory | `-r ./app/jobs`       |
-| `-t, --timeout NUM`     | Shutdown timeout (sec) | `-t 60`               |
-| `-S, --setup`           | Setup streams & exit   | `--setup`             |
+**Global flags** (before the command):
+
+| Flag                    | Description                          | Example               |
+|-------------------------|---------------------------------------|-----------------------|
+| `-C, --config PATH`     | Config file path                      | `-C config/cosmo.yml` |
+| `-c, --concurrency INT` | Worker threads                        | `-c 20`               |
+| `-r, --require PATH`    | Auto-require directory                | `-r ./app/jobs`       |
+| `-t, --timeout NUM`     | Shutdown timeout (sec)                | `-t 60`               |
+| `-S, --setup`           | Setup streams & sync cron, then exit  | `--setup`             |
+| `-v, --version`         | Print version and exit                | `--version`           |
+| `-h, --help`            | Show help and exit                    | `--help`               |
+
+**`jobs` command options:**
+
+| Flag                    | Description                                                       | Example                        |
+|-------------------------|--------------------------------------------------------------------|---------------------------------|
+| `--streams NAMES`       | Only subscribe to these job streams, instead of all configured ones | `--streams default,high`      |
+| `--stream NAME`         | Job's stream                                                       | `--stream default`             |
+| `--subject NAME`        | Job's subject                                                      | `--subject jobs.default.foo`   |
+
+**`streams` command options** (`--stream`/`--subject`/`--consumer_name`/`--batch_size` apply only when running a single processor; ignored once `--processors` selects more than one):
+
+| Flag                     | Description                          | Example                         |
+|--------------------------|---------------------------------------|---------------------------------|
+| `--processors NAMES`     | Only run these stream processor classes | `--processors OrderProcessor` |
+| `--stream NAME`          | Stream name                          | `--stream orders`              |
+| `--subject NAME`         | Subject name                         | `--subject orders.created`     |
+| `--consumer_name NAME`   | Consumer name                        | `--consumer_name orders-consumer` |
+| `--batch_size NUM`       | Messages per fetch batch             | `--batch_size 50`               |
 
 
 ## 🚢 Deployment

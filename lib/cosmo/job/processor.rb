@@ -16,6 +16,7 @@ module Cosmo
         jobs_config = Config.dig(:consumers, :jobs)
         jobs_config&.each do |stream_name, config|
           next if stream_name == :scheduled # scheduled jobs are handled in schedule_loop
+          next if @options[:streams] && !@options[:streams].include?(stream_name.to_s)
 
           @consumers << subscribe(stream_name, config)
         end
