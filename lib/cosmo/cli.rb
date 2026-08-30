@@ -4,7 +4,7 @@ require "yaml"
 require "optparse"
 
 module Cosmo
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength
+  # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength
   class CLI
     def self.run
       instance.run
@@ -218,7 +218,7 @@ module Cosmo
       require path
     end
 
-    # rubocop:disable Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier
+    # rubocop:disable-next Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier
     def self.banner
       <<-TEXT
                     .#%+:                                                  
@@ -258,7 +258,5 @@ module Cosmo
                  :.                                                        
       TEXT
     end
-    # rubocop:enable Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength
 end

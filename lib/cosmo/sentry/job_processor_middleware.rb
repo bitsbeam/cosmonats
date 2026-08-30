@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+# rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize
 module Cosmo
   module Sentry
     module JobProcessorMiddleware
@@ -63,4 +63,3 @@ module Cosmo
     end
   end
 end
-# rubocop:enable Metrics/MethodLength, Metrics/AbcSize

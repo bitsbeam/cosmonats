@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Style/RedundantFetchBlock
+# rubocop:disable-next Style/RedundantFetchBlock
 RSpec.describe Cosmo::Utils::TTLCache do
   subject(:cache) { described_class.new }
 
@@ -102,4 +102,3 @@ RSpec.describe Cosmo::Utils::TTLCache do
     end
   end
 end
-# rubocop:enable Style/RedundantFetchBlock

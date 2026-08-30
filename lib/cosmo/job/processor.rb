@@ -254,7 +254,7 @@ module Cosmo
       # @param message [NATS::Msg]
       # @param duration [Float, nil]
       #
-      # rubocop:disable Lint/UnusedMethodArgument
+      # rubocop:disable-next Lint/UnusedMethodArgument
       def perform_job(job_instance, data:, message:, duration: nil)
         if duration
           Timeout.timeout(duration) { job_instance.perform(*data[:args]) }
@@ -262,7 +262,6 @@ module Cosmo
           job_instance.perform(*data[:args])
         end
       end
-      # rubocop:enable Lint/UnusedMethodArgument
     end
   end
 end

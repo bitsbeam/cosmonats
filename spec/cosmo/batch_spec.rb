@@ -188,7 +188,7 @@ RSpec.describe Cosmo::Batch do
 
         # Cosmo::Job threads perform_async's args through as a plain positional
         # array (no keyword-argument support), so fail_child is positional here.
-        # rubocop:disable Style/OptionalBooleanParameter
+        # rubocop:disable-next Style/OptionalBooleanParameter
         def perform(tag, fail_child = false)
           child = Cosmo::Batch.new(parent: batch_id)
           child.jobs do
@@ -196,7 +196,6 @@ RSpec.describe Cosmo::Batch do
           end
           Results.instance << { tag: tag }
         end
-        # rubocop:enable Style/OptionalBooleanParameter
       end)
     end
 
