@@ -6,6 +6,7 @@ module Cosmo
     @concurrency: Integer
     @pool: Utils::ThreadPool
     @running: untyped
+    @quiet: untyped
     @processors: Array[Processor]
 
     def self.run: (*untyped) -> void
@@ -17,5 +18,13 @@ module Cosmo
     def run: (::String? type, Hash[Symbol, untyped] options) -> void
 
     def shutdown: () -> void
+
+    private
+
+    def handle_shutdown: (Utils::Signal handler) -> Symbol
+
+    def quiet: () -> void
+
+    def unquiet: () -> void
   end
 end

@@ -5,6 +5,7 @@ module Cosmo
     STREAM_PAUSED_RECHECK_TTL = "5s" # How long a stream's paused state is cached before re-checking (override via COSMO_STREAM_PAUSED_RECHECK_TTL)
     STREAMS_PAUSED_IDLE_SLEEP = "1s" # How long to sleep when every stream is paused, preventing a tight CPU spin (override via COSMO_STREAMS_PAUSED_IDLE_SLEEP)
     STREAM_EMPTY_BACKOFF_MAX = "5s"  # Max sleep between empty fetches (override via COSMO_STREAM_EMPTY_BACKOFF_MAX)
+    QUIET_SLEEP = "5s"               # How long to sleep between checks while in quiet mode (override via COSMO_QUIET_IDLE_SLEEP)
 
     def self.run(...)
       new(...).tap(&:run)
@@ -12,9 +13,10 @@ module Cosmo
 
     attr_reader :consumers
 
-    def initialize(pool, running, options)
+    def initialize(pool, running, options, quiet:)
       @pool = pool
       @running = running
+      @quiet = quiet
       @options = options
       @threads = []
       @consumers = []
@@ -51,6 +53,11 @@ module Cosmo
 
       while running?
         break if shutdown
+
+        if quiet?
+          sleep(Utils::Duration.parse(ENV.fetch("COSMO_QUIET_IDLE_SLEEP", QUIET_SLEEP)))
+          next
+        end
 
         all_empty = true  # every stream is empty
         all_paused = true # every stream is paused
@@ -131,6 +138,10 @@ module Cosmo
 
     def running?
       @running.true?
+    end
+
+    def quiet?
+      @quiet.true?
     end
 
     def scheduler?

@@ -3,9 +3,11 @@ module Cosmo
     STREAM_PAUSED_RECHECK_TTL: ::String
     STREAMS_PAUSED_IDLE_SLEEP: ::String
     STREAM_EMPTY_BACKOFF_MAX: ::String
+    QUIET_SLEEP: ::String
 
     @pool: Utils::ThreadPool
     @running: untyped
+    @quiet: untyped
     @consumers: Array[untyped]
     @threads: Array[Thread]
     @cache: Utils::TTLCache
@@ -16,7 +18,7 @@ module Cosmo
 
     attr_reader consumers: Array[untyped]
 
-    def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options) -> void
+    def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options, quiet: untyped) -> void
 
     def run: () -> void
 
@@ -41,6 +43,8 @@ module Cosmo
     def fetch_subjects: (Hash[Symbol, untyped] config) -> untyped
 
     def running?: () -> bool
+
+    def quiet?: () -> bool
 
     def fetch: (untyped subscription, batch_size: Integer, timeout: Float) ?{ (Array[untyped]) -> void } -> void
 

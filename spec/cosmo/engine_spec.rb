@@ -48,18 +48,18 @@ RSpec.describe Cosmo::Engine do
     end
 
     it "traps signals" do
-      expect(Cosmo::Utils::Signal).to receive(:trap).with(:INT, :TERM)
+      expect(Cosmo::Utils::Signal).to receive(:trap).with(:INT, :TERM, :TSTP, :CONT)
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
     it "runs specific processor type" do
-      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {})
+      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {}, quiet: anything)
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
     it "runs all processors when type is nil" do
-      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {})
-      expect(Cosmo::Stream::Processor).to receive(:run).with(pool, anything, {})
+      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {}, quiet: anything)
+      expect(Cosmo::Stream::Processor).to receive(:run).with(pool, anything, {}, quiet: anything)
       expect { engine.run(nil, {}) }.to output(anything).to_stdout
     end
 
@@ -68,6 +68,22 @@ RSpec.describe Cosmo::Engine do
       expect(signal_handler).to receive(:wait).and_return("INT")
       expect(engine).to receive(:shutdown)
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
+    end
+
+    it "enters quiet mode on TSTP without shutting down, then shuts down on a later INT/TERM" do
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      allow(signal_handler).to receive(:wait).and_return("TSTP", "INT")
+      expect(engine).to receive(:shutdown).once
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
+      expect(engine.instance_variable_get(:@quiet).true?).to be true
+    end
+
+    it "lifts quiet mode on CONT and keeps waiting for a shutdown signal" do
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      allow(signal_handler).to receive(:wait).and_return("TSTP", "CONT", "TERM")
+      expect(engine).to receive(:shutdown).once
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
+      expect(engine.instance_variable_get(:@quiet).true?).to be false
     end
   end
 

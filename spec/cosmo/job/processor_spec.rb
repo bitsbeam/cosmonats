@@ -4,7 +4,8 @@ RSpec.describe Cosmo::Job::Processor do
   let(:concurrency) { 3 }
   let(:pool)        { Cosmo::Utils::ThreadPool.new(concurrency) }
   let(:running)     { Concurrent::AtomicBoolean.new }
-  let(:processor)   { described_class.new(pool, running, {}) }
+  let(:quiet)       { Concurrent::AtomicBoolean.new }
+  let(:processor)   { described_class.new(pool, running, {}, quiet: quiet) }
   let(:results)     { Results.instance }
 
   before do
@@ -126,7 +127,7 @@ RSpec.describe Cosmo::Job::Processor do
     end
 
     context "with a stream filter (--streams)" do
-      let(:processor) { described_class.new(pool, running, { streams: ["default"] }) }
+      let(:processor) { described_class.new(pool, running, { streams: ["default"] }, quiet: quiet) }
 
       it "only subscribes to the given streams, leaving jobs on other streams unconsumed" do
         stub_const("FilteredDefaultJob", Class.new do
@@ -448,7 +449,7 @@ RSpec.describe Cosmo::Job::Processor do
         prepend Cosmo::Sentry::JobProcessorMiddleware
       end)
     end
-    let(:processor) { processor_class.new(pool, running, {}) }
+    let(:processor) { processor_class.new(pool, running, {}, quiet: quiet) }
     let(:transport) { Sentry.get_current_client.transport }
 
     before(:all) do

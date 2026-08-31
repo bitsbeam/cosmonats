@@ -3,13 +3,14 @@
 RSpec.describe Cosmo::Processor do
   let(:pool) { instance_double(Cosmo::Utils::ThreadPool) }
   let(:running) { Concurrent::AtomicBoolean.new }
+  let(:quiet) { Concurrent::AtomicBoolean.new }
   let(:options) { {} }
-  let(:processor) { described_class.new(pool, running, options) }
+  let(:processor) { described_class.new(pool, running, options, quiet: quiet) }
 
   describe ".run" do
     it "creates new instance and runs it" do
       allow_any_instance_of(described_class).to receive(:run)
-      result = described_class.run(pool, running, options)
+      result = described_class.run(pool, running, options, quiet: quiet)
       expect(result).to be_a(described_class)
     end
   end
@@ -44,6 +45,17 @@ RSpec.describe Cosmo::Processor do
     it "returns false when not running" do
       running.make_false
       expect(processor.send(:running?)).to be false
+    end
+  end
+
+  describe "#quiet?" do
+    it "returns false when not quiet" do
+      expect(processor.send(:quiet?)).to be false
+    end
+
+    it "returns true once the injected quiet flag is set" do
+      quiet.make_true
+      expect(processor.send(:quiet?)).to be true
     end
   end
 

@@ -4,7 +4,8 @@ RSpec.describe Cosmo::Batch do
   let(:concurrency) { 5 }
   let(:pool)        { Cosmo::Utils::ThreadPool.new(concurrency) }
   let(:running)     { Concurrent::AtomicBoolean.new }
-  let(:processor)   { Cosmo::Job::Processor.new(pool, running, {}) }
+  let(:quiet)       { Concurrent::AtomicBoolean.new }
+  let(:processor)   { Cosmo::Job::Processor.new(pool, running, {}, quiet: quiet) }
   let(:results)     { Results.instance }
 
   before do
