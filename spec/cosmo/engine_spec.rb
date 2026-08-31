@@ -48,7 +48,7 @@ RSpec.describe Cosmo::Engine do
     end
 
     it "traps signals" do
-      expect(Cosmo::Utils::Signal).to receive(:trap).with(:INT, :TERM, :TSTP, :CONT)
+      expect(Cosmo::Utils::Signal).to receive(:trap).with(:INT, :TERM, :TSTP, :CONT, :USR1)
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
@@ -84,6 +84,46 @@ RSpec.describe Cosmo::Engine do
       expect(engine).to receive(:shutdown).once
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
       expect(engine.instance_variable_get(:@quiet).true?).to be false
+    end
+
+    it "drains and self-terminates on USR1, once the pool goes idle" do
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      real_handler = Cosmo::Utils::Signal.new
+      allow(Cosmo::Utils::Signal).to receive(:trap).and_return(real_handler)
+      allow(pool).to receive(:wait_idle)
+      expect(engine).to receive(:shutdown).once
+
+      thread = Thread.new { engine.run("jobs", {}) }
+      sleep 0.05
+      real_handler.push(:USR1)
+
+      expect(thread.join(1)).to eq(thread)
+      expect(engine.instance_variable_get(:@quiet).true?).to be true
+      expect(pool).to have_received(:wait_idle)
+    end
+  end
+
+  describe "#drain_and_exit" do
+    let(:engine) { described_class.new }
+    let(:handler) { instance_double(Cosmo::Utils::Signal) }
+
+    it "goes quiet and pushes :TERM back through the handler once the pool is idle" do
+      pushed = Concurrent::IVar.new
+      allow(pool).to receive(:wait_idle)
+      allow(handler).to receive(:push) { |signal| pushed.set(signal) }
+
+      engine.send(:drain_and_exit, handler)
+
+      expect(engine.instance_variable_get(:@quiet).true?).to be true
+      expect(pushed.value(1)).to eq(:TERM)
+      expect(pool).to have_received(:wait_idle)
+    end
+
+    it "does not spawn a second waiter when already quiet" do
+      engine.instance_variable_get(:@quiet).make_true
+      expect(pool).not_to receive(:wait_idle)
+
+      engine.send(:drain_and_exit, handler)
     end
   end
 

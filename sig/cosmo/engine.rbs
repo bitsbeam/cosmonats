@@ -26,5 +26,7 @@ module Cosmo
     def quiet: () -> void
 
     def unquiet: () -> void
+
+    def drain_and_exit: (Utils::Signal handler) -> void
   end
 end

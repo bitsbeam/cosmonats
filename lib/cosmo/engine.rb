@@ -25,7 +25,7 @@ module Cosmo
     end
 
     def run(type, options)
-      handler = Utils::Signal.trap(:INT, :TERM, :TSTP, :CONT)
+      handler = Utils::Signal.trap(:INT, :TERM, :TSTP, :CONT, :USR1)
       Logger.info "Starting processing, hit Ctrl-C to stop [concurrency=#{@concurrency}]"
 
       processor_classes = type && PROCESSORS.key?(type.to_sym) ? [PROCESSORS[type.to_sym]] : PROCESSORS.values
@@ -56,6 +56,7 @@ module Cosmo
         case signal.to_s
         when "TSTP" then quiet
         when "CONT" then unquiet
+        when "USR1" then drain_and_exit(handler)
         else return signal
         end
       end
@@ -71,6 +72,16 @@ module Cosmo
       return unless @quiet.make_false
 
       Logger.info "Received CONT, resuming normal fetching"
+    end
+
+    def drain_and_exit(handler)
+      return unless @quiet.make_true
+
+      Logger.info "Received USR1, no new jobs will be fetched, exiting when work drains"
+      Thread.new do
+        @pool.wait_idle
+        handler.push(:TERM)
+      end
     end
   end
 end
