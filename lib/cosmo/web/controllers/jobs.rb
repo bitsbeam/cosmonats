@@ -67,7 +67,7 @@ module Cosmo
         end
 
         def _busy
-          limit = (limit || 25).to_i
+          limit = (params["limit"] || API::Busy::LIMIT).to_i
           jobs  = API::Busy.instance.list(limit:)
           ok render("jobs/_busy", { jobs: jobs, total: API::Busy.instance.size })
         end

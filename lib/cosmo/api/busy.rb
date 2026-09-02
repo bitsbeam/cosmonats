@@ -6,6 +6,7 @@ module Cosmo
   module API
     class Busy
       TTL = 70
+      LIMIT = 25
       HEARTBEAT = 30
       BUCKET = "cosmo_jobs_busy"
 
@@ -39,7 +40,7 @@ module Cosmo
         @kv.purge(seq)
       end
 
-      def list(limit: 25)
+      def list(limit: LIMIT)
         @kv.keys(limit:).filter_map { Utils::Json.parse(@kv.get(_1)&.value) }.map { _1.merge(data: Utils::Json.parse(_1[:data])) }
       end
 
