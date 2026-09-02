@@ -13,7 +13,7 @@ RSpec.describe Cosmo::Stream::Message do
     allow(msg).to receive(:metadata).and_return(metadata)
     allow(msg).to receive(:data).and_return('{"key":"value"}')
     allow(msg).to receive(:ack)
-    allow(msg).to receive(:nack)
+    allow(msg).to receive(:nak)
     allow(msg).to receive(:term)
     allow(msg).to receive(:in_progress)
   end
@@ -70,8 +70,13 @@ RSpec.describe Cosmo::Stream::Message do
       message.ack
     end
 
-    it "delegates nack" do
-      expect(msg).to receive(:nack)
+    it "delegates nak" do
+      expect(msg).to receive(:nak)
+      message.nak
+    end
+
+    it "delegates nack to nak" do
+      expect(msg).to receive(:nak)
       message.nack
     end
 
