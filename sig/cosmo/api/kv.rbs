@@ -1,6 +1,8 @@
 module Cosmo
   module API
     class KV
+      LIMIT: ::Integer
+
       @name: ::String
       @options: Hash[Symbol, untyped]
       @kv: untyped
@@ -15,7 +17,7 @@ module Cosmo
 
       def delete: (::String | ::Integer key) -> untyped
 
-      def keys: (?::String? subject, ?limit: ::Integer) -> Array[::String]
+      def keys: (?::String? subject, ?limit: ::Integer?, ?offset: ::Integer) -> Array[::String]
 
       def purge: (::String | ::Integer key) -> untyped
 

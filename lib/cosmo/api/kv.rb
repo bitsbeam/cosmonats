@@ -3,6 +3,8 @@
 module Cosmo
   module API
     class KV
+      LIMIT = 25
+
       attr_reader :kv
 
       def initialize(name, options = nil)
@@ -39,14 +41,20 @@ module Cosmo
         kv.delete(key)
       end
 
-      def keys(subject = nil, limit: 25)
+      # Walks the bucket and collects live keys. Pass +limit: nil+ to walk the whole
+      # bucket -- a bounded +limit+ stops the watch early, so it can never be used
+      # to count (see #count).
+      def keys(subject = nil, limit: LIMIT, offset: 0)
         results = []
+        skipped = 0
         watcher = kv.watch(subject || ">", ignore_deletes: true, meta_only: true)
         watcher.each do |entry|
           break unless entry
 
+          next skipped += 1 if skipped < offset.to_i
+
           results << entry.key
-          break if results.size >= limit
+          break if limit && results.size >= limit
         end
         watcher.stop
         results
@@ -70,7 +78,7 @@ module Cosmo
       end
 
       def count
-        keys.size
+        keys(limit: nil).size
       rescue NATS::KeyValue::NoKeysFoundError, NATS::JetStream::Error::NotFound
         0
       end

@@ -83,6 +83,17 @@ RSpec.describe Cosmo::API::KV do
       5.times { |i| kv.set("key#{i}", i.to_s) }
       expect(kv.keys(limit: 3).size).to eq(3)
     end
+
+    it "walks the whole bucket without a limit" do
+      (described_class::LIMIT + 5).times { |i| kv.set("key#{i}", i.to_s) }
+      expect(kv.keys(limit: nil).size).to eq(described_class::LIMIT + 5)
+    end
+
+    it "skips the offset" do
+      5.times { |i| kv.set("key#{i}", i.to_s) }
+      first = kv.keys(limit: 5)
+      expect(kv.keys(limit: 5, offset: 2)).to eq(first.drop(2))
+    end
   end
 
   describe "#purge" do
@@ -99,6 +110,12 @@ RSpec.describe Cosmo::API::KV do
       kv.set("x", "1")
       kv.set("y", "2")
       expect(kv.size).to eq(2)
+    end
+
+    it "counts past the default key limit" do
+      total = described_class::LIMIT * 2
+      total.times { |i| kv.set("key#{i}", i.to_s) }
+      expect(kv.size).to eq(total)
     end
   end
 
