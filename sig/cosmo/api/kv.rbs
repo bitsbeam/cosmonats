@@ -19,6 +19,8 @@ module Cosmo
 
       def keys: (?::String? subject, ?limit: ::Integer?, ?offset: ::Integer) -> Array[::String]
 
+      def entries: (?::String? subject, ?limit: ::Integer?, ?offset: ::Integer) -> Array[[::String, ::String]]
+
       def purge: (::String | ::Integer key) -> untyped
 
       def erase: (::String | ::Integer key) -> ::Integer?
@@ -29,6 +31,8 @@ module Cosmo
       alias size count
 
       private
+
+      def walk: (::String? subject, limit: ::Integer?, offset: ::Integer, meta_only: bool) -> Array[[::String, ::String]]
 
       def publish_cas: (::String | ::Integer key, ::String value, ::Integer? ttl, last_seq: ::Integer) -> untyped
 

@@ -45,19 +45,15 @@ module Cosmo
       # bucket -- a bounded +limit+ stops the watch early, so it can never be used
       # to count (see #count).
       def keys(subject = nil, limit: LIMIT, offset: 0)
-        results = []
-        skipped = 0
-        watcher = kv.watch(subject || ">", ignore_deletes: true, meta_only: true)
-        watcher.each do |entry|
-          break unless entry
+        walk(subject, limit:, offset:, meta_only: true).map(&:first)
+      end
 
-          next skipped += 1 if skipped < offset.to_i
-
-          results << entry.key
-          break if limit && results.size >= limit
-        end
-        watcher.stop
-        results
+      # Same walk as #keys, but carries each value back with its key. The watch
+      # already has the values in hand, so callers that need them get one pass
+      # instead of a #keys walk followed by a #get per key.
+      # @return [Array<Array(String, String)>] +[key, value]+ pairs
+      def entries(subject = nil, limit: LIMIT, offset: 0)
+        walk(subject, limit:, offset:, meta_only: false)
       end
 
       # Writes a KV-Operation tombstone (same issue as #delete on ttl buckets).
@@ -85,6 +81,22 @@ module Cosmo
       alias size count
 
       private
+
+      def walk(subject, limit:, offset:, meta_only:)
+        results = []
+        skipped = 0
+        watcher = kv.watch(subject || ">", ignore_deletes: true, meta_only:)
+        watcher.each do |entry|
+          break unless entry
+
+          next skipped += 1 if skipped < offset.to_i
+
+          results << [entry.key, entry.value]
+          break if limit && results.size >= limit
+        end
+        watcher.stop
+        results
+      end
 
       # CAS = Compare-And-Swap: publish +value+ with a per-message Nats-TTL,
       # but only if the subject's current last sequence matches +last_seq+

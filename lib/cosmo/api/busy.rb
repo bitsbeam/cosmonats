@@ -44,7 +44,7 @@ module Cosmo
 
       def list(page: nil, limit: LIMIT)
         offset = ([page.to_i, 1].max - 1) * limit
-        @kv.keys(limit:, offset:).filter_map { Utils::Json.parse(@kv.get(_1)&.value) }
+        @kv.entries(limit:, offset:).filter_map { Utils::Json.parse(_1.last) }
            .map { _1.merge(data: Utils::Json.parse(_1[:data])) }
       end
 

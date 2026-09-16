@@ -96,6 +96,20 @@ RSpec.describe Cosmo::API::KV do
     end
   end
 
+  describe "#entries" do
+    it "returns keys with their values in one pass" do
+      kv.set("a", "1")
+      kv.set("b", "2")
+      expect(kv.entries(limit: nil).sort).to eq([%w[a 1], %w[b 2]])
+    end
+
+    it "respects limit and offset" do
+      5.times { |i| kv.set("key#{i}", i.to_s) }
+      all = kv.entries(limit: 5)
+      expect(kv.entries(limit: 2, offset: 2)).to eq(all[2, 2])
+    end
+  end
+
   describe "#purge" do
     it "purges a key" do
       kv.set("p", "v")
