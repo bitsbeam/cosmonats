@@ -28,8 +28,10 @@ module Cosmo
 
       def add(message)
         @thread ||= Thread.new { heartbeat_loop }
-        seq = message.metadata.sequence.stream
-        value = Utils::Json.dump({ data: message.data, stream: message.metadata.stream, worker: worker_id, started_at: Time.now.to_i })
+        meta = message.metadata
+        seq = meta.sequence.stream
+        value = Utils::Json.dump({ data: message.data, stream: meta.stream, worker: worker_id,
+                                   started_at: Time.now.to_i, delivery: meta.num_delivered })
         @messages[seq] = value
         @kv.set(seq, value)
       end

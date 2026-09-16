@@ -18,6 +18,7 @@
             <th>JID[Args]</th>
             <th>Stream</th>
             <th>Worker</th>
+            <th>Attempt</th>
             <th>Running for</th>
           </tr>
         </thead>
@@ -43,6 +44,14 @@
               <code><%= h(job[:stream].to_s) %></code>
             </td>
             <td><code style="font-size: var(--font-size-small);"><%= h(job[:worker].to_s) %></code></td>
+            <td>
+              <% delivery = job[:delivery].to_i -%>
+              <% if delivery > 1 -%>
+                <span class="badge <%= delivery >= 5 ? 'badge-danger' : 'badge-warning' %>"><%= delivery %></span>
+              <% else -%>
+                <span class="text-muted"><%= delivery.zero? ? '&mdash;' : delivery %></span>
+              <% end -%>
+            </td>
             <td>
               <%= elapsed(job[:started_at]) %>
             </td>

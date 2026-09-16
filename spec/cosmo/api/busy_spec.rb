@@ -3,7 +3,7 @@
 RSpec.describe Cosmo::API::Busy do
   subject(:busy) { described_class.new }
 
-  let(:message) { double("message", metadata: double(sequence: double(stream: 42), stream: "jobs")) }
+  let(:message) { double("message", metadata: double(sequence: double(stream: 42), stream: "jobs", num_delivered: 1)) }
 
   before do
     busy.instance_variable_get(:@kv).clean rescue nil
@@ -75,12 +75,22 @@ RSpec.describe Cosmo::API::Busy do
     it "returns list of busy entries" do
       entries = busy.list
       expect(entries).to be_an(Array)
-      expect(entries.first).to include(:worker, :started_at, :stream)
+      expect(entries.first).to include(:worker, :started_at, :stream, :delivery)
+    end
+
+    it "records the delivery attempt" do
+      redelivered = double("redelivered", metadata: double(sequence: double(stream: 7), stream: "jobs", num_delivered: 4),
+                                          data: Cosmo::Utils::Json.dump({ class: "MyWorker", args: [] }))
+      busy.add(redelivered)
+      wait_until(timeout: 5) { busy.size == 2 }
+
+      entry = busy.list.find { _1.dig(:data, :class) == "MyWorker" && _1[:delivery] == 4 }
+      expect(entry).not_to be_nil
     end
 
     it "respects limit" do
       2.times do |i|
-        m = double("msg#{i}", metadata: double(sequence: double(stream: i), stream: "jobs"), data: "{}")
+        m = double("msg#{i}", metadata: double(sequence: double(stream: i), stream: "jobs", num_delivered: 1), data: "{}")
         busy.add(m)
       end
       expect(busy.list(limit: 1).size).to eq(1)
@@ -89,7 +99,7 @@ RSpec.describe Cosmo::API::Busy do
     it "pages beyond the first limit" do
       3.times do |i|
         data = Cosmo::Utils::Json.dump({ class: "Worker#{i}", args: [] })
-        m = double("msg#{i}", metadata: double(sequence: double(stream: i), stream: "jobs"), data:)
+        m = double("msg#{i}", metadata: double(sequence: double(stream: i), stream: "jobs", num_delivered: 1), data:)
         busy.add(m)
       end
       wait_until(timeout: 5) { busy.size == 4 }
