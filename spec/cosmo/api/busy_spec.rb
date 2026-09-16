@@ -85,5 +85,22 @@ RSpec.describe Cosmo::API::Busy do
       end
       expect(busy.list(limit: 1).size).to eq(1)
     end
+
+    it "pages beyond the first limit" do
+      3.times do |i|
+        data = Cosmo::Utils::Json.dump({ class: "Worker#{i}", args: [] })
+        m = double("msg#{i}", metadata: double(sequence: double(stream: i), stream: "jobs"), data:)
+        busy.add(m)
+      end
+      wait_until(timeout: 5) { busy.size == 4 }
+
+      first = busy.list(page: 1, limit: 2).map { _1.dig(:data, :class) }
+      second = busy.list(page: 2, limit: 2).map { _1.dig(:data, :class) }
+
+      expect(first.size).to eq(2)
+      expect(second.size).to eq(2)
+      expect(first & second).to be_empty
+      expect((first + second).uniq.size).to eq(4)
+    end
   end
 end

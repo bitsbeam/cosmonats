@@ -1,5 +1,5 @@
 <div id="busy-poller"
-     hx-get="<%= url_for('/jobs/_busy') %>"
+     hx-get="<%= url_for('/jobs/_busy', page: @page, limit: @limit) %>"
      hx-trigger="every 5s"
      hx-swap="outerHTML">
   <div class="pending">
@@ -50,6 +50,44 @@
           <% end -%>
         </tbody>
       </table>
+    </div>
+  <% end -%>
+
+  <% if @total_pages.to_i > 1 -%>
+    <div class="pagination">
+      <% if @page > 1 -%>
+        <a hx-get="<%= url_for('/jobs/_busy', page: @page - 1, limit: @limit) %>"
+           hx-target="#busy-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner"
+           class="btn">&#x2190; Prev</a>
+      <% else -%>
+        <span class="btn btn-disabled">&#x2190; Prev</span>
+      <% end -%>
+
+      <% pages(@page, @total_pages).each do |p| -%>
+        <% if p == :gap -%>
+          <span class="pagination-gap">&hellip;</span>
+        <% elsif p == @page -%>
+          <span class="btn btn-primary btn-disabled"><%= p %></span>
+        <% else -%>
+          <a hx-get="<%= url_for('/jobs/_busy', page: p, limit: @limit) %>"
+             hx-target="#busy-poller"
+             hx-swap="outerHTML"
+             hx-indicator="#global-spinner"
+             class="btn"><%= p %></a>
+        <% end -%>
+      <% end -%>
+
+      <% if @page < @total_pages -%>
+        <a hx-get="<%= url_for('/jobs/_busy', page: @page + 1, limit: @limit) %>"
+           hx-target="#busy-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner"
+           class="btn">Next &#x2192;</a>
+      <% else -%>
+        <span class="btn btn-disabled">Next &#x2192;</span>
+      <% end -%>
     </div>
   <% end -%>
 </div>

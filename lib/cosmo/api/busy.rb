@@ -40,8 +40,10 @@ module Cosmo
         @kv.purge(seq)
       end
 
-      def list(limit: LIMIT)
-        @kv.keys(limit:).filter_map { Utils::Json.parse(@kv.get(_1)&.value) }.map { _1.merge(data: Utils::Json.parse(_1[:data])) }
+      def list(page: nil, limit: LIMIT)
+        offset = ([page.to_i, 1].max - 1) * limit
+        @kv.keys(limit:, offset:).filter_map { Utils::Json.parse(@kv.get(_1)&.value) }
+           .map { _1.merge(data: Utils::Json.parse(_1[:data])) }
       end
 
       def size

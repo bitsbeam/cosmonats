@@ -67,9 +67,12 @@ module Cosmo
         end
 
         def _busy
+          busy = API::Busy.instance
           limit = (params["limit"] || API::Busy::LIMIT).to_i
-          jobs  = API::Busy.instance.list(limit:)
-          ok render("jobs/_busy", { jobs: jobs, total: API::Busy.instance.size })
+          total = busy.size
+          total_pages = (total.to_f / limit).ceil
+          page = params["page"].to_i.clamp(1, [total_pages, 1].max)
+          ok render("jobs/_busy", { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages: })
         end
 
         def _enqueued # rubocop:disable Metrics/AbcSize

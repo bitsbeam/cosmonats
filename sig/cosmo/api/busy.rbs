@@ -22,7 +22,7 @@ module Cosmo
 
       def delete: (untyped message) -> void
 
-      def list: (?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+      def list: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
 
       def size: () -> ::Integer
 
