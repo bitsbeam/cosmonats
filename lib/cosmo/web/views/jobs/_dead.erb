@@ -39,10 +39,21 @@
               <code><%= h(job.stream) %></code>
             </td>
             <td style="max-width: 400px;">
-              <% if job.data[:error] -%>
+              <% if job.error? -%>
               <div class="error-message">
-                <strong><%= h(job.data[:error].to_s.split(":").first || "Error") %></strong>
-                <p><%= h(job.data[:error]) %></p>
+                <strong><%= h(job.error_class.to_s.empty? ? "Error" : job.error_class) %></strong>
+                <p><%= h(job.error_message) %></p>
+                <% if job.error_backtrace -%>
+                <details>
+                  <summary>Backtrace</summary>
+                  <code><%= h(job.error_backtrace) %></code>
+                </details>
+                <% end -%>
+              </div>
+              <% else -%>
+              <div class="error-message">
+                <strong>Unknown</strong>
+                <p>No error recorded for this job</p>
               </div>
               <% end -%>
             </td>

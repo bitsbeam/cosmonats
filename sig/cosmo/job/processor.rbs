@@ -37,7 +37,9 @@ module Cosmo
 
       def drop_message: (untyped message, Hash[Symbol, untyped] data) -> void
 
-      def move_message: (untyped message, ?Hash[Symbol, untyped]? data) -> void
+      def reject_message: (untyped message, Exception error, ?Hash[Symbol, untyped]? data) -> void
+
+      def move_message: (untyped message, ?Hash[Symbol, untyped]? data, ?Exception? exception) -> void
 
       def with_stats: (untyped message) { () -> untyped } -> void
 

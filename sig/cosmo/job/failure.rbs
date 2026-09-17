@@ -1,0 +1,27 @@
+module Cosmo
+  module Job
+    class Failure
+      HEADER_LIMIT: Integer
+      BACKTRACE_LINES: Integer
+
+      @exception: Exception
+      @backtrace: ::String?
+
+      def self.headers: (Exception exception) -> Hash[::String, ::String]
+
+      def initialize: (Exception exception) -> void
+
+      def headers: () -> Hash[::String, ::String]
+
+      private
+
+      def name: () -> ::String
+
+      def message: () -> ::String
+
+      def backtrace: () -> ::String
+
+      def single_line: (untyped value) -> ::String
+    end
+  end
+end

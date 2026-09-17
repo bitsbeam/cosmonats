@@ -61,16 +61,11 @@ module Cosmo
         message = messages.first
         Logger.debug "received messages #{messages.inspect}"
         data = Utils::Json.parse(message.data)
-        unless data
-          Logger.error ArgumentError.new("malformed payload")
-          move_message(message)
-          return
-        end
+        return reject_message(message, ArgumentError.new("malformed payload")) unless data
 
         worker_class = Utils::String.safe_constantize(data[:class])
         unless worker_class
-          Logger.error ArgumentError.new("#{data[:class]} class not found")
-          move_message(message, data)
+          reject_message(message, ArgumentError.new("#{data[:class]} class not found"), data)
           notify_batch(data, success: false)
           return
         end
@@ -155,7 +150,7 @@ module Cosmo
         end
 
         warn_capped(message, data, capped_at) if capped_at
-        data[:dead] ? move_message(message, data) : drop_message(message, data)
+        data[:dead] ? move_message(message, data, exception) : drop_message(message, data)
         notify_batch(data, success: false)
         true
       end
@@ -218,9 +213,16 @@ module Cosmo
         Logger.debug "job dropped #{data[:jid]}"
       end
 
-      def move_message(message, data = nil)
+      # Logs why a message can't be processed at all and parks it in the DLQ.
+      def reject_message(message, error, data = nil)
+        Logger.error error
+        move_message(message, data, error)
+      end
+
+      def move_message(message, data = nil, exception = nil)
         klass = data ? Utils::String.underscore(data[:class]) : "default"
         headers = { "X-Stream" => message.metadata.stream, "X-Subject" => message.subject }
+        headers.merge!(Failure.headers(exception)) if exception
         Client.instance.publish("jobs.dead.#{klass}", message.data, header: headers)
         message.ack
         Logger.debug "job moved #{data&.dig(:jid)} to DLQ"
@@ -257,7 +259,7 @@ module Cosmo
       # rubocop:disable-next Lint/UnusedMethodArgument
       def perform_job(job_instance, data:, message:, duration: nil)
         if duration
-          Timeout.timeout(duration) { job_instance.perform(*data[:args]) }
+          Timeout.timeout(duration, Timeout::Error, "execution expired after the #{duration}s duration limit") { job_instance.perform(*data[:args]) }
         else
           job_instance.perform(*data[:args])
         end
