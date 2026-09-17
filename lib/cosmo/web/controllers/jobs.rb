@@ -68,11 +68,10 @@ module Cosmo
 
         def _busy
           busy = API::Busy.instance
-          limit = (params["limit"] || API::Busy::LIMIT).to_i
           total = busy.size
-          total_pages = (total.to_f / limit).ceil
-          page = params["page"].to_i.clamp(1, [total_pages, 1].max)
-          ok render("jobs/_busy", { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages: })
+          page, limit, total_pages = paginate(total, API::Busy::LIMIT)
+          polling = params["poll"].to_s != "0"
+          ok render("jobs/_busy", { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages:, polling: })
         end
 
         def _enqueued # rubocop:disable Metrics/AbcSize
@@ -95,6 +94,12 @@ module Cosmo
         end
 
         private
+
+        def paginate(total, default_limit)
+          limit = (params["limit"] || default_limit).to_i
+          total_pages = (total.to_f / limit).ceil
+          [params["page"].to_i.clamp(1, [total_pages, 1].max), limit, total_pages]
+        end
 
         def streams
           stream_names = API::Stream.jobs.map(&:name)

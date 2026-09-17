@@ -163,6 +163,14 @@ button:hover, .btn:hover {
   );
 }
 
+.btn-sm {
+  box-shadow: none;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  line-height: var(--space-2x);
+  padding: var(--space-1-2) var(--space);
+}
+
 /* ── Badges ────────────────────────────────────────────────────────────── */
 .badge {
   border-radius: var(--space-1-2);
@@ -341,6 +349,12 @@ section .pending {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+section .pending .poll-status {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space);
 }
 
 /* ── Stat cards ────────────────────────────────────────────────────────── */

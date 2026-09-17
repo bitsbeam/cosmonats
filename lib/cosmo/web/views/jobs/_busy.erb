@@ -1,10 +1,29 @@
+<% nav = @polling ? { limit: @limit } : { limit: @limit, poll: 0 } -%>
 <div id="busy-poller"
+     <% if @polling -%>
      hx-get="<%= url_for('/jobs/_busy', page: @page, limit: @limit) %>"
      hx-trigger="every 5s"
-     hx-swap="outerHTML">
+     hx-swap="outerHTML"
+     <% end -%>
+     >
   <div class="pending">
     <span></span>
-    <span class="text-muted"><%= @total %> job(s) running</span>
+    <span class="poll-status">
+      <span class="text-muted"><%= @total %> job(s) running</span>
+      <% if @polling -%>
+        <a class="btn btn-sm"
+           hx-get="<%= url_for('/jobs/_busy', nav.merge(page: @page, poll: 0)) %>"
+           hx-target="#busy-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner">&#9209; Stop Polling</a>
+      <% else -%>
+        <a class="btn btn-sm btn-primary"
+           hx-get="<%= url_for('/jobs/_busy', page: @page, limit: @limit) %>"
+           hx-target="#busy-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner">&#x25B6; Live Poll</a>
+      <% end -%>
+    </span>
   </div>
 
   <% if @jobs.empty? -%>
@@ -65,7 +84,7 @@
   <% if @total_pages.to_i > 1 -%>
     <div class="pagination">
       <% if @page > 1 -%>
-        <a hx-get="<%= url_for('/jobs/_busy', page: @page - 1, limit: @limit) %>"
+        <a hx-get="<%= url_for('/jobs/_busy', nav.merge(page: @page - 1)) %>"
            hx-target="#busy-poller"
            hx-swap="outerHTML"
            hx-indicator="#global-spinner"
@@ -80,7 +99,7 @@
         <% elsif p == @page -%>
           <span class="btn btn-primary btn-disabled"><%= p %></span>
         <% else -%>
-          <a hx-get="<%= url_for('/jobs/_busy', page: p, limit: @limit) %>"
+          <a hx-get="<%= url_for('/jobs/_busy', nav.merge(page: p)) %>"
              hx-target="#busy-poller"
              hx-swap="outerHTML"
              hx-indicator="#global-spinner"
@@ -89,7 +108,7 @@
       <% end -%>
 
       <% if @page < @total_pages -%>
-        <a hx-get="<%= url_for('/jobs/_busy', page: @page + 1, limit: @limit) %>"
+        <a hx-get="<%= url_for('/jobs/_busy', nav.merge(page: @page + 1)) %>"
            hx-target="#busy-poller"
            hx-swap="outerHTML"
            hx-indicator="#global-spinner"
