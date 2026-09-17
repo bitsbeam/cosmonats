@@ -285,6 +285,16 @@ RSpec.describe Cosmo::Job::Processor do
           expect(stream_size("dead")).to eq(1)
           expect(stream_size("default")).to eq(0)
         end
+
+        it "records the timeout as the dead job error" do
+          SlowJob.perform_async
+          wait_until(timeout: 8) { stream_size("dead") >= 1 }
+
+          job = Cosmo::API::Stream.new("dead").messages.first
+          expect(job.error_class).to eq("Timeout::Error")
+          expect(job.error_message).to eq("execution expired after the 1s duration limit")
+          expect(job.error_backtrace).not_to be_nil
+        end
       end
     end
   end
@@ -304,6 +314,24 @@ RSpec.describe Cosmo::Job::Processor do
         ImmediatelyDeadJob.perform_async("trigger")
         wait_until(timeout: 5) { stream_size("dead") >= 1 }
         expect(stream_size("default")).to eq(0)
+      end
+
+      it "records the raised exception as the dead job error" do
+        stub_const("ExplainedDeadJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0, dead: true
+
+          def perform(...) = raise ArgumentError, "intentional failure"
+        end)
+
+        ExplainedDeadJob.perform_async("trigger")
+        wait_until(timeout: 5) { stream_size("dead") >= 1 }
+
+        job = Cosmo::API::Stream.new("dead").messages.first
+        expect(job.error_class).to eq("ArgumentError")
+        expect(job.error_message).to eq("intentional failure")
+        expect(job.error_backtrace).to include("processor_spec.rb")
       end
 
       it "treats retry: false as retry: 0 and moves the failing job straight to DLQ" do

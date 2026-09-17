@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "cosmo/job/data"
+require "cosmo/job/failure"
 require "cosmo/job/limit"
 require "cosmo/job/processor"
 
