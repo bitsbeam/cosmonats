@@ -41,6 +41,34 @@ RSpec.describe Cosmo::CLI do
       # Suppress banner output
       expect { cli.run }.to output(anything).to_stdout
     end
+
+    context "with the setup flag" do
+      before do
+        ARGV.replace(%w[-S])
+        allow(ARGV).to receive(:shift).and_call_original
+        allow(cli).to receive(:load_config)
+        allow(cli).to receive(:exit)
+        allow(Cosmo::Client.instance).to receive(:setup_stream)
+        allow(Cosmo::Config).to receive(:[]).with(:setup).and_return(setup)
+        allow(Cosmo::Config).to receive(:dig).with(:setup, :cron).and_return(nil)
+      end
+
+      let(:setup) { { jobs: { default: {}, low: {} }, streams: { events: {} } } }
+
+      it "prints every stream type on its own line" do
+        expect { cli.run }.to output(
+          "Stream is ready: default, low\nStream is ready: events\nCosmo streams set up successfully.\n"
+        ).to_stdout
+      end
+
+      context "without streams to set up" do
+        let(:setup) { { cron: { daily: {} } } }
+
+        it "prints no leading blank line" do
+          expect { cli.run }.to output("Cosmo streams set up successfully.\n").to_stdout
+        end
+      end
+    end
   end
 
   describe "#parse (private)" do

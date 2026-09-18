@@ -69,9 +69,9 @@ module Cosmo
           first_line ? print("Stream is ready: #{name}") : print(", #{name}")
           first_line = false
         end
+        puts unless first_line
       end
 
-      puts
       schedules = Config.dig(:setup, :cron)&.reduce(0) do |sum, (name, entry)|
         class_name = entry.delete(:class)
         API::Cron.instance.upsert!(**entry, name: name, class_name: class_name)
