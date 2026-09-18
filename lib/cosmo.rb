@@ -33,4 +33,11 @@ module Cosmo
       super("Missing stream `#{stream_name}`")
     end
   end
+
+  class UnknownJobStreamError < Error
+    def initialize(names, configured)
+      super("Unknown job stream#{"s" if names.size > 1} #{names.map { "`#{_1}`" }.join(", ")}; " \
+            "configured: #{configured.empty? ? "none" : configured.map { "`#{_1}`" }.join(", ")}")
+    end
+  end
 end

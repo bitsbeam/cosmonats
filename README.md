@@ -646,7 +646,15 @@ cosmo -C config/cosmo.yml -c 20 -r ./app/jobs jobs    # Jobs only
 cosmo -C config/cosmo.yml -c 20 streams               # Streams only
 cosmo -C config/cosmo.yml -c 20                       # Both
 cosmo -C config/cosmo.yml jobs --streams default,high # Jobs, limited to these streams
+cosmo -C config/cosmo.yml jobs --stream critical      # Jobs, limited to one stream
+cosmo -C config/cosmo.yml jobs --no-scheduler         # Jobs, without dispatching scheduled jobs
+COSMO_JOBS_STREAMS=default,high cosmo jobs            # Same filter, without touching the command line
 ```
+
+Each selected stream gets its own durable consumer, named `consumer-<stream>`. Every process that subscribes to a stream
+pulls from that same consumer, so running a dedicated fleet per stream splits the work instead of duplicating it.
+The `scheduled` stream is a service stream: it is always dispatched, and naming it in `--streams` selects nothing, use
+`--no-scheduler` on workers that should not dispatch scheduled jobs. Unknown stream names abort the process.
 
 **Global flags** (before the command):
 
@@ -665,8 +673,11 @@ cosmo -C config/cosmo.yml jobs --streams default,high # Jobs, limited to these s
 | Flag                    | Description                                                       | Example                        |
 |-------------------------|--------------------------------------------------------------------|---------------------------------|
 | `--streams NAMES`       | Only subscribe to these job streams, instead of all configured ones | `--streams default,high`      |
-| `--stream NAME`         | Job's stream                                                       | `--stream default`             |
+| `--stream NAME`         | Same as `--streams`, for a single stream                           | `--stream default`             |
+| `--[no-]scheduler`      | Dispatch scheduled jobs (default: yes)                             | `--no-scheduler`               |
 | `--subject NAME`        | Job's subject                                                      | `--subject jobs.default.foo`   |
+
+`--streams`/`--stream` also read from `COSMO_JOBS_STREAMS` (comma-separated) when neither flag is given.
 
 **`streams` command options** (`--stream`/`--subject`/`--consumer_name`/`--batch_size` apply only when running a single processor; ignored once `--processors` selects more than one):
 

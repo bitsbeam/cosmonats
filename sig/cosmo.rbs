@@ -17,4 +17,8 @@ module Cosmo
   class StreamNotFoundError < Error
     def initialize: (::String stream_name) -> void
   end
+
+  class UnknownJobStreamError < Error
+    def initialize: (Array[::String] names, Array[::String] configured) -> void
+  end
 end

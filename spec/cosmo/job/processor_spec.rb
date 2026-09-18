@@ -156,6 +156,89 @@ RSpec.describe Cosmo::Job::Processor do
       end
     end
 
+    context "with a stream filter (COSMO_JOBS_STREAMS)" do
+      let(:processor) { described_class.new(pool, running, {}, quiet: quiet) }
+
+      around do |example|
+        ENV["COSMO_JOBS_STREAMS"] = "default"
+        example.run
+        ENV.delete("COSMO_JOBS_STREAMS")
+      end
+
+      it "only subscribes to the streams the variable names" do
+        stub_const("EnvDefaultJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+        stub_const("EnvHighJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :high, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+
+        EnvDefaultJob.perform_async("in-scope")
+        EnvHighJob.perform_async("out-of-scope")
+
+        wait_until(timeout: 5) { results.include?("in-scope") }
+        sleep 0.5
+
+        expect(results).to eq(["in-scope"])
+        expect(stream_size("high")).to eq(1)
+      end
+    end
+
+    context "with an unknown stream in the filter" do
+      it "raises instead of subscribing to nothing" do
+        filtered = described_class.new(pool, running, { streams: %w[default nope] }, quiet: quiet)
+
+        expect { filtered.run }.to raise_error(Cosmo::UnknownJobStreamError, /`nope`.+`default`/)
+      end
+    end
+
+    context "with the scheduled stream in the filter" do
+      let(:processor) { described_class.new(pool, running, { streams: %w[default scheduled] }, quiet: quiet) }
+
+      it "ignores the service stream and subscribes to the rest" do
+        stub_const("AlongsideServiceStreamJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+
+        AlongsideServiceStreamJob.perform_async("in-scope")
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results).to eq(["in-scope"])
+      end
+    end
+
+    context "with the scheduler turned off (--no-scheduler)" do
+      let(:processor) { described_class.new(pool, running, { scheduler: false }, quiet: quiet) }
+
+      it "leaves a due scheduled job undispatched" do
+        stub_const("UndispatchedJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(...) = Results.instance << :dispatched
+        end)
+
+        UndispatchedJob.perform_at(Time.now - 120, "past-due")
+        sleep 1
+
+        expect(results).to be_empty
+        expect(stream_size("scheduled")).to eq(1)
+      end
+    end
+
     context "with scheduler" do
       before do
         stub_const("OverdueJob", Class.new do

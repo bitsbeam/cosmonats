@@ -4,7 +4,7 @@ require "yaml"
 require "optparse"
 
 module Cosmo
-  # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength
+  # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
   class CLI
     def self.run
       instance.run
@@ -19,10 +19,13 @@ module Cosmo
       return run_setup(flags) if flags[:setup]
 
       load_config(flags)
+      Engine.processors_for(command).each { _1.validate_options!(options) }
       puts self.class.banner
       boot_application
       require_path(flags[:require])
       Engine.run(command, options)
+    rescue Error => e
+      abort e.message
     end
 
     private
@@ -156,11 +159,15 @@ module Cosmo
           o.banner = "Usage: cosmo jobs [options]"
 
           o.on "--streams NAMES", "Only subscribe to these job streams (comma-separated), instead of all configured streams" do |arg|
-            options[:streams] = arg.split(",")
+            options[:streams] = Array(options[:streams]) | arg.split(",")
           end
 
-          o.on "--stream NAME", "Job's stream" do |arg|
-            options[:stream] = arg
+          o.on "--stream NAME", "Same as --streams, for a single job stream" do |arg|
+            options[:streams] = Array(options[:streams]) | [arg]
+          end
+
+          o.on "--[no-]scheduler", "Dispatch scheduled jobs (default: yes)" do |arg|
+            options[:scheduler] = arg
           end
 
           o.on "--subject NAME", "Job's subject" do |arg|

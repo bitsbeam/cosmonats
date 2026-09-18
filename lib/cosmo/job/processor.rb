@@ -5,9 +5,16 @@ require "timeout"
 module Cosmo
   module Job
     class Processor < ::Cosmo::Processor
+      # @raise [UnknownJobStreamError] when --streams/--stream or COSMO_JOBS_STREAMS names an unconfigured stream
+      def self.validate_options!(options)
+        StreamFilter.from(options[:streams]).validate!
+      end
+
       private
 
       def setup
+        filter = StreamFilter.from(@options[:streams]).validate!
+
         # Initialize singletons before starting to process messages
         API::Busy.instance
         API::Counter.instance
@@ -15,18 +22,32 @@ module Cosmo
 
         jobs_config = Config.dig(:consumers, :jobs)
         jobs_config&.each do |stream_name, config|
-          next if stream_name == :scheduled # scheduled jobs are handled in schedule_loop
-          next if @options[:streams] && !@options[:streams].include?(stream_name.to_s)
+          next if stream_name == StreamFilter::SCHEDULED # scheduled jobs are handled in schedule_loop
+          next unless filter.include?(stream_name)
 
           @consumers << subscribe(stream_name, config)
         end
+
+        log_subscriptions
+      end
+
+      def log_subscriptions
+        return if @consumers.empty?
+
+        names = @consumers.map { |(_, config, _)| config[:consumer] }
+        names << consumer_name(StreamFilter::SCHEDULED) if scheduler? && scheduled_config
+        Logger.info "subscribed: #{names.join(", ")}#{" (scheduler off)" unless scheduler?}"
+      end
+
+      def scheduled_config
+        Config.dig(:consumers, :jobs, StreamFilter::SCHEDULED)
       end
 
       def schedule_loop # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/AbcSize
-        config = Config.dig(:consumers, :jobs, :scheduled)
+        config = scheduled_config
         return unless config
 
-        subscription, = subscribe(:scheduled, config)
+        subscription, = subscribe(StreamFilter::SCHEDULED, config)
         while running?
           break unless running?
 
@@ -203,7 +224,7 @@ module Cosmo
         config = config.dup
         config[:batch_size] = 1
         config[:stream] = stream_name
-        config[:consumer] = "consumer-#{stream_name}"
+        config[:consumer] = consumer_name(stream_name)
         subscription = client.subscribe(config[:subject], config[:consumer], config.except(:subject, :priority, :stream, :batch_size, :consumer))
         [subscription, config, nil]
       end
@@ -229,7 +250,12 @@ module Cosmo
       end
 
       def scheduler?
-        true
+        @options.fetch(:scheduler, true)
+      end
+
+      # Durable and per stream, so every process pulls from the same consumer and shares the work.
+      def consumer_name(stream_name)
+        "consumer-#{stream_name}"
       end
 
       def consumers

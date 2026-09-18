@@ -1,0 +1,25 @@
+module Cosmo
+  module Job
+    class StreamFilter
+      SCHEDULED: Symbol
+      ENV_NAME: ::String
+
+      @names: Array[::String]
+      @configured: Array[::String]?
+
+      def self.from: (Array[::String]? names) -> StreamFilter
+
+      def initialize: (Array[::String]? names) -> void
+
+      def all?: () -> bool
+
+      def include?: (::String | Symbol stream_name) -> bool
+
+      def validate!: () -> StreamFilter
+
+      private
+
+      def configured: () -> Array[::String]
+    end
+  end
+end

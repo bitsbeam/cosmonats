@@ -13,6 +13,14 @@ module Cosmo
       instance.run(...)
     end
 
+    # Processor classes a +type+ starts: the matching one, or all of them when it names none.
+    #
+    # @param type [String, Symbol, nil]
+    # @return [Array<Class>]
+    def self.processors_for(type)
+      type && PROCESSORS.key?(type.to_sym) ? [PROCESSORS[type.to_sym]] : PROCESSORS.values
+    end
+
     def self.instance
       @instance ||= new
     end
@@ -28,8 +36,7 @@ module Cosmo
       handler = Utils::Signal.trap(:INT, :TERM, :TSTP, :CONT, :USR1)
       Logger.info "Starting processing, hit Ctrl-C to stop [concurrency=#{@concurrency}]"
 
-      processor_classes = type && PROCESSORS.key?(type.to_sym) ? [PROCESSORS[type.to_sym]] : PROCESSORS.values
-      @processors = processor_classes.map { _1.run(@pool, @running, options, quiet: @quiet) }
+      @processors = self.class.processors_for(type).map { _1.run(@pool, @running, options, quiet: @quiet) }
       if @running.false?
         Logger.warn "Shutting down... (No processors are running)"
         return

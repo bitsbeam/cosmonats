@@ -34,7 +34,7 @@ Metrics/MethodLength:
     - hash
 
 Metrics/ClassLength:
-  Max: 200
+  Max: 280
 
 Metrics/ModuleLength:
   Max: 150

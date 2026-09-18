@@ -42,6 +42,36 @@ RSpec.describe Cosmo::CLI do
       expect { cli.run }.to output(anything).to_stdout
     end
 
+    it "hands the jobs stream filter and scheduler switch to the engine" do
+      ARGV.replace(%w[jobs --stream critical --stream high --no-scheduler])
+      allow(ARGV).to receive(:shift).and_call_original
+      allow(Cosmo::Config).to receive(:dig).with(:consumers, :jobs).and_return({ critical: {}, high: {} })
+      expect(Cosmo::Engine).to receive(:run).with("jobs", { streams: %w[critical high], scheduler: false })
+
+      expect { cli.run }.to output(anything).to_stdout
+    end
+
+    it "rejects an unknown job stream before booting the application" do
+      ARGV.replace(%w[jobs --stream nope])
+      allow(ARGV).to receive(:shift).and_call_original
+      allow(Cosmo::Config).to receive(:dig).with(:consumers, :jobs).and_return({ default: {} })
+      expect(cli).not_to receive(:boot_application)
+      expect(Cosmo::Engine).not_to receive(:run)
+
+      expect { cli.run }.to raise_error(SystemExit).and output(/Unknown job stream `nope`/).to_stderr
+    end
+
+    it "does not apply the jobs stream filter to the streams command" do
+      ARGV.replace(%w[streams])
+      ENV["COSMO_JOBS_STREAMS"] = "nope"
+      allow(ARGV).to receive(:shift).and_call_original
+      expect(Cosmo::Engine).to receive(:run).with("streams", {})
+
+      expect { cli.run }.to output(anything).to_stdout
+    ensure
+      ENV.delete("COSMO_JOBS_STREAMS")
+    end
+
     context "with the setup flag" do
       before do
         ARGV.replace(%w[-S])

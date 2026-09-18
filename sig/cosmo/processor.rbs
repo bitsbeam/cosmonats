@@ -16,6 +16,8 @@ module Cosmo
 
     def self.run: (*untyped) -> Processor
 
+    def self.validate_options!: (Hash[Symbol, untyped] options) -> void
+
     attr_reader consumers: Array[untyped]
 
     def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options, quiet: untyped) -> void

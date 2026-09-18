@@ -11,6 +11,12 @@ module Cosmo
       new(...).tap(&:run)
     end
 
+    # Checks the command-line options this processor understands, before anything is booted or connected.
+    #
+    # @param options [Hash]
+    # @return [void]
+    def self.validate_options!(_options); end
+
     attr_reader :consumers
 
     def initialize(pool, running, options, quiet:)

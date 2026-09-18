@@ -3,9 +3,17 @@ module Cosmo
     class Processor < ::Cosmo::Processor
       @weights: Array[Symbol]?
 
+      def self.validate_options!: (Hash[Symbol, untyped] options) -> void
+
       private
 
       def setup: () -> void
+
+      def log_subscriptions: () -> void
+
+      def scheduled_config: () -> Hash[Symbol, untyped]?
+
+      def consumer_name: (::String | Symbol stream_name) -> ::String
 
       def schedule_loop: () -> void
 

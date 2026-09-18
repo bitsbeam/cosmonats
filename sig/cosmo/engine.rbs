@@ -11,6 +11,8 @@ module Cosmo
 
     def self.run: (*untyped) -> void
 
+    def self.processors_for: ((::String | Symbol)? type) -> Array[Class]
+
     def self.instance: () -> Engine
 
     def initialize: () -> void

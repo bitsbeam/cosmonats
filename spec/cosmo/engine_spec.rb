@@ -25,6 +25,17 @@ RSpec.describe Cosmo::Engine do
     end
   end
 
+  describe ".processors_for" do
+    it "returns the processor the type names" do
+      expect(described_class.processors_for("jobs")).to eq([Cosmo::Job::Processor])
+    end
+
+    it "returns every processor when the type names none" do
+      expect(described_class.processors_for(nil)).to eq([Cosmo::Job::Processor, Cosmo::Stream::Processor])
+      expect(described_class.processors_for("actions")).to eq([Cosmo::Job::Processor, Cosmo::Stream::Processor])
+    end
+  end
+
   describe "#initialize" do
     it "initializes with concurrency from config" do
       expect(Cosmo::Config).to receive(:fetch).with(:concurrency, 1)
