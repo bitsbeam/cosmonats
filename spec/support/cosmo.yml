@@ -6,7 +6,7 @@ stream_config: &stream_config
   storage: file         # storage type (file or memory)
   retention: workqueue  # retention policy (limits, interest, workqueue)
   duplicate_window: 120 # time window for duplicate message detection in seconds
-  discard: old          # discard new messages when stream is full (discard new or old)
+  discard: new          # discard new messages when stream is full
   allow_direct: true    # allow direct messages to stream, required for web UI
   subjects:
     - jobs.%{name}.>    # subject pattern for stream, %{name} will be replaced with stream name
@@ -60,6 +60,7 @@ setup:
       description: Scheduled jobs
     dead:
       <<: *stream_config
+      discard: old
       retention: limits
       max_msgs: 10000
       max_age: 604800 # 7d
