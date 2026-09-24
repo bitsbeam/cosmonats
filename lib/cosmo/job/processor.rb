@@ -61,7 +61,7 @@ module Cosmo
             execute_at = execute_at.to_i
 
             if now >= execute_at
-              client.publish(subject, message.data, headers: headers)
+              client.publish(subject, message.data, header: headers)
               message.ack
             else
               message.nak(delay: Config.to_ns(execute_at - now))
