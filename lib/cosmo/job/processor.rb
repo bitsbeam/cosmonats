@@ -5,6 +5,12 @@ require "timeout"
 module Cosmo
   module Job
     class Processor < ::Cosmo::Processor
+      # Headers the scheduler consumes rather than forwards. The +X-+ ones address the dispatch
+      # itself, and NATS sets +Nats-Scheduler+/+Nats-Schedule-Next+ on a message it fires and
+      # rejects a publish that carries them back.
+      DISPATCH_HEADERS = %w[X-Stream X-Subject X-Execute-At Nats-Expected-Stream
+                            Nats-Scheduler Nats-Schedule-Next].freeze
+
       # @raise [UnknownJobStreamError] when --streams/--stream or COSMO_JOBS_STREAMS names an unconfigured stream
       def self.validate_options!(options)
         StreamFilter.from(options[:streams]).validate!
@@ -55,9 +61,11 @@ module Cosmo
           timeout = ENV.fetch("COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT", 5).to_f
           messages = fetch(subscription, batch_size: 100, timeout:)
           messages&.each do |message|
-            headers = message.header.except("X-Stream", "X-Subject", "X-Execute-At", "Nats-Expected-Stream")
+            headers = message.header.except(*DISPATCH_HEADERS)
             stream, subject, execute_at = message.header.values_at("X-Stream", "X-Subject", "X-Execute-At")
             headers["Nats-Expected-Stream"] = stream
+            scheduler = message.header["Nats-Scheduler"]
+            headers["X-Scheduled-By"] = scheduler if scheduler
             execute_at = execute_at.to_i
 
             if now >= execute_at
@@ -134,7 +142,7 @@ module Cosmo
           worker.jid = data[:jid]
           worker.enqueued_at = message.metadata.timestamp
           worker.attempt = message.metadata.num_delivered
-          worker.scheduled_by = message.header&.dig("Nats-Scheduler")
+          worker.scheduled_by = scheduled_by(message)
           worker.batch_id = data[:batch_id]
         end
       end
@@ -251,6 +259,14 @@ module Cosmo
 
       def scheduler?
         @options.fetch(:scheduler, true)
+      end
+
+      # +Nats-Scheduler+ on a message NATS fired directly into a job stream, and +X-Scheduled-By+
+      # on one the scheduler dispatched onward, which may not carry the reserved header.
+      def scheduled_by(message)
+        header = message.header or return
+
+        header["X-Scheduled-By"] || header["Nats-Scheduler"]
       end
 
       # Durable and per stream, so every process pulls from the same consumer and shares the work.

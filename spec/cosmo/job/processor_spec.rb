@@ -274,6 +274,37 @@ RSpec.describe Cosmo::Job::Processor do
       end
     end
 
+    context "with a cron schedule" do
+      before do
+        stub_const("CronReportJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << { tag: tag, scheduled_by: scheduled_by }
+        end)
+
+        Cosmo::API::Cron.instance.upsert!(class_name: "CronReportJob", stream: "default",
+                                          schedule: "@every 1s", args: ["nightly"])
+      end
+
+      it "dispatches the fired schedule to the stream that runs the job" do
+        wait_until(timeout: 15) { results.any? }
+
+        expect(results.first).to eq({ tag: "nightly", scheduled_by: "cosmo.cron.default.cron_report_job" })
+      end
+
+      it "keeps the schedule deployed after it fires" do
+        wait_until(timeout: 15) { results.any? }
+
+        expect(Cosmo::API::Cron.instance.all).to include(
+          hash_including(class: "CronReportJob", stream: "default", schedule: "@every 1s",
+                         schedule_subject: "cosmo.cron.default.cron_report_job",
+                         dispatch_subject: "jobs.default.cron_report_job")
+        )
+      end
+    end
+
     context "with limit options" do
       let(:concurrency) { 5 }
 

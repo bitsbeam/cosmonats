@@ -57,6 +57,7 @@ setup:
       description: Lower priority jobs
     scheduled:
       <<: *stream_config
+      discard: old
       description: Scheduled jobs
     dead:
       <<: *stream_config

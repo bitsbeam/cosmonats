@@ -1,6 +1,8 @@
 module Cosmo
   module Job
     class Processor < ::Cosmo::Processor
+      DISPATCH_HEADERS: ::Array[::String]
+
       @weights: Array[Symbol]?
 
       def self.validate_options!: (Hash[Symbol, untyped] options) -> void
@@ -16,6 +18,7 @@ module Cosmo
       def consumer_name: (::String | Symbol stream_name) -> ::String
 
       def schedule_loop: () -> void
+      def scheduled_by: (untyped message) -> ::String?
 
       def scheduler?: () -> bool
 

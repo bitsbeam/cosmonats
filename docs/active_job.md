@@ -31,7 +31,7 @@ stream_config: &stream_config
   storage: file
   retention: workqueue
   duplicate_window: 120
-  discard: old
+  discard: new
   allow_direct: true
   subjects:
     - jobs.%{name}.>
@@ -68,8 +68,10 @@ setup:
       <<: *stream_config
     scheduled:
       <<: *stream_config
+      discard: old
     dead:               # dead-letter queue
       <<: *stream_config
+      discard: old
       retention: limits
       max_msgs: 10000
       max_age: 604800   # 7 days

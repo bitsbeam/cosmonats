@@ -16,8 +16,29 @@ RSpec.describe Cosmo::API::Cron::Entry do
     expect(entry.schedule_subject).to eq("cosmo.cron.default.test_cron_job.daily")
   end
 
-  it "builds the correct target subject" do
-    expect(entry.target_subject).to eq("jobs.default.test_cron_job")
+  it "fires every schedule into the scheduled stream" do
+    expect(entry.target_subject).to eq("jobs.scheduled.test_cron_job")
+  end
+
+  it "builds the dispatch subject for the stream that runs the job" do
+    expect(entry.dispatch_subject).to eq("jobs.default.test_cron_job")
+  end
+
+  describe "#schedule_headers" do
+    it "carries the destination so the scheduler can dispatch the fired job" do
+      expect(entry.schedule_headers).to include(
+        "Nats-Schedule" => "@daily",
+        "Nats-Schedule-Target" => "jobs.scheduled.test_cron_job",
+        "Nats-Schedule-Time-Zone" => "Europe/Amsterdam",
+        "X-Stream" => "default",
+        "X-Subject" => "jobs.default.test_cron_job"
+      )
+    end
+
+    it "omits the timezone when none is set" do
+      e = described_class.new(class_name: "TestCronJob", stream: "default", expression: "@hourly")
+      expect(e.schedule_headers).not_to have_key("Nats-Schedule-Time-Zone")
+    end
   end
 
   describe ".normalize_expression" do
@@ -63,7 +84,8 @@ RSpec.describe Cosmo::API::Cron::Entry do
       expect(json[:args]).to eq(["arg1"])
       expect(json[:name]).to eq("daily")
       expect(json[:schedule_subject]).to eq("cosmo.cron.default.test_cron_job.daily")
-      expect(json[:target_subject]).to eq("jobs.default.test_cron_job")
+      expect(json[:target_subject]).to eq("jobs.scheduled.test_cron_job")
+      expect(json[:dispatch_subject]).to eq("jobs.default.test_cron_job")
     end
 
     it "omits nil fields" do

@@ -38,8 +38,12 @@ CLI → Engine → ThreadPool
   finishes; state lives in `API::Counter` counters plus a TTL'd KV bucket. Nested batches are created with
   `Batch.new(parent: bid)`.
 - **`Cosmo::API::Cron`** (`lib/cosmo/api/cron.rb`) — recurring jobs use **NATS 2.14 server-side message schedules**
-  (`Nats-Schedule` headers on a message stored at `cosmo.cron.<stream>.>`), not a scheduler thread. Nothing to elect a
-  leader for; whatever is deployed in NATS is exactly what the UI shows.
+  (`Nats-Schedule` headers on a template stored at `cosmo.cron.<target stream>.>`). Every template lives in the
+  `scheduled` stream: NATS only lets a schedule fire at a subject its own stream covers, and rejects `discard: new`
+  wherever scheduling is enabled, so confining it to one stream leaves the job streams free to pick a discard policy.
+  A firing lands back in `scheduled` carrying the `X-Stream`/`X-Subject` headers copied off the template, and
+  `Job::Processor#schedule_loop` dispatches it on — the same path delayed jobs take, so a `--no-scheduler` worker
+  fires no crons. Nothing to elect a leader for; whatever is deployed in NATS is exactly what the UI shows.
 - **`Cosmo::Job::Limit`** (`lib/cosmo/job/limit.rb`) — distributed concurrency limiter; numbered KV slots acquired via
   CAS, auto-expired by `Nats-TTL`.
 - **`Cosmo::ActiveJobAdapter`** (`lib/cosmo/active_job/`) — `config.active_job.queue_adapter = :cosmonats`; the

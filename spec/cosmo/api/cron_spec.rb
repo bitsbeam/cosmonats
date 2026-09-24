@@ -12,8 +12,11 @@ RSpec.describe Cosmo::API::Cron do
       expect(client).to receive(:publish).with(
         "cosmo.cron.default.report_job.daily_report",
         anything,
-        stream: "default",
-        header: hash_including("Nats-Schedule" => "@daily", "Nats-Schedule-Target" => "jobs.default.report_job")
+        stream: "scheduled",
+        header: hash_including("Nats-Schedule" => "@daily",
+                               "Nats-Schedule-Target" => "jobs.scheduled.report_job",
+                               "X-Stream" => "default",
+                               "X-Subject" => "jobs.default.report_job")
       )
       api.upsert!(**schedule)
     end
@@ -40,7 +43,7 @@ RSpec.describe Cosmo::API::Cron do
       expect(client).to receive(:publish).with(
         "cosmo.cron.default.report_job",
         anything,
-        stream: "default",
+        stream: "scheduled",
         header: hash_including("Nats-Schedule" => "@hourly")
       )
       api.upsert!(class_name: "ReportJob", stream: "default", schedule: "@hourly")
@@ -49,7 +52,7 @@ RSpec.describe Cosmo::API::Cron do
 
   describe "#delete!" do
     it "purges the correct stream and subject" do
-      expect(client).to receive(:purge).with("default", "cosmo.cron.default.report_job")
+      expect(client).to receive(:purge).with("scheduled", "cosmo.cron.default.report_job")
       api.delete!("cosmo.cron.default.report_job")
     end
 
@@ -63,12 +66,12 @@ RSpec.describe Cosmo::API::Cron do
     let(:subject_str) { "cosmo.cron.default.report_job.daily" }
     let(:msg) do
       double("msg",
-             headers: { "Nats-Schedule-Target" => "jobs.default.report_job" },
+             headers: { "X-Subject" => "jobs.default.report_job", "X-Stream" => "default" },
              data: Cosmo::Utils::Json.dump({ class: "ReportJob", args: [], retry: 3, dead: true }))
     end
 
     before do
-      allow(client).to receive(:get_message).with("default", subject: subject_str).and_return(msg)
+      allow(client).to receive(:get_message).with("scheduled", subject: subject_str).and_return(msg)
     end
 
     it "publishes to the target subject" do

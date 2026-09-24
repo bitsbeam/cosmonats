@@ -47,10 +47,14 @@ module Cosmo
           c[:duplicate_window] = to_ns(Utils::Duration.parse(c[:duplicate_window])) if c[:duplicate_window]
           c[:subjects] = c[:subjects].map { |s| format(s, name: name) } if c[:subjects]
 
-          next unless type == :jobs # Every jobs stream supports NATS 2.14 message scheduling.
+          # The scheduled stream carries every cron template, so it alone enables NATS message
+          # scheduling. A schedule can only target a subject its own stream covers, and NATS
+          # rejects `discard: new` on any stream with scheduling enabled - keeping both here
+          # leaves the streams that actually run jobs free to choose their own discard policy.
+          next unless type == :jobs && name.to_s == Job::StreamFilter::SCHEDULED.to_s
 
           c[:allow_msg_schedules] = true
-          cron_subject = "#{API::Cron::Entry::SUBJECT_PREFIX}.#{name}.>"
+          cron_subject = "#{API::Cron::Entry::SUBJECT_PREFIX}.>"
           c[:subjects] = Array(c[:subjects])
           c[:subjects] << cron_subject unless c[:subjects].include?(cron_subject)
         end

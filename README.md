@@ -336,7 +336,7 @@ stream_config: &stream_config
   storage: file         # storage type (file or memory)
   retention: workqueue  # retention policy (limits, interest, workqueue)
   duplicate_window: 120 # time window for duplicate message detection in seconds
-  discard: old          # discard new messages when stream is full (discard new or old)
+  discard: old          # what to drop when the stream is full (new rejects publishes, old evicts the oldest)
   allow_direct: true    # allow direct messages to stream, required for web UI
   subjects:
     - jobs.%{name}.>    # subject pattern for stream, %{name} will be replaced with stream name
@@ -384,6 +384,7 @@ setup:
       description: Lower priority jobs
     scheduled:
       <<: *stream_config
+      discard: old            # required here: NATS refuses `discard: new` on the stream holding cron schedules
       description: Scheduled jobs
     dead:
       <<: *stream_config
@@ -423,10 +424,16 @@ export COSMO_STREAMS_FETCH_TIMEOUT=0.1
 ### Cron
 
 Recurring jobs, without a separate scheduler process. A schedule is just a message parked in the
-job's own NATS stream (requires NATS Server 2.14+) — NATS fires it on the cron expression, and it
-lands back in the stream as a regular job. Deploy it once; whatever's in NATS is exactly what runs
-and exactly what shows up in the web UI's **Crons** tab, where each entry can be inspected, run
-immediately, or deleted.
+`scheduled` stream (requires NATS Server 2.14+) — NATS fires it on the cron expression, and the
+worker's scheduler dispatches the job on to the stream that runs it, the same path a delayed job
+takes. Deploy it once; whatever's in NATS is exactly what runs and exactly what shows up in the web
+UI's **Crons** tab, where each entry can be inspected, run immediately, or deleted.
+
+Every schedule lives in `scheduled` because NATS only lets a schedule fire at a subject its own
+stream covers, and refuses `discard: new` on any stream with scheduling enabled. Keeping schedules
+in one stream leaves every stream that actually runs jobs free to choose its own discard policy.
+The trade is that cron firings are dispatched by the scheduler, so at least one worker has to be
+running without `--no-scheduler`.
 
 Declare schedules right in `config/cosmo.yml`:
 

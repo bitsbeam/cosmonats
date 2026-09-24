@@ -54,10 +54,29 @@ module Cosmo
           parts.join(".")
         end
 
-        # Subject where NATS fires the generated job message.
-        # Must be a subject covered by the same stream.
+        # Subject where NATS fires the generated job message. A schedule may only target a
+        # subject its own stream covers, so every schedule fires into the scheduled stream and
+        # the scheduler forwards the job on to {#dispatch_subject}.
         def target_subject
+          "jobs.#{::Cosmo::Job::StreamFilter::SCHEDULED}.#{job_name}"
+        end
+
+        # Subject the scheduler dispatches the fired job to, on the stream that runs it.
+        def dispatch_subject
           "jobs.#{@stream}.#{job_name}"
+        end
+
+        # Headers stored on the schedule template. NATS copies the +X-+ ones onto every message
+        # it fires, which is how the scheduler learns where the job belongs.
+        def schedule_headers
+          headers = {
+            "Nats-Schedule" => @expression,
+            "Nats-Schedule-Target" => target_subject,
+            "X-Stream" => @stream,
+            "X-Subject" => dispatch_subject
+          }
+          headers["Nats-Schedule-Time-Zone"] = @timezone if @timezone
+          headers
         end
 
         def job_name
@@ -73,7 +92,8 @@ module Cosmo
             args: @args,
             name: @name,
             schedule_subject: schedule_subject,
-            target_subject: target_subject
+            target_subject: target_subject,
+            dispatch_subject: dispatch_subject
           }.compact
         end
 
