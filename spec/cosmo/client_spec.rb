@@ -25,18 +25,57 @@ RSpec.describe Cosmo::Client do
 
   describe "#initialize" do
     it "connects to NATS server" do
-      expect(NATS).to receive(:connect).with("nats://localhost:4222").and_call_original
+      expect(NATS).to receive(:connect)
+        .with("nats://localhost:4222", hash_including(:name, :connect_timeout)).and_call_original
       instance = described_class.new(nats_url: "nats://localhost:4222")
     ensure
       instance.close
     end
 
     it "uses NATS_URL from ENV" do
+      allow(ENV).to receive(:fetch).and_call_original
       allow(ENV).to receive(:fetch).with("NATS_URL", "nats://localhost:4222").and_return("nats://example.com:4222")
-      expect(NATS).to receive(:connect).with("nats://example.com:4222").and_return(double(:nc, jetstream: nil, close: nil))
+      expect(NATS).to receive(:connect)
+        .with("nats://example.com:4222", hash_including(:name)).and_return(double(:nc, jetstream: nil, close: nil))
       instance = described_class.new
     ensure
       instance.close
+    end
+
+    it "names the connection so it can be found in connz" do
+      expect(client.name).to eq(described_class.default_name)
+      expect(client.name).to start_with("cosmo-")
+    end
+
+    it "takes an explicit name" do
+      instance = described_class.new(name: "cosmo-web-1")
+      expect(instance.name).to eq("cosmo-web-1")
+    ensure
+      instance.close
+    end
+
+    it "applies the JetStream timeout" do
+      expect(client.js.opts[:timeout]).to eq(described_class.js_timeout)
+    end
+  end
+
+  describe ".default_name" do
+    it "is overridden by COSMO_CLIENT_NAME" do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with("COSMO_CLIENT_NAME").and_return("cosmo-custom")
+      expect(described_class.default_name).to eq("cosmo-custom")
+    end
+  end
+
+  describe ".js_timeout" do
+    it "defaults to JS_TIMEOUT" do
+      expect(described_class.js_timeout).to eq(described_class::JS_TIMEOUT)
+    end
+
+    it "is overridden by COSMO_JS_TIMEOUT" do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with("COSMO_JS_TIMEOUT", described_class::JS_TIMEOUT).and_return("42")
+      expect(described_class.js_timeout).to eq(42)
     end
   end
 

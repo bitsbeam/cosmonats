@@ -1,6 +1,6 @@
 <div id="scheduled-poller"
      hx-get="<%= url_for('/jobs/_scheduled') %>"
-     hx-trigger="every 5s"
+     hx-trigger="every <%= poll_interval %>s"
      hx-swap="outerHTML">
   <div class="pending">
     <span></span>

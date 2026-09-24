@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `Cosmo::Client` names its NATS connection (`cosmo-<program>-<host>-<pid>`), so a process can be
+  identified in `nats server report connections` / `/connz` without cross-referencing host IPs.
+  Override with `COSMO_CLIENT_NAME`
+- `COSMO_JS_TIMEOUT` and `COSMO_CONNECT_TIMEOUT` make the JetStream API and TCP connect timeouts
+  configurable. Defaults are unchanged (5s / 2s, as in nats-pure); raise the former per-process
+  where waiting beats failing -- the web UI on a busy server -- and leave it alone for workers
+- `COSMO_WEB_POLL_INTERVAL` sets the web UI's htmx auto-refresh interval (default 5s, unchanged).
+
 ## [0.6.0] - 2026-08-07
 
 ### Added

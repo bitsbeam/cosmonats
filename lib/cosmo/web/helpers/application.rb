@@ -8,6 +8,13 @@ module Cosmo
       module Application
         include Renderer
 
+        # Seconds between htmx auto-refreshes. Override with COSMO_WEB_POLL_INTERVAL.
+        POLL_INTERVAL = 5
+
+        def poll_interval
+          @poll_interval ||= ENV.fetch("COSMO_WEB_POLL_INTERVAL", POLL_INTERVAL).to_i
+        end
+
         def render(template, locals = nil)
           defaults = { request: @request }
           locals = Hash(locals).merge(defaults)

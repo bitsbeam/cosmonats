@@ -1,15 +1,26 @@
 module Cosmo
   class Client
+    JS_TIMEOUT: ::Integer
+    CONNECT_TIMEOUT: ::Integer
+
+    attr_reader name: ::String
+
+    def self.default_name: () -> ::String
+    def self.js_timeout: () -> ::Integer
+    def self.connect_timeout: () -> ::Integer
+    def self.program_name: () -> ::String
+
     self.@instance: Client
     @nc: untyped
     @js: untyped
+    @name: ::String
 
     def self.instance: () -> Client
 
     attr_reader nc: untyped
     attr_reader js: untyped
 
-    def initialize: (?nats_url: ::String) -> void
+    def initialize: (?nats_url: ::String, ?name: ::String) -> void
 
     def publish: (::String subject, ::String payload, **untyped params) -> untyped
 

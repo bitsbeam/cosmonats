@@ -1,21 +1,49 @@
 # frozen_string_literal: true
 
+require "socket"
 require "nats/client"
 require "cosmo/utils/overrides"
 
 module Cosmo
   class Client
+    # Seconds to wait for a JetStream API reply. Override with COSMO_JS_TIMEOUT.
+    JS_TIMEOUT = 5
+    # Seconds to wait for the TCP connect+handshake. Override with COSMO_CONNECT_TIMEOUT.
+    CONNECT_TIMEOUT = 2
+
     def self.instance
       @instance ||= Client.new
     end
 
-    attr_reader :nc, :js
+    # Labels the connection in `nats server report connections` and /connz, so a
+    # misbehaving process can be found without cross-referencing host IPs. Derived from
+    # the running program, which separates a web process from a `cosmo` worker on the
+    # same host. Override with COSMO_CLIENT_NAME.
+    def self.default_name
+      ENV.fetch("COSMO_CLIENT_NAME") { "cosmo-#{program_name}-#{Socket.gethostname}-#{Process.pid}" }
+    end
 
-    def initialize(nats_url: ENV.fetch("NATS_URL", "nats://localhost:4222"))
-      Logger.debug "Connecting to NATS server at #{nats_url}..."
-      @nc = NATS.connect(nats_url)
+    def self.js_timeout
+      ENV.fetch("COSMO_JS_TIMEOUT", JS_TIMEOUT).to_i
+    end
+
+    def self.connect_timeout
+      ENV.fetch("COSMO_CONNECT_TIMEOUT", CONNECT_TIMEOUT).to_i
+    end
+
+    # $PROGRAM_NAME is "puma 7.2.1 (tcp://...)" under Puma and a path under the CLI.
+    def self.program_name
+      File.basename($PROGRAM_NAME.to_s.split.first.to_s, ".*").gsub(/[^\w.-]/, "")
+    end
+
+    attr_reader :nc, :js, :name
+
+    def initialize(nats_url: ENV.fetch("NATS_URL", "nats://localhost:4222"), name: self.class.default_name)
+      @name = name
+      Logger.debug "Connecting to NATS server at #{nats_url} as #{@name}..."
+      @nc = NATS.connect(nats_url, name: @name, connect_timeout: self.class.connect_timeout)
       Logger.debug "Connection established"
-      @js = @nc.jetstream
+      @js = @nc.jetstream(timeout: self.class.js_timeout)
     end
 
     def publish(subject, payload, **params)

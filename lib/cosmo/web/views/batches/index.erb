@@ -3,7 +3,7 @@
 
   <div id="batches-table"
        hx-get="<%= url_for('/batches/_table') %>"
-       hx-trigger="load, every 5s"
+       hx-trigger="load, every <%= poll_interval %>s"
        hx-swap="innerHTML">
     <div class="alert alert-info">Loading batches&hellip;</div>
   </div>

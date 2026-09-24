@@ -2,7 +2,7 @@
 <div id="busy-poller"
      <% if @polling -%>
      hx-get="<%= url_for('/jobs/_busy', page: @page, limit: @limit) %>"
-     hx-trigger="every 5s"
+     hx-trigger="every <%= poll_interval %>s"
      hx-swap="outerHTML"
      <% end -%>
      >
