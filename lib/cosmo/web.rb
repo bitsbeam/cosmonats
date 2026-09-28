@@ -34,6 +34,7 @@ module Cosmo
                  in [:get,    "/jobs/enqueued"]         then [Controllers::Jobs,    :enqueued]
                  in [:patch,  %r{/jobs/retry/\d+}]      then [Controllers::Jobs,    :retry]
                  in [:delete, %r{/jobs/delete/\d+}]     then [Controllers::Jobs,    :delete]
+                 in [:delete, %r{/jobs/enqueued/\d+}]   then [Controllers::Jobs,    :delete_enqueued]
                  in [:get,    "/jobs/_stats"]           then [Controllers::Jobs,    :_stats]
                  in [:get,    "/jobs/_scheduled"]       then [Controllers::Jobs,    :_scheduled]
                  in [:get,    "/jobs/_dead"]            then [Controllers::Jobs,    :_dead]

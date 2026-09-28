@@ -30,6 +30,7 @@
             <th>JID[Args]</th>
             <th>Stream</th>
             <th>Seq</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -55,6 +56,15 @@
             </td>
             <td>
               <code><%= job.seq %></code>
+            </td>
+            <td>
+              <a hx-delete="<%= url_for("/jobs/enqueued/#{job.seq}", { stream_name: @stream_name, page: @page, limit: @limit }) %>"
+                 hx-target="#enqueued-poller"
+                 hx-swap="outerHTML"
+                 hx-indicator="#global-spinner"
+                 hx-confirm="Remove message #<%= job.seq %> from <%= h(@stream_name) %>?"
+                 title="Remove message"
+                 class="btn btn-danger btn-sm">&#x2715;</a>
             </td>
           </tr>
           <% end -%>

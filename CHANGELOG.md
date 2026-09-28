@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configurable. Defaults are unchanged (5s / 2s, as in nats-pure); raise the former per-process
   where waiting beats failing -- the web UI on a busy server -- and leave it alone for workers
 - `COSMO_WEB_POLL_INTERVAL` sets the web UI's htmx auto-refresh interval (default 5s, unchanged).
+- Enqueued jobs can be removed one by one from the web UI: each row has a Remove button backed by
+  `DELETE /jobs/enqueued/<seq>?stream_name=<stream>`, which drops that message from the stream
 
 ## [0.6.0] - 2026-08-07
 

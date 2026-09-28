@@ -54,6 +54,13 @@ module Cosmo
           ok
         end
 
+        def delete_enqueued
+          seq = path.split("/").last.to_i
+          stream_name, = streams
+          API::Stream.new(stream_name).delete(seq)
+          _enqueued
+        end
+
         def _scheduled
           stream = API::Stream.new("scheduled")
           jobs = stream.messages(page: params["page"], limit: params["limit"])
@@ -82,8 +89,9 @@ module Cosmo
           unless stream_name.to_s.empty?
             stream = API::Stream.new(stream_name)
             total = stream.total
-            jobs = stream.messages(page:, limit:)
             total_pages = (total.to_f / limit).ceil
+            page = page.clamp(1, [total_pages, 1].max)
+            jobs = stream.messages(page:, limit:)
           end
 
           ok render("jobs/_enqueued", { jobs:, total:, stream_name:, stream_names:, page:, limit:, total_pages: })
