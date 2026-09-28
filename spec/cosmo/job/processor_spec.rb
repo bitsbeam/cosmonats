@@ -303,6 +303,36 @@ RSpec.describe Cosmo::Job::Processor do
                          dispatch_subject: "jobs.default.cron_report_job")
         )
       end
+
+      it "reports the firing time as enqueued_at, not the time the scheduler dispatched it" do
+        processor.stop
+
+        stub_const("LateCronJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << { tag: tag, enqueued_at: enqueued_at, ran_at: Time.now }
+        end)
+
+        Cosmo::API::Cron.instance.upsert!(class_name: "LateCronJob", stream: "default",
+                                          schedule: "@every 1s", args: ["late"])
+        sleep 3
+
+        pool = Cosmo::Utils::ThreadPool.new(concurrency)
+        late_processor = described_class.new(pool, Concurrent::AtomicBoolean.new, {},
+                                             quiet: Concurrent::AtomicBoolean.new)
+        late_processor.run
+
+        begin
+          wait_until(timeout: 15) { results.any? { _1.is_a?(Hash) && _1[:tag] == "late" } }
+        ensure
+          late_processor.stop
+        end
+
+        fired = results.find { _1.is_a?(Hash) && _1[:tag] == "late" }
+        expect(fired[:ran_at] - fired[:enqueued_at]).to be > 2
+      end
     end
 
     context "with limit options" do

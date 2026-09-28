@@ -19,6 +19,7 @@ module Cosmo
 
       def schedule_loop: () -> void
       def scheduled_by: (untyped message) -> ::String?
+      def enqueued_at: (untyped message) -> ::Time
 
       def scheduler?: () -> bool
 

@@ -91,7 +91,9 @@ are eagerly loaded by the CLI.
 
 - **Job subjects**: `jobs.<stream_name>.<underscored_class_name>` — e.g. `jobs.default.send_email_job`
 - **Dead letter**: `jobs.dead.<underscored_class_name>`
-- **Scheduled jobs**: routed through the `:scheduled` stream with headers `X-Execute-At`, `X-Stream`, `X-Subject`
+- **Scheduled jobs**: routed through the `:scheduled` stream with headers `X-Execute-At`, `X-Stream`, `X-Subject`.
+  A cron firing carries no `X-Execute-At`; the scheduler forwards timestamp as `X-Enqueued-At` so `enqueued_at` on the
+  job based on the firing time rather than the dispatch time
 - **Stream subjects**: default `<underscored_class_name>.>` — interpolated via Ruby `format(str, name:)`
 - Config YAML `subject`/`subjects` fields use `%{name}` format strings interpolated with the stream name (see
   `Config.normalize!`)

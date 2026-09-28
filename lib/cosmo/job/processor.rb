@@ -65,7 +65,10 @@ module Cosmo
             stream, subject, execute_at = message.header.values_at("X-Stream", "X-Subject", "X-Execute-At")
             headers["Nats-Expected-Stream"] = stream
             scheduler = message.header["Nats-Scheduler"]
-            headers["X-Scheduled-By"] = scheduler if scheduler
+            if scheduler
+              headers["X-Scheduled-By"] = scheduler
+              headers["X-Enqueued-At"] = message.metadata.timestamp.to_f.to_s
+            end
             execute_at = execute_at.to_i
 
             if now >= execute_at
@@ -140,7 +143,7 @@ module Cosmo
       def build_worker(worker_class, data, message)
         worker_class.new.tap do |worker|
           worker.jid = data[:jid]
-          worker.enqueued_at = message.metadata.timestamp
+          worker.enqueued_at = enqueued_at(message)
           worker.attempt = message.metadata.num_delivered
           worker.scheduled_by = scheduled_by(message)
           worker.batch_id = data[:batch_id]
@@ -267,6 +270,14 @@ module Cosmo
         header = message.header or return
 
         header["X-Scheduled-By"] || header["Nats-Scheduler"]
+      end
+
+      # A cron message is enqueued when NATS fires it, not when the scheduler dispatches it on, so
+      # the firing forwards its own timestamp in +X-Enqueued-At+ to survive the re-publish.
+      def enqueued_at(message)
+        forwarded = message.header&.dig("X-Enqueued-At")
+
+        forwarded ? Time.at(forwarded.to_f) : message.metadata.timestamp
       end
 
       # Durable and per stream, so every process pulls from the same consumer and shares the work.

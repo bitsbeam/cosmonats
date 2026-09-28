@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enqueued jobs can be removed one by one from the web UI: each row has a Remove button backed by
   `DELETE /jobs/enqueued/<seq>?stream_name=<stream>`, which drops that message from the stream
 
+### Fixed
+
+- A cron job's `enqueued_at` is the time NATS fired the schedule again, not the time the scheduler
+  dispatched it on. The firing's timestamp is forwarded as `X-Enqueued-At` across the re-publish, so a
+  job that derives anything from `enqueued_at` is unaffected by a backlogged or restarted worker
+
 ## [0.6.0] - 2026-08-07
 
 ### Added
