@@ -52,9 +52,9 @@ consumers:
       priority: 5       # polled more often than default
     mailers:
       <<: *consumer_config
-    scheduled:          # required for set(wait:) / set(wait_until:)
+    scheduled:          # required for set(wait:) / set(wait_until:) and for cron firings
       <<: *consumer_config
-      max_deliver: 1
+      max_deliver: 5      # >1: the scheduler naks a not-yet-due job and any transient dispatch error, both of which need a redelivery
       max_ack_pending: 100
       ack_wait: 10
 
