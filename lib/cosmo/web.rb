@@ -10,6 +10,7 @@ require "cosmo/web/controllers/jobs"
 require "cosmo/web/controllers/streams"
 require "cosmo/web/controllers/actions"
 require "cosmo/web/controllers/crons"
+require "cosmo/web/controllers/batches"
 
 module Cosmo
   class Web
@@ -33,6 +34,7 @@ module Cosmo
                  in [:get,    "/jobs/enqueued"]         then [Controllers::Jobs,    :enqueued]
                  in [:patch,  %r{/jobs/retry/\d+}]      then [Controllers::Jobs,    :retry]
                  in [:delete, %r{/jobs/delete/\d+}]     then [Controllers::Jobs,    :delete]
+                 in [:delete, %r{/jobs/enqueued/\d+}]   then [Controllers::Jobs,    :delete_enqueued]
                  in [:get,    "/jobs/_stats"]           then [Controllers::Jobs,    :_stats]
                  in [:get,    "/jobs/_scheduled"]       then [Controllers::Jobs,    :_scheduled]
                  in [:get,    "/jobs/_dead"]            then [Controllers::Jobs,    :_dead]
@@ -48,6 +50,8 @@ module Cosmo
                  in [:get,    "/crons/_table"]          then [Controllers::Crons,   :_table]
                  in [:delete, "/crons/delete"]          then [Controllers::Crons,   :delete]
                  in [:post,   "/crons/run"]             then [Controllers::Crons,   :run_now]
+                 in [:get,    "/batches"]               then [Controllers::Batches, :index]
+                 in [:get,    "/batches/_table"]        then [Controllers::Batches, :_table]
                  in [:get,    "/actions"]               then [Controllers::Actions, :index]
                  in [:get,    "/assets/htmx.min.js.gz"] then serve("htmx.2.0.8.min.js.gz",
                                                                    "application/javascript",

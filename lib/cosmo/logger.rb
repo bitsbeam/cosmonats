@@ -5,6 +5,8 @@ require "forwardable"
 
 module Cosmo
   module Logger
+    TRACE = -1 # Below DEBUG; opt in with COSMO_LOG_LEVEL=trace for high-frequency polling/loop noise
+
     module Context
       KEY = :cosmo_context
 
@@ -45,10 +47,21 @@ module Cosmo
       end
     end
 
+    # Adds TRACE (below DEBUG) on top of stdlib's fixed DEBUG..UNKNOWN severities.
+    class Instance < ::Logger
+      def trace(progname = nil, &)
+        add(TRACE, nil, progname, &)
+      end
+
+      def format_severity(severity)
+        severity == TRACE ? "TRACE" : super
+      end
+    end
+
     class << self
       extend Forwardable
 
-      delegate %i[info error debug warn fatal] => :instance
+      delegate %i[info error debug warn fatal trace] => :instance
     end
 
     def self.with(...)
@@ -60,11 +73,16 @@ module Cosmo
     end
 
     def self.instance
-      @instance ||= ::Logger.new($stdout).tap do |logger|
+      @instance ||= Instance.new($stdout).tap do |logger|
         logger.formatter = SimpleFormatter.new
-        logger.level = ::Logger::Severity.coerce(ENV.fetch("COSMO_LOG_LEVEL", "info"))
+        logger.level = coerce_level(ENV.fetch("COSMO_LOG_LEVEL", "info"))
       end
     end
+
+    def self.coerce_level(level)
+      level.to_s.downcase == "trace" ? TRACE : ::Logger::Severity.coerce(level)
+    end
+    private_class_method :coerce_level
 
     def self.instance=(logger)
       @instance = logger

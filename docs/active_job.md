@@ -31,7 +31,7 @@ stream_config: &stream_config
   storage: file
   retention: workqueue
   duplicate_window: 120
-  discard: old
+  discard: new
   allow_direct: true
   subjects:
     - jobs.%{name}.>
@@ -52,9 +52,9 @@ consumers:
       priority: 5       # polled more often than default
     mailers:
       <<: *consumer_config
-    scheduled:          # required for set(wait:) / set(wait_until:)
+    scheduled:          # required for set(wait:) / set(wait_until:) and for cron firings
       <<: *consumer_config
-      max_deliver: 1
+      max_deliver: 5      # >1: the scheduler naks a not-yet-due job and any transient dispatch error, both of which need a redelivery
       max_ack_pending: 100
       ack_wait: 10
 
@@ -68,8 +68,10 @@ setup:
       <<: *stream_config
     scheduled:
       <<: *stream_config
+      discard: old
     dead:               # dead-letter queue
       <<: *stream_config
+      discard: old
       retention: limits
       max_msgs: 10000
       max_age: 604800   # 7 days
@@ -138,6 +140,12 @@ end
 > rate limits) and `cosmo_options retry:` as the last-resort safety net for
 > anything unexpected. Avoid setting both for the same error class, or you will
 > get retries multiplied across both layers.
+
+> **`Cosmo::Batch` and ActiveJob** — the ActiveJob adapter enqueues through its
+> own `Job::Data` construction, not `Cosmo::Job#perform`, so `perform_later`
+> calls made inside a `batch.jobs { }` block are not currently tracked by the
+> batch. Use `Cosmo::Job`-based jobs (`perform_async`/`perform_at`/`perform_in`)
+> for anything that needs to participate in a batch.
 
 ## Running the worker
 

@@ -20,9 +20,9 @@ RSpec.describe Cosmo::API::KV do
       expect(kv.get("mykey")&.value).to eq("myvalue")
     end
 
-    it "creates a new key and returns an entry" do
-      entry = ttl_kv.set("slot/0", "job-1", ttl: 30)
-      expect(entry).not_to be_nil
+    it "creates a new key and returns the new revision" do
+      seq = ttl_kv.set("slot/0", "job-1", ttl: 30)
+      expect(seq).to be_a(Integer)
       expect(ttl_kv.get("slot/0")&.value).to eq("job-1")
     end
 
@@ -31,18 +31,35 @@ RSpec.describe Cosmo::API::KV do
       expect { ttl_kv.set("slot/0", "job-2", ttl: 30) }.to raise_error(NATS::KeyValue::KeyWrongLastSequenceError)
     end
 
-    it "reclaims a deleted key atomically" do
+    it "reclaims an erased key atomically" do
       ttl_kv.set("slot/0", "job-1", ttl: 30)
-      ttl_kv.delete("slot/0")
+      ttl_kv.erase("slot/0")
       ttl_kv.set("slot/0", "job-2", ttl: 30)
       expect(ttl_kv.get("slot/0")&.value).to eq("job-2")
     end
 
-    it "reclaims a purged key atomically" do
+    it "reclaims none atomically because of a tombstone" do
+      # delete/purge are for non-ttl buckets. On a ttl bucket they leave a
+      # KV-Operation tombstone occupying the subject's next sequence, which a
+      # plain last_seq: 0 CAS can never satisfy -- use #erase instead (see
+      # Job::Limit#release). Documenting this on purpose so the limitation
+      # isn't rediscovered by surprise.
       ttl_kv.set("slot/0", "job-1", ttl: 30)
-      ttl_kv.purge("slot/0")
-      ttl_kv.set("slot/0", "job-2", ttl: 30)
-      expect(ttl_kv.get("slot/0")&.value).to eq("job-2")
+      ttl_kv.delete("slot/0")
+      expect { ttl_kv.set("slot/0", "job-2", ttl: 30) }.to raise_error(NATS::KeyValue::KeyWrongLastSequenceError)
+    end
+  end
+
+  describe "#create" do
+    it "creates a new key and returns the new revision" do
+      seq = kv.create("gate", "1")
+      expect(seq).to be_a(Integer)
+      expect(kv.get("gate")&.value).to eq("1")
+    end
+
+    it "raises when the key already exists" do
+      kv.create("gate", "1")
+      expect { kv.create("gate", "2") }.to raise_error(NATS::KeyValue::KeyWrongLastSequenceError)
     end
   end
 
@@ -66,6 +83,31 @@ RSpec.describe Cosmo::API::KV do
       5.times { |i| kv.set("key#{i}", i.to_s) }
       expect(kv.keys(limit: 3).size).to eq(3)
     end
+
+    it "walks the whole bucket without a limit" do
+      (described_class::LIMIT + 5).times { |i| kv.set("key#{i}", i.to_s) }
+      expect(kv.keys(limit: nil).size).to eq(described_class::LIMIT + 5)
+    end
+
+    it "skips the offset" do
+      5.times { |i| kv.set("key#{i}", i.to_s) }
+      first = kv.keys(limit: 5)
+      expect(kv.keys(limit: 5, offset: 2)).to eq(first.drop(2))
+    end
+  end
+
+  describe "#entries" do
+    it "returns keys with their values in one pass" do
+      kv.set("a", "1")
+      kv.set("b", "2")
+      expect(kv.entries(limit: nil).sort).to eq([%w[a 1], %w[b 2]])
+    end
+
+    it "respects limit and offset" do
+      5.times { |i| kv.set("key#{i}", i.to_s) }
+      all = kv.entries(limit: 5)
+      expect(kv.entries(limit: 2, offset: 2)).to eq(all[2, 2])
+    end
   end
 
   describe "#purge" do
@@ -82,6 +124,12 @@ RSpec.describe Cosmo::API::KV do
       kv.set("x", "1")
       kv.set("y", "2")
       expect(kv.size).to eq(2)
+    end
+
+    it "counts past the default key limit" do
+      total = described_class::LIMIT * 2
+      total.times { |i| kv.set("key#{i}", i.to_s) }
+      expect(kv.size).to eq(total)
     end
   end
 

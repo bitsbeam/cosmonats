@@ -44,6 +44,12 @@ module Cosmo
 
       private
 
+      def scan_range: () -> [::Integer, ::Integer, Array[::String]]
+
+      def next_candidate: (Array[::String] subjects, Hash[::String, Job?] candidates, ::Integer current) -> [::String, Job]?
+
+      def next_message: (::String subject, ::Integer seq) -> Job?
+
       def client: () -> Client
     end
   end

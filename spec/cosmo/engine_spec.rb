@@ -25,6 +25,17 @@ RSpec.describe Cosmo::Engine do
     end
   end
 
+  describe ".processors_for" do
+    it "returns the processor the type names" do
+      expect(described_class.processors_for("jobs")).to eq([Cosmo::Job::Processor])
+    end
+
+    it "returns every processor when the type names none" do
+      expect(described_class.processors_for(nil)).to eq([Cosmo::Job::Processor, Cosmo::Stream::Processor])
+      expect(described_class.processors_for("actions")).to eq([Cosmo::Job::Processor, Cosmo::Stream::Processor])
+    end
+  end
+
   describe "#initialize" do
     it "initializes with concurrency from config" do
       expect(Cosmo::Config).to receive(:fetch).with(:concurrency, 1)
@@ -48,18 +59,18 @@ RSpec.describe Cosmo::Engine do
     end
 
     it "traps signals" do
-      expect(Cosmo::Utils::Signal).to receive(:trap).with(:INT, :TERM)
+      expect(Cosmo::Utils::Signal).to receive(:trap).with(:INT, :TERM, :TSTP, :CONT, :USR1)
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
     it "runs specific processor type" do
-      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {})
+      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {}, quiet: anything)
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
     it "runs all processors when type is nil" do
-      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {})
-      expect(Cosmo::Stream::Processor).to receive(:run).with(pool, anything, {})
+      expect(Cosmo::Job::Processor).to receive(:run).with(pool, anything, {}, quiet: anything)
+      expect(Cosmo::Stream::Processor).to receive(:run).with(pool, anything, {}, quiet: anything)
       expect { engine.run(nil, {}) }.to output(anything).to_stdout
     end
 
@@ -91,6 +102,62 @@ RSpec.describe Cosmo::Engine do
       allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
       expect(Cosmo::HTTPServer).not_to receive(:new)
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
+    end
+
+    it "enters quiet mode on TSTP without shutting down, then shuts down on a later INT/TERM" do
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      allow(signal_handler).to receive(:wait).and_return("TSTP", "INT")
+      expect(engine).to receive(:shutdown).once
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
+      expect(engine.instance_variable_get(:@quiet).true?).to be true
+    end
+
+    it "lifts quiet mode on CONT and keeps waiting for a shutdown signal" do
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      allow(signal_handler).to receive(:wait).and_return("TSTP", "CONT", "TERM")
+      expect(engine).to receive(:shutdown).once
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
+      expect(engine.instance_variable_get(:@quiet).true?).to be false
+    end
+
+    it "drains and self-terminates on USR1, once the pool goes idle" do
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      real_handler = Cosmo::Utils::Signal.new
+      allow(Cosmo::Utils::Signal).to receive(:trap).and_return(real_handler)
+      allow(pool).to receive(:wait_idle)
+      expect(engine).to receive(:shutdown).once
+
+      thread = Thread.new { engine.run("jobs", {}) }
+      sleep 0.05
+      real_handler.push(:USR1)
+
+      expect(thread.join(1)).to eq(thread)
+      expect(engine.instance_variable_get(:@quiet).true?).to be true
+      expect(pool).to have_received(:wait_idle)
+    end
+  end
+
+  describe "#drain_and_exit" do
+    let(:engine) { described_class.new }
+    let(:handler) { instance_double(Cosmo::Utils::Signal) }
+
+    it "goes quiet and pushes :TERM back through the handler once the pool is idle" do
+      pushed = Concurrent::IVar.new
+      allow(pool).to receive(:wait_idle)
+      allow(handler).to receive(:push) { |signal| pushed.set(signal) }
+
+      engine.send(:drain_and_exit, handler)
+
+      expect(engine.instance_variable_get(:@quiet).true?).to be true
+      expect(pushed.value(1)).to eq(:TERM)
+      expect(pool).to have_received(:wait_idle)
+    end
+
+    it "does not spawn a second waiter when already quiet" do
+      engine.instance_variable_get(:@quiet).make_true
+      expect(pool).not_to receive(:wait_idle)
+
+      engine.send(:drain_and_exit, handler)
     end
   end
 

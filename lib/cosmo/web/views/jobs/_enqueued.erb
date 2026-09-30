@@ -5,6 +5,7 @@
               hx-target="#content"
               hx-swap="innerHTML"
               hx-push-url="true"
+              hx-indicator="#global-spinner"
               class="btn <%= "btn-primary" if @stream_name.to_s == stream_name.to_s %>">
         <%= h(stream_name) %>
       </button>
@@ -13,10 +14,12 @@
 
   <div class="pending">
     <span></span>
-    <span class="text-muted"><%= @total %> message(s) pending</span>
+    <span class="text-muted"><%= @total.to_i %> message(s) pending</span>
   </div>
 
-  <% if @jobs.empty? -%>
+  <% if @jobs.nil? -%>
+    <div class="alert alert-success">No streams found</div>
+  <% elsif @jobs.empty? -%>
     <div class="alert alert-success">Stream <code><%= h(@stream_name) %></code> is empty</div>
   <% else -%>
     <div class="table-container">
@@ -27,6 +30,7 @@
             <th>JID[Args]</th>
             <th>Stream</th>
             <th>Seq</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -53,6 +57,15 @@
             <td>
               <code><%= job.seq %></code>
             </td>
+            <td>
+              <a hx-delete="<%= url_for("/jobs/enqueued/#{job.seq}", { stream_name: @stream_name, page: @page, limit: @limit }) %>"
+                 hx-target="#enqueued-poller"
+                 hx-swap="outerHTML"
+                 hx-indicator="#global-spinner"
+                 hx-confirm="Remove message #<%= job.seq %> from <%= h(@stream_name) %>?"
+                 title="Remove message"
+                 class="btn btn-danger btn-sm">&#x2715;</a>
+            </td>
           </tr>
           <% end -%>
         </tbody>
@@ -60,27 +73,44 @@
     </div>
   <% end -%>
 
-  <% if @total_pages > 1 -%>
-  <div class="pagination">
-    <% if @page > 1 -%>
-      <a hx-get="<%= url_for('/jobs/_enqueued', stream_name: @stream_name, page: @page - 1, limit: @limit) %>"
-         hx-target="#enqueued-poller"
-         hx-swap="outerHTML"
-         class="btn">&#x2190; Prev</a>
-    <% else -%>
-      <span class="btn btn-disabled">&#x2190; Prev</span>
-    <% end -%>
+  <% if @total_pages.to_i > 1 -%>
+    <div class="pagination">
+      <% if @page > 1 -%>
+        <a hx-get="<%= url_for('/jobs/enqueued', stream_name: @stream_name, page: @page - 1, limit: @limit) %>"
+           hx-target="#enqueued-poller"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           hx-indicator="#global-spinner"
+           class="btn">&#x2190; Prev</a>
+      <% else -%>
+        <span class="btn btn-disabled">&#x2190; Prev</span>
+      <% end -%>
 
-    <span class="text-muted">Page <%= @page %> of <%= @total_pages %></span>
+      <% pages(@page, @total_pages).each do |p| -%>
+        <% if p == :gap -%>
+          <span class="pagination-gap">&hellip;</span>
+        <% elsif p == @page -%>
+          <span class="btn btn-primary btn-disabled"><%= p %></span>
+        <% else -%>
+          <a hx-get="<%= url_for('/jobs/enqueued', stream_name: @stream_name, page: p, limit: @limit) %>"
+             hx-target="#enqueued-poller"
+             hx-swap="outerHTML"
+             hx-push-url="true"
+             hx-indicator="#global-spinner"
+             class="btn"><%= p %></a>
+        <% end -%>
+      <% end -%>
 
-    <% if @page < @total_pages -%>
-      <a hx-get="<%= url_for('/jobs/_enqueued', stream_name: @stream_name, page: @page + 1, limit: @limit) %>"
-         hx-target="#enqueued-poller"
-         hx-swap="outerHTML"
-         class="btn">Next &#x2192;</a>
-    <% else -%>
-      <span class="btn btn-disabled">Next &#x2192;</span>
-    <% end -%>
-  </div>
+      <% if @page < @total_pages -%>
+        <a hx-get="<%= url_for('/jobs/enqueued', stream_name: @stream_name, page: @page + 1, limit: @limit) %>"
+           hx-target="#enqueued-poller"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           hx-indicator="#global-spinner"
+           class="btn">Next &#x2192;</a>
+      <% else -%>
+        <span class="btn btn-disabled">Next &#x2192;</span>
+      <% end -%>
+    </div>
   <% end -%>
 </div>

@@ -8,6 +8,7 @@ require "cosmo/version"
 require "cosmo/config"
 require "cosmo/logger"
 require "cosmo/job"
+require "cosmo/batch"
 require "cosmo/stream"
 require "cosmo/cli"
 require "cosmo/engine"
@@ -35,6 +36,13 @@ module Cosmo
   class StreamNotFoundError < Error
     def initialize(stream_name)
       super("Missing stream `#{stream_name}`")
+    end
+  end
+
+  class UnknownJobStreamError < Error
+    def initialize(names, configured)
+      super("Unknown job stream#{"s" if names.size > 1} #{names.map { "`#{_1}`" }.join(", ")}; " \
+            "configured: #{configured.empty? ? "none" : configured.map { "`#{_1}`" }.join(", ")}")
     end
   end
 end

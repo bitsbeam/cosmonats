@@ -23,6 +23,14 @@ module Cosmo
 
       def subject: () -> ::String
 
+      def error_class: () -> ::String?
+
+      def error_message: () -> ::String?
+
+      def error_backtrace: () -> ::String?
+
+      def error?: () -> bool
+
       def stream: () -> ::String
 
       def timestamp: () -> ::String?

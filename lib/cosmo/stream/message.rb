@@ -7,8 +7,9 @@ module Cosmo
     class Message
       extend Forwardable
 
-      delegate %i[subject reply header metadata ack nack term in_progress] => :@msg
+      delegate %i[subject reply header metadata ack nak term in_progress] => :@msg
       delegate %i[timestamp num_delivered num_pending] => :metadata
+      alias nack nak
 
       def initialize(msg, serializer: nil)
         @msg = msg

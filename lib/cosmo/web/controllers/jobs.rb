@@ -54,6 +54,13 @@ module Cosmo
           ok
         end
 
+        def delete_enqueued
+          seq = path.split("/").last.to_i
+          stream_name, = streams
+          API::Stream.new(stream_name).delete(seq)
+          _enqueued
+        end
+
         def _scheduled
           stream = API::Stream.new("scheduled")
           jobs = stream.messages(page: params["page"], limit: params["limit"])
@@ -67,19 +74,25 @@ module Cosmo
         end
 
         def _busy
-          limit = (limit || 25).to_i
-          jobs  = API::Busy.instance.list(limit:)
-          ok render("jobs/_busy", { jobs: jobs, total: API::Busy.instance.size })
+          busy = API::Busy.instance
+          total = busy.size
+          page, limit, total_pages = paginate(total, API::Busy::LIMIT)
+          polling = params["poll"].to_s != "0"
+          ok render("jobs/_busy", { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages:, polling: })
         end
 
         def _enqueued # rubocop:disable Metrics/AbcSize
           stream_name, stream_names = streams
           limit = (params["limit"] || API::Stream::LIMIT).to_i
           page = [params["page"].to_i, 1].max
-          stream = API::Stream.new(stream_name)
-          total = stream.total
-          jobs = stream.messages(page:, limit:)
-          total_pages = (total.to_f / limit).ceil
+
+          unless stream_name.to_s.empty?
+            stream = API::Stream.new(stream_name)
+            total = stream.total
+            total_pages = (total.to_f / limit).ceil
+            page = page.clamp(1, [total_pages, 1].max)
+            jobs = stream.messages(page:, limit:)
+          end
 
           ok render("jobs/_enqueued", { jobs:, total:, stream_name:, stream_names:, page:, limit:, total_pages: })
         end
@@ -89,6 +102,12 @@ module Cosmo
         end
 
         private
+
+        def paginate(total, default_limit)
+          limit = (params["limit"] || default_limit).to_i
+          total_pages = (total.to_f / limit).ceil
+          [params["page"].to_i.clamp(1, [total_pages, 1].max), limit, total_pages]
+        end
 
         def streams
           stream_names = API::Stream.jobs.map(&:name)

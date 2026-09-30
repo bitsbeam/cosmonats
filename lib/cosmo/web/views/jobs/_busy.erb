@@ -1,10 +1,29 @@
+<% nav = @polling ? { limit: @limit } : { limit: @limit, poll: 0 } -%>
 <div id="busy-poller"
-     hx-get="<%= url_for('/jobs/_busy') %>"
-     hx-trigger="every 5s"
-     hx-swap="outerHTML">
+     <% if @polling -%>
+     hx-get="<%= url_for('/jobs/_busy', page: @page, limit: @limit) %>"
+     hx-trigger="every <%= poll_interval %>s"
+     hx-swap="outerHTML"
+     <% end -%>
+     >
   <div class="pending">
     <span></span>
-    <span class="text-muted"><%= @total %> job(s) running</span>
+    <span class="poll-status">
+      <span class="text-muted"><%= @total %> job(s) running</span>
+      <% if @polling -%>
+        <a class="btn btn-sm"
+           hx-get="<%= url_for('/jobs/_busy', nav.merge(page: @page, poll: 0)) %>"
+           hx-target="#busy-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner">&#9209; Stop Polling</a>
+      <% else -%>
+        <a class="btn btn-sm btn-primary"
+           hx-get="<%= url_for('/jobs/_busy', page: @page, limit: @limit) %>"
+           hx-target="#busy-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner">&#x25B6; Live Poll</a>
+      <% end -%>
+    </span>
   </div>
 
   <% if @jobs.empty? -%>
@@ -18,6 +37,7 @@
             <th>JID[Args]</th>
             <th>Stream</th>
             <th>Worker</th>
+            <th>Attempt</th>
             <th>Running for</th>
           </tr>
         </thead>
@@ -44,12 +64,58 @@
             </td>
             <td><code style="font-size: var(--font-size-small);"><%= h(job[:worker].to_s) %></code></td>
             <td>
+              <% delivery = job[:delivery].to_i -%>
+              <% if delivery > 1 -%>
+                <span class="badge <%= delivery >= 5 ? 'badge-danger' : 'badge-warning' %>"><%= delivery %></span>
+              <% else -%>
+                <span class="text-muted"><%= delivery.zero? ? '&mdash;' : delivery %></span>
+              <% end -%>
+            </td>
+            <td>
               <%= elapsed(job[:started_at]) %>
             </td>
           </tr>
           <% end -%>
         </tbody>
       </table>
+    </div>
+  <% end -%>
+
+  <% if @total_pages.to_i > 1 -%>
+    <div class="pagination">
+      <% if @page > 1 -%>
+        <a hx-get="<%= url_for('/jobs/_busy', nav.merge(page: @page - 1)) %>"
+           hx-target="#busy-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner"
+           class="btn">&#x2190; Prev</a>
+      <% else -%>
+        <span class="btn btn-disabled">&#x2190; Prev</span>
+      <% end -%>
+
+      <% pages(@page, @total_pages).each do |p| -%>
+        <% if p == :gap -%>
+          <span class="pagination-gap">&hellip;</span>
+        <% elsif p == @page -%>
+          <span class="btn btn-primary btn-disabled"><%= p %></span>
+        <% else -%>
+          <a hx-get="<%= url_for('/jobs/_busy', nav.merge(page: p)) %>"
+             hx-target="#busy-poller"
+             hx-swap="outerHTML"
+             hx-indicator="#global-spinner"
+             class="btn"><%= p %></a>
+        <% end -%>
+      <% end -%>
+
+      <% if @page < @total_pages -%>
+        <a hx-get="<%= url_for('/jobs/_busy', nav.merge(page: @page + 1)) %>"
+           hx-target="#busy-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner"
+           class="btn">Next &#x2192;</a>
+      <% else -%>
+        <span class="btn btn-disabled">Next &#x2192;</span>
+      <% end -%>
     </div>
   <% end -%>
 </div>

@@ -63,6 +63,26 @@ class OverriddenJob < CriticalJob
   cosmo_options retry: 1
 end
 
+class NoRetryJob < ActiveJob::Base
+  cosmo_options retry: false
+
+  def initialize
+    super
+    @queue_name = "default"
+    @arguments  = []
+  end
+end
+
+class RetryInActiveJob < ActiveJob::Base
+  cosmo_options retry_in: ->(count, _exception) { count * 5 }
+
+  def initialize
+    super
+    @queue_name = "default"
+    @arguments  = []
+  end
+end
+
 RSpec.describe Cosmo::ActiveJobAdapter do
   describe Cosmo::ActiveJobAdapter::Options do
     it "sets cosmo_options on the class" do
@@ -113,6 +133,29 @@ RSpec.describe Cosmo::ActiveJobAdapter do
         executor.perform(job_data)
       end
     end
+
+    describe ".retry_in" do
+      it "resolves the retry_in proc from the underlying ActiveJob class's cosmo_options" do
+        data = { args: [{ job_class: "RetryInActiveJob" }] }
+
+        handler = described_class.retry_in(data)
+
+        expect(handler).to be_a(Proc)
+        expect(handler.call(3, nil)).to eq(15)
+      end
+
+      it "returns nil when the job class has no retry_in configured" do
+        data = { args: [{ job_class: "TestActiveJob" }] }
+
+        expect(described_class.retry_in(data)).to be_nil
+      end
+
+      it "falls back gracefully when the job class cannot be constantized" do
+        data = { args: [{ job_class: "TotallyUnknownJobXYZ" }] }
+
+        expect(described_class.retry_in(data)).to be_nil
+      end
+    end
   end
 
   describe Cosmo::ActiveJobAdapter::Adapter do
@@ -143,6 +186,19 @@ RSpec.describe Cosmo::ActiveJobAdapter do
             expect(payload[:dead]).to eq(false)
             expect(data.to_args[2][:stream]).to eq(:critical)
           end.and_return("jid-4")
+
+          adapter.enqueue(job)
+        end
+      end
+
+      context "when cosmo_options sets retry: false" do
+        let(:job) { NoRetryJob.new }
+
+        it "publishes retry: 0 in the payload" do
+          expect(Cosmo::Publisher).to receive(:publish_job) do |data|
+            payload = Cosmo::Utils::Json.parse(data.to_args[1])
+            expect(payload[:retry]).to eq(0)
+          end.and_return("jid-no-retry")
 
           adapter.enqueue(job)
         end

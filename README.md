@@ -71,6 +71,14 @@ bundle exec cosmo -C config/cosmo.yml -c 20 streams # Streams only
   - [Streams](#streams)
   - [Configuration](#configuration)
 - [Advanced Usage](#-advanced-usage)
+  - [Cron](#cron)
+  - [Priority Queues](#priority-queues)
+  - [Batches](#batches)
+  - [Concurrency Limiting](#concurrency-limiting)
+  - [Custom Serializers](#custom-serializers)
+  - [Error Handling](#error-handling)
+  - [Testing](#testing)
+  - [Integrations](#integrations)
 - [CLI Reference](#-cli-reference)
 - [Deployment](#-deployment)
 - [Monitoring](#-monitoring)
@@ -138,6 +146,9 @@ nothing else to run.
 - **Automatic retries** — exponential backoff, configurable attempts
 - **Dead letter queue** — capture permanently failed jobs
 - **Job uniqueness** — prevent duplicate execution
+- **Concurrency limits** — cap simultaneous executions per class or per key
+- **Cron scheduling** — recurring jobs manageable live from the web UI
+- **Batches** — group jobs and fire a callback once the whole group finishes, including nested batches
 
 ### 🌊 Stream Processing
 - **Real-time event streams** — process continuous data feeds
@@ -145,6 +156,7 @@ nothing else to run.
 - **Message replay** — reprocess from any point in time
 - **Consumer groups** — load-balanced across workers
 - **Custom serialization** — JSON, MessagePack, Protobuf
+- **Pause / resume** — stop and restart a stream's processing without losing its position
 
 
 ## 📦 Installation
@@ -208,8 +220,8 @@ concurrency: 5                     # Number of worker threads
 consumers:                         # Declare consumer groups for streams, things that pull messages and process them
   jobs:                            # Consumer configs for jobs (or streams)
     default:                       # Stream name
-      ack_policy: explicit         # Acknowledgment required for each message, can be explicit, none, or all
-      max_deliver: 10              # Max retry attempts before sending to a dead stream
+      ack_policy: explicit         # Acknowledgment required for each message can be explicit, none, or all
+      max_deliver: 30              # Max retry attempts before sending to a dead stream. Safety ceiling only, keep it above every job class's own retry
       max_ack_pending: 10          # Max messages waiting for ack, if exceeded, the server will stop delivering new messages until some are acked
       ack_wait: 15                 # Seconds to wait for ack before redelivering
       subject: jobs.%{name}.>      # Subject pattern for this consumer, %{name} replaced with stream name, becomes `jobs.default.>`
@@ -332,19 +344,20 @@ The `>` wildcard matches everything after that prefix. Think of subjects as topi
 timeout: 25                 # Shutdown timeout in seconds
 concurrency: &concurrency 1 # Number of worker threads
 max_retries: &max_retries 3 # Default max retries
+batch_expiry: 259200         # Seconds before a Batch's tracking data expires (default: 3 days)
 
 stream_config: &stream_config
   storage: file         # storage type (file or memory)
   retention: workqueue  # retention policy (limits, interest, workqueue)
   duplicate_window: 120 # time window for duplicate message detection in seconds
-  discard: old          # discard new messages when stream is full (discard new or old)
+  discard: old          # what to drop when the stream is full (new rejects publishes, old evicts the oldest)
   allow_direct: true    # allow direct messages to stream, required for web UI
   subjects:
     - jobs.%{name}.>    # subject pattern for stream, %{name} will be replaced with stream name
 
 consumer_config: &consumer_config
   ack_policy: explicit    # ack policy (explicit, none, all), each individual message must be acknowledged
-  max_deliver: 10         # maximum number of times a message will be delivered before it's considered failed
+  max_deliver: 30         # maximum number of times a message will be delivered before it's considered failed. keep it above every job class's own retry; a job that still exceeds it is capped and dead-lettered early with a warning
   max_ack_pending: 20     # maximum number of messages with pending ack for this consumer
   ack_wait: 60            # time in seconds to wait for an ack before redelivering the message
   subject: jobs.%{name}.> # subject pattern for consumer, %{name} will be replaced with stream name
@@ -365,7 +378,7 @@ consumers:
       priority: 5
     scheduled:
       <<: *consumer_config
-      max_deliver: 1
+      max_deliver: 5
       max_ack_pending: 100
       ack_wait: 10
 
@@ -385,6 +398,7 @@ setup:
       description: Lower priority jobs
     scheduled:
       <<: *stream_config
+      discard: old            # required here: NATS refuses `discard: new` on the stream holding cron schedules
       description: Scheduled jobs
     dead:
       <<: *stream_config
@@ -421,7 +435,54 @@ export COSMO_STREAMS_FETCH_TIMEOUT=0.1
 
 ## 🔧 Advanced Usage
 
-**Priority Queues:**
+### Cron
+
+Recurring jobs, without a separate scheduler process. A schedule is just a message parked in the
+`scheduled` stream (requires NATS Server 2.14+) — NATS fires it on the cron expression, and the
+worker's scheduler dispatches the job on to the stream that runs it, the same path a delayed job
+takes. Deploy it once; whatever's in NATS is exactly what runs and exactly what shows up in the web
+UI's **Crons** tab, where each entry can be inspected, run immediately, or deleted.
+
+Every schedule lives in `scheduled` because NATS only lets a schedule fire at a subject its own
+stream covers, and refuses `discard: new` on any stream with scheduling enabled. Keeping schedules
+in one stream leaves every stream that actually runs jobs free to choose its own discard policy.
+The trade is that cron firings are dispatched by the scheduler, so at least one worker has to be
+running without `--no-scheduler`.
+
+Declare schedules right in `config/cosmo.yml`:
+
+```yaml
+setup:
+  cron:
+    daily_report:
+      class: ReportJob
+      schedule: "@daily"        # @-shortcuts are passed straight through to NATS
+      stream: default
+    weekday_digest:
+      class: ReportJob
+      schedule: "0 9 * * 1-5"   # 6-field NATS cron (seconds first); 5-field UNIX cron is auto-normalized
+      stream: default
+      args: ["daily"]
+      timezone: America/New_York # optional, cron expressions only
+```
+
+`cosmo -C config/cosmo.yml -S` syncs it — whatever's in the file is exactly what ends up scheduled in NATS, same as streams.
+
+Prefer to manage schedules at runtime instead? The same operations are available from Ruby:
+
+```ruby
+Cosmo::API::Cron.instance.upsert!(
+  class_name: "ReportJob", stream: "default", schedule: "0 9 * * 1-5",
+  args: ["daily"], timezone: "America/New_York", name: "weekday_report"
+)
+
+Cosmo::API::Cron.instance.all                                    # every schedule currently deployed
+Cosmo::API::Cron.instance.run_now!("cosmo.cron.default.report_job.weekday_report")  # bypass the timer
+Cosmo::API::Cron.instance.delete!("cosmo.cron.default.report_job.weekday_report")   # stop future firings
+```
+
+### Priority Queues
+
 ```ruby
 class UrgentJob
   include Cosmo::Job
@@ -429,7 +490,82 @@ class UrgentJob
 end
 ```
 
-**Custom Serializers:**
+### Batches
+
+Group jobs together and fire a callback once every one of them has finished. The registered class
+is plain Ruby — it implements `on_complete(status, opts)` / `on_success(status, opts)`, not
+`perform` — and runs on the job worker pool, not inline on whichever thread finalized the batch.
+`status` is `{ bid:, total:, succeeded:, failed: }` and `opts` is whatever you passed to `#on`.
+
+```ruby
+batch = Cosmo::Batch.new
+batch.jobs do
+  ImportJob.perform_async(1)
+  ImportJob.perform_async(2)
+end
+batch.on(:complete, NotifyUser, user_id: 1)  # fires once every job has finished, pass or fail
+batch.on(:success, NotifyUser, user_id: 1)   # fires only if none of them failed
+
+class NotifyUser
+  def on_complete(status, opts)
+    UserMailer.batch_done(opts[:user_id], status[:succeeded], status[:total]).deliver_later
+  end
+
+  def on_success(status, opts)
+    UserMailer.batch_succeeded(opts[:user_id]).deliver_later
+  end
+end
+```
+
+- `#jobs` is the only place membership is tracked — jobs enqueued outside the block aren't part of
+  the batch. Call it at least once (an empty block is fine) to close the batch.
+- `:complete` always fires once every job is done. `:success` fires only if none were dead-lettered
+  or dropped after exhausting retries. Both can be registered before or after `#jobs` — a callback
+  registered after the batch has already finished still fires.
+
+**Nested batches** — a running job can spawn its own sub-batch, which counts as one pending unit
+  of its parent and propagates any failure upward as a single failure unit:
+
+  ```ruby
+  class ImportJob
+    include Cosmo::Job
+
+    def perform(account_id)
+      sub_batch = Cosmo::Batch.new(parent: batch_id)  # batch_id is this job's own batch, if any
+      sub_batch.jobs { SyncRecordJob.perform_async(account_id) }
+    end
+  end
+  ```
+- Batch tracking data (pending counts, callbacks, results) expires automatically after
+  `Config[:batch_expiry]` seconds (default: 3 days).
+- Open and finished batches — with pending/succeeded/failed counts — are listed live in the web UI's **Batches** tab.
+- Only `Cosmo::Job`-based jobs are tracked; the ActiveJob adapter doesn't currently participate in
+  batches (see [`docs/active_job.md`](docs/active_job.md)).
+
+### Concurrency Limiting
+
+```ruby
+class ThirdPartyApiJob
+  include Cosmo::Job
+  # At most 3 instances of this job run at once, cluster-wide.
+  # Jobs that lose the race are NAK'd with a delay equal to `duration`
+  # so they aren't redelivered until a slot is guaranteed free.
+  options limit: { duration: 30, concurrency: 3 }
+end
+
+class PerAccountSyncJob
+  include Cosmo::Job
+  # Scope the cap per key instead of class-wide — e.g. one concurrent sync per account.
+  options limit: { duration: 30, concurrency: { to: 1, key: ->(account_id) { account_id } } }
+
+  def perform(account_id)
+    Account.find(account_id).sync!
+  end
+end
+```
+
+### Custom Serializers
+
 ```ruby
 module MessagePackSerializer
   def self.serialize(data) = MessagePack.pack(data)
@@ -442,7 +578,8 @@ class FastStream
 end
 ```
 
-**Error Handling:**
+### Error Handling
+
 ```ruby
 class ResilientJob
   include Cosmo::Job
@@ -460,7 +597,24 @@ class ResilientJob
 end
 ```
 
-**Testing:**
+By default, a failed job is redelivered after `attempt**4 + 15` seconds. Override that per job class
+with `retry_in`, given the 1-based attempt count and the exception that was raised:
+```ruby
+class ThrottledApiJob
+  include Cosmo::Job
+  options retry: 5, retry_in: ->(count, exception) { exception.is_a?(RateLimitedError) ? 60 : count * 10 }
+
+  def perform(...)
+    # ...
+  end
+end
+```
+If the proc returns something non-numeric/non-positive, or raises, the default backoff is used
+instead. Note: if this job class also sets `limit: { concurrency: ... }` (see above), `count`
+includes deliveries that were turned away for lack of a free slot, not just failed attempts.
+
+### Testing
+
 ```ruby
 # Synchronous — no NATS needed
 SendEmailJob.perform_sync(123, "test")
@@ -471,23 +625,90 @@ assert_kind_of String, jid
 ```
 
 
+### Integrations
+
+**ActiveJob:**
+```ruby
+# config/application.rb
+config.active_job.queue_adapter = :cosmonats
+```
+The ActiveJob queue name maps directly to a Cosmo stream. Use `cosmo_options` for anything
+Cosmo-specific — retries, DLQ behavior, overriding the target stream, or a custom retry delay:
+```ruby
+class ReportJob < ApplicationJob
+  cosmo_options retry: 5, dead: false, stream: :critical, retry_in: ->(count, exception) { count * 10 }
+
+  def perform(report_id)
+    Report.find(report_id).generate!
+  end
+end
+```
+Inside a Rails app this is wired up automatically by the bundled Railtie — it registers the
+adapter and loads `config/cosmo.yml` if present. Outside Rails:
+```ruby
+require "cosmo/active_job"
+ActiveJob::Base.queue_adapter = Cosmo::ActiveJobAdapter::Adapter.new
+```
+
+**Sentry:**
+```ruby
+require "cosmo/sentry/auto"
+```
+Wraps every job execution in a Sentry transaction (`queue.cosmonats`) and captures unhandled
+exceptions with the job's id, stream, subject, and retry count attached as context — no other
+setup beyond having `sentry-ruby` initialized.
+
+
 ## 🖥️ CLI Reference
 
 ```bash
-cosmo -C config/cosmo.yml --setup                  # Create streams in NATS (idempotent)
-cosmo -C config/cosmo.yml -c 20 -r ./app/jobs jobs # Jobs only
-cosmo -C config/cosmo.yml -c 20 streams            # Streams only
-cosmo -C config/cosmo.yml -c 20                    # Both
+cosmo -C config/cosmo.yml --setup                     # Create streams in NATS (idempotent)
+cosmo -C config/cosmo.yml -c 20 -r ./app/jobs jobs    # Jobs only
+cosmo -C config/cosmo.yml -c 20 streams               # Streams only
+cosmo -C config/cosmo.yml -c 20                       # Both
+cosmo -C config/cosmo.yml jobs --streams default,high # Jobs, limited to these streams
+cosmo -C config/cosmo.yml jobs --stream critical      # Jobs, limited to one stream
+cosmo -C config/cosmo.yml jobs --no-scheduler         # Jobs, without dispatching scheduled jobs
+COSMO_JOBS_STREAMS=default,high cosmo jobs            # Same filter, without touching the command line
 ```
 
-| Flag                    | Description            | Example               |
-|-------------------------|------------------------|-----------------------|
-| `-C, --config PATH`     | Config file path       | `-C config/cosmo.yml` |
-| `-c, --concurrency INT` | Worker threads         | `-c 20`               |
-| `-r, --require PATH`    | Auto-require directory | `-r ./app/jobs`       |
-| `-t, --timeout NUM`     | Shutdown timeout (sec) | `-t 60`               |
-| `-p, --http-port INT`   | Serve `/health` on port | `-p 9090`            |
-| `-S, --setup`           | Setup streams & exit   | `--setup`             |
+Each selected stream gets its own durable consumer, named `consumer-<stream>`. Every process that subscribes to a stream
+pulls from that same consumer, so running a dedicated fleet per stream splits the work instead of duplicating it.
+The `scheduled` stream is a service stream: it is always dispatched, and naming it in `--streams` selects nothing, use
+`--no-scheduler` on workers that should not dispatch scheduled jobs. Unknown stream names abort the process.
+
+**Global flags** (before the command):
+
+| Flag                    | Description                          | Example               |
+|-------------------------|---------------------------------------|-----------------------|
+| `-C, --config PATH`     | Config file path                      | `-C config/cosmo.yml` |
+| `-c, --concurrency INT` | Worker threads                        | `-c 20`               |
+| `-r, --require PATH`    | Auto-require directory                | `-r ./app/jobs`       |
+| `-t, --timeout NUM`     | Shutdown timeout (sec)                | `-t 60`               |
+| `-S, --setup`           | Setup streams & sync cron, then exit  | `--setup`             |
+| `-v, --version`         | Print version and exit                | `--version`           |
+| `-h, --help`            | Show help and exit                    | `--help`               |
+
+**`jobs` command options:**
+
+| Flag                    | Description                                                       | Example                        |
+|-------------------------|--------------------------------------------------------------------|---------------------------------|
+| `--streams NAMES`       | Only subscribe to these job streams, instead of all configured ones | `--streams default,high`      |
+| `--stream NAME`         | Same as `--streams`, for a single stream                           | `--stream default`             |
+| `--[no-]scheduler`      | Dispatch scheduled jobs (default: yes)                             | `--no-scheduler`               |
+| `--subject NAME`        | Job's subject                                                      | `--subject jobs.default.foo`   |
+
+`--streams`/`--stream` also read from `COSMO_JOBS_STREAMS` (comma-separated) when neither flag is given.
+
+**`streams` command options** (`--stream`/`--subject`/`--consumer_name`/`--batch_size` apply only when running a single processor; ignored once `--processors` selects more than one):
+
+| Flag                     | Description                          | Example                         |
+|--------------------------|---------------------------------------|---------------------------------|
+| `--processors NAMES`     | Only run these stream processor classes | `--processors OrderProcessor` |
+| `--stream NAME`          | Stream name                          | `--stream orders`              |
+| `--subject NAME`         | Subject name                         | `--subject orders.created`     |
+| `--consumer_name NAME`   | Consumer name                        | `--consumer_name orders-consumer` |
+| `--batch_size NUM`       | Messages per fetch batch             | `--batch_size 50`               |
 
 
 ### Health check
@@ -575,6 +796,13 @@ sudo systemctl enable cosmo && sudo systemctl start cosmo
 
 
 ## 📊 Monitoring
+
+**Web UI** — mount `Cosmo::Web` (see [Installation](#-installation)) for a live, htmx-powered dashboard:
+- **Jobs** — enqueued, scheduled, busy, and dead views, with per-job retry and delete
+- **Streams** — per-stream state (messages, bytes, consumers) with pause/resume
+- **Crons** — every schedule deployed in NATS, with run-now and delete
+- **Batches** — open and finished batches with pending/succeeded/failed counts
+- Summary counters (processed / failed / busy / enqueued / retries / scheduled / dead) backed by a NATS KV counter, no separate metrics store needed
 
 **Structured logs:**
 ```

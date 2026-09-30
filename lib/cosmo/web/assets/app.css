@@ -163,6 +163,14 @@ button:hover, .btn:hover {
   );
 }
 
+.btn-sm {
+  box-shadow: none;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  line-height: var(--space-2x);
+  padding: var(--space-1-2) var(--space);
+}
+
 /* ── Badges ────────────────────────────────────────────────────────────── */
 .badge {
   border-radius: var(--space-1-2);
@@ -179,6 +187,14 @@ button:hover, .btn:hover {
 .badge-warning {
   background: oklch(from var(--color-warning) l c h / 20%);
   color: oklch(from var(--color-warning) calc(l - 0.15) c h);
+}
+.badge-danger {
+  background: oklch(from var(--color-danger) l c h / 15%);
+  color: var(--color-danger);
+}
+.badge-info {
+  background: oklch(from var(--color-info) l c h / 15%);
+  color: var(--color-info);
 }
 
 /* ── Alerts ────────────────────────────────────────────────────────────── */
@@ -335,6 +351,12 @@ section .pending {
   align-items: center;
 }
 
+section .pending .poll-status {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space);
+}
+
 /* ── Stat cards ────────────────────────────────────────────────────────── */
 .cards-container {
   display: grid;
@@ -489,6 +511,13 @@ time {
   cursor: default;
   pointer-events: none;
 }
+.pagination .btn-primary.btn-disabled {
+  opacity: 1;
+}
+.pagination-gap {
+  color: var(--color-text-light);
+  padding: 0 var(--space-1-2);
+}
 
 /* ── Actions ───────────────────────────────────────────────────────────── */
 .actions-form { display: flex; flex-direction: column; gap: var(--space-1-2); }
@@ -500,7 +529,7 @@ details summary {
   font-size: var(--font-size-small);
   user-select: none;
 }
-details summary code { display: inline; }
+details summary code { display: inline; user-select: text; }
 details[open] summary { margin-bottom: var(--space); }
 details code { display: block; max-width: 400px; white-space: pre-wrap; }
 
@@ -508,6 +537,23 @@ details code { display: block; max-width: 400px; white-space: pre-wrap; }
 .htmx-indicator { opacity: 0; transition: opacity 200ms; }
 .htmx-request .htmx-indicator,
 .htmx-request.htmx-indicator   { opacity: 1; }
+
+#global-spinner {
+  position: fixed;
+  top: var(--space-2x);
+  right: var(--space-2x);
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  z-index: 100;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

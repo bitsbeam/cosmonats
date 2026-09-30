@@ -16,11 +16,14 @@ RSpec.shared_context "Global helpers" do
     Cosmo::API::Counter.instance_variable_set(:@instance, nil)
     Cosmo::Publisher.instance_variable_set(:@instance, nil)
     Cosmo::Job::Limit.instance_variable_set(:@instance, nil)
+    Cosmo::Batch.instance_variable_set(:@counter, nil)
+    Cosmo::Batch.instance_variable_set(:@kv, nil)
   end
 
   def wait_until(timeout:)
     result = nil
-    deadline = Time.now + timeout
+    scale = ENV.fetch("COSMO_TEST_TIMEOUT_SCALE", ENV["CI"] ? 3 : 1).to_f
+    deadline = Time.now + (timeout * scale)
 
     loop do
       result = yield

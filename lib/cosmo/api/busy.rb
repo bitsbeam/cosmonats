@@ -6,6 +6,7 @@ module Cosmo
   module API
     class Busy
       TTL = 70
+      LIMIT = 25
       HEARTBEAT = 30
       BUCKET = "cosmo_jobs_busy"
 
@@ -27,8 +28,10 @@ module Cosmo
 
       def add(message)
         @thread ||= Thread.new { heartbeat_loop }
-        seq = message.metadata.sequence.stream
-        value = Utils::Json.dump({ data: message.data, stream: message.metadata.stream, worker: worker_id, started_at: Time.now.to_i })
+        meta = message.metadata
+        seq = meta.sequence.stream
+        value = Utils::Json.dump({ data: message.data, stream: meta.stream, worker: worker_id,
+                                   started_at: Time.now.to_i, delivery: meta.num_delivered })
         @messages[seq] = value
         @kv.set(seq, value)
       end
@@ -39,8 +42,10 @@ module Cosmo
         @kv.purge(seq)
       end
 
-      def list(limit: 25)
-        @kv.keys(limit:).filter_map { Utils::Json.parse(@kv.get(_1)&.value) }.map { _1.merge(data: Utils::Json.parse(_1[:data])) }
+      def list(page: nil, limit: LIMIT)
+        offset = ([page.to_i, 1].max - 1) * limit
+        @kv.entries(limit:, offset:).filter_map { Utils::Json.parse(_1.last) }
+           .map { _1.merge(data: Utils::Json.parse(_1[:data])) }
       end
 
       def size

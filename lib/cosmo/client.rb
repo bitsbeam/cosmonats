@@ -1,29 +1,62 @@
 # frozen_string_literal: true
 
+require "socket"
 require "nats/client"
 require "cosmo/utils/overrides"
 
 module Cosmo
   class Client
+    # Seconds to wait for a JetStream API reply. Override with COSMO_JS_TIMEOUT.
+    JS_TIMEOUT = 5
+    # Seconds to wait for the TCP connect+handshake. Override with COSMO_CONNECT_TIMEOUT.
+    CONNECT_TIMEOUT = 2
+
     def self.instance
       @instance ||= Client.new
     end
 
-    attr_reader :nc, :js
+    # Labels the connection in `nats server report connections` and /connz, so a
+    # misbehaving process can be found without cross-referencing host IPs. Derived from
+    # the running program, which separates a web process from a `cosmo` worker on the
+    # same host. Override with COSMO_CLIENT_NAME.
+    def self.default_name
+      ENV.fetch("COSMO_CLIENT_NAME") { "cosmo-#{program_name}-#{Socket.gethostname}-#{Process.pid}" }
+    end
 
-    def initialize(nats_url: ENV.fetch("NATS_URL", "nats://localhost:4222"))
-      Logger.debug "Connecting to NATS server at #{nats_url}..."
-      @nc = NATS.connect(nats_url)
+    def self.js_timeout
+      ENV.fetch("COSMO_JS_TIMEOUT", JS_TIMEOUT).to_i
+    end
+
+    def self.connect_timeout
+      ENV.fetch("COSMO_CONNECT_TIMEOUT", CONNECT_TIMEOUT).to_i
+    end
+
+    # $PROGRAM_NAME is "puma 7.2.1 (tcp://...)" under Puma and a path under the CLI.
+    def self.program_name
+      File.basename($PROGRAM_NAME.to_s.split.first.to_s, ".*").gsub(/[^\w.-]/, "")
+    end
+
+    attr_reader :nc, :js, :name
+
+    def initialize(nats_url: ENV.fetch("NATS_URL", "nats://localhost:4222"), name: self.class.default_name)
+      @name = name
+      Logger.debug "Connecting to NATS server at #{nats_url} as #{@name}..."
+      @nc = NATS.connect(nats_url, name: @name, connect_timeout: self.class.connect_timeout)
       Logger.debug "Connection established"
-      @js = @nc.jetstream
+      @js = @nc.jetstream(timeout: self.class.js_timeout)
     end
 
     def publish(subject, payload, **params)
       js.publish(subject, payload, **params)
     end
 
+    # Create a pull subscription. Durable with +consumer_name+, and ephemeral without.
+    # @param config [Hash] Consumer config. Ephemeral consumers additionally require
+    #   +:stream+ and +:inactive_threshold+ (seconds the consumer survives without a fetch).
     def subscribe(subject, consumer_name, config)
-      js.pull_subscribe(subject, consumer_name, config: config)
+      return js.pull_subscribe(subject, consumer_name, config: config) if consumer_name
+
+      ephemeral_subscribe(subject, config)
     end
 
     def stream_info(name)
@@ -69,6 +102,8 @@ module Cosmo
       return [] if data.nil? || data["streams"].nil?
 
       data["streams"]
+    rescue NATS::Error
+      []
     end
 
     def pause_stream(name)
@@ -101,8 +136,12 @@ module Cosmo
       js.consumer_info(stream_name, consumer_name)
     end
 
-    def get_message(name, **options)
-      js.get_msg(name, **options)
+    def delete_consumer(stream_name, consumer_name)
+      js.delete_consumer(stream_name, consumer_name)
+    end
+
+    def get_message(stream_name, **options)
+      js.get_msg(stream_name, **options)
     end
 
     def delete_message(name, seq)
@@ -130,6 +169,32 @@ module Cosmo
     end
 
     private
+
+    # NOTE: nats-pure's #pull_subscribe has no path to a true ephemeral pull consumer.
+    # Its rescue branch unconditionally sets `config[:durable_name] = durable` (jetstream.rb).
+    def ephemeral_subscribe(subject, config) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      config = config.dup
+      stream = config.delete(:stream) or raise ArgumentError, "stream required for ephemeral consumers"
+      raise ArgumentError, "inactive_threshold required for ephemeral consumers" unless config[:inactive_threshold]
+
+      subject = subject.first if subject.is_a?(Array) && subject.size == 1
+      consumer_config = NATS::JetStream::API::ConsumerConfig.new(config)
+      if subject.is_a?(Array)
+        consumer_config[:filter_subjects] ||= subject
+      else
+        consumer_config[:filter_subject] ||= subject
+      end
+
+      info = js.add_consumer(stream, consumer_config)
+
+      sub = nc.subscribe(nc.new_inbox)
+      sub.extend(NATS::JetStream.const_get(:PullSubscription))
+      sub.jsi = NATS::JetStream.const_get(:JS)::Sub.new(
+        js: js, stream: stream, consumer: info.name,
+        nms: "#{js.prefix}.CONSUMER.MSG.NEXT.#{stream}.#{info.name}"
+      )
+      sub
+    end
 
     # NOTE: KV manager in nats-pure hardcodes the fields it copies into StreamConfig,
     # so `allow_msg_ttl` is never forwarded via create_key_value. Send the raw stream-create API request instead.

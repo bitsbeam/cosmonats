@@ -2,11 +2,14 @@ module Cosmo
   module Utils
     class ThreadPool
       @mutex: Thread::Mutex
+      @concurrency: Integer
       @available: Integer
       @cond: Thread::ConditionVariable
       @pool: untyped
 
       def initialize: (Integer concurrency) -> void
+
+      def wait_idle: () -> void
 
       def post: () { () -> void } -> void
 

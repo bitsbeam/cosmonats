@@ -72,4 +72,22 @@ RSpec.describe Cosmo::API::Job do
       expect(job.timestamp).to eq("2023-11-14T22:13:20Z")
     end
   end
+
+  describe "error details" do
+    let(:headers) do
+      { "X-Error-Class" => "Timeout::Error", "X-Error-Message" => "execution expired", "X-Error-Backtrace" => "a.rb:1 | b.rb:2" }
+    end
+
+    it "reads the error headers" do
+      expect(job.error_class).to eq("Timeout::Error")
+      expect(job.error_message).to eq("execution expired")
+      expect(job.error_backtrace).to eq("a.rb:1 | b.rb:2")
+      expect(job).to be_error
+    end
+
+    it "is not an error without the headers" do
+      allow(message).to receive(:headers).and_return({})
+      expect(job).not_to be_error
+    end
+  end
 end

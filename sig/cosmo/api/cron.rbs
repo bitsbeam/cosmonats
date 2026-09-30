@@ -1,6 +1,8 @@
 module Cosmo
   module API
     class Cron
+      STREAM: ::String
+
       def all: () -> ::Array[Hash[Symbol, untyped]]
 
       def upsert!: (?Cosmo::API::Cron::Entry schedule_obj,
@@ -17,8 +19,8 @@ module Cosmo
 
       private
 
-      def schedules_from_stream: (::String stream_name) -> ::Array[Hash[Symbol, untyped]]
-      def build_from_nats: (::String stream_name, ::String subject) -> Hash[Symbol, untyped]?
+      def schedules: () -> ::Array[Hash[Symbol, untyped]]
+      def build_from_nats: (::String subject) -> Hash[Symbol, untyped]?
       def name_from_subject: (::String subject) -> ::String?
     end
   end

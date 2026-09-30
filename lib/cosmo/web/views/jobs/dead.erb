@@ -2,7 +2,7 @@
   <header><%= render('jobs/_tabs') %></header>
 
   <div hx-get="<%= url_for('/jobs/_stats') %>"
-       hx-trigger="load, every 5s"
+       hx-trigger="load, every <%= poll_interval %>s"
        hx-swap="innerHTML">
     <div class="alert alert-info">Loading statistics…</div>
   </div>

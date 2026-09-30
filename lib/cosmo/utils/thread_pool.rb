@@ -16,9 +16,14 @@ module Cosmo
 
       def initialize(concurrency)
         @mutex = Thread::Mutex.new
+        @concurrency = concurrency
         @available = concurrency
         @cond = ConditionVariable.new
         @pool = Concurrent::FixedThreadPool.new(concurrency)
+      end
+
+      def wait_idle
+        @mutex.synchronize { @cond.wait(@mutex) until @available == @concurrency }
       end
 
       def post

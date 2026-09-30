@@ -8,7 +8,7 @@ module Cosmo
       module_function
 
       def parse(value, default: nil, symbolize_names: true, **options)
-        JSON.parse(value, options.merge(symbolize_names:))
+        JSON.parse(value, **options, symbolize_names:)
       rescue TypeError, JSON::ParserError
         default
       end

@@ -6,10 +6,13 @@ module Cosmo
     @concurrency: Integer
     @pool: Utils::ThreadPool
     @running: untyped
+    @quiet: untyped
     @processors: Array[Processor]
     @http_server: HTTPServer?
 
     def self.run: (*untyped) -> void
+
+    def self.processors_for: ((::String | Symbol)? type) -> Array[Class]
 
     def self.instance: () -> Engine
 
@@ -24,5 +27,13 @@ module Cosmo
     private
 
     def start_http_server: () -> void
+
+    def handle_shutdown: (Utils::Signal handler) -> Symbol
+
+    def quiet: () -> void
+
+    def unquiet: () -> void
+
+    def drain_and_exit: (Utils::Signal handler) -> void
   end
 end

@@ -6,11 +6,20 @@ RSpec.describe Cosmo::Stream::Processor do
   let(:running)     { Concurrent::AtomicBoolean.new }
   let(:results)     { Results.instance }
   let(:config)      { { storage: "file", retention: "limits", duplicate_window: 120 * Cosmo::Config::NANO, discard: "old", allow_direct: true } }
-  let(:processor)   { described_class.new(pool, running, {}) }
+  let(:quiet)       { Concurrent::AtomicBoolean.new }
+  let(:processor)   { described_class.new(pool, running, {}, quiet: quiet) }
 
   def create_stream(name)
     client.create_stream(name, config.merge(subjects: ["#{name}.>"]))
   end
+
+  # Keep the empty-stream backoff cap small, same as job/processor_spec.rb and batch_spec.rb.
+  # Without this, a consumer idle since #run can have backed off toward the 5s default by the
+  # time a spec's own publish happens (especially ones that sleep before publishing), so the
+  # message isn't even attempted until that backoff window elapses - which can eat into or
+  # exceed a `wait_until(timeout: 5)` on its own, regardless of how busy/slow the machine is.
+  before { ENV["COSMO_STREAM_EMPTY_BACKOFF_MAX"] = "0.5" }
+  after { ENV.delete("COSMO_STREAM_EMPTY_BACKOFF_MAX") }
 
   context "with successful job execution" do
     context "with #process_one" do
@@ -69,6 +78,18 @@ RSpec.describe Cosmo::Stream::Processor do
 
         expect(results.map { |r| r["event"] }).not_to include("after-stop")
       end
+
+      it "stops fetching new messages while quiet, but resumes once quiet is lifted" do
+        quiet.make_true
+
+        EventProcessor.publish({ event: "during-quiet" }, subject: "test_events.work")
+        sleep(Cosmo::Utils::Duration.parse(Cosmo::Processor::STREAMS_PAUSED_IDLE_SLEEP) + 0.2)
+        expect(results).to be_empty
+
+        quiet.make_false
+        wait_until(timeout: 5) { results.any? }
+        expect(results.first).to eq("event" => "during-quiet")
+      end
     end
 
     context "with #process" do
@@ -112,7 +133,7 @@ RSpec.describe Cosmo::Stream::Processor do
     end
 
     context "with processor filtering" do
-      let(:processor) { described_class.new(pool, running, { processors: ["FilteredProcessor"] }) }
+      let(:processor) { described_class.new(pool, running, { processors: ["FilteredProcessor"] }, quiet: quiet) }
 
       before do
         stub_const("FilteredProcessor", Class.new do
@@ -269,7 +290,7 @@ RSpec.describe Cosmo::Stream::Processor do
                                        consumer: { subjects: ["test_static.>"] } }
                                    ])
 
-        processor = described_class.new(Cosmo::Utils::ThreadPool.new(1), Concurrent::AtomicBoolean.new, {})
+        processor = described_class.new(Cosmo::Utils::ThreadPool.new(1), Concurrent::AtomicBoolean.new, {}, quiet: quiet)
         expect { processor.run }.not_to raise_error
         expect(processor.consumers).to be_empty
       ensure
@@ -307,7 +328,8 @@ RSpec.describe Cosmo::Stream::Processor do
 
       it "does not consume messages while the stream is paused" do
         PauseTestProcessor.publish({ event: "after-unpause" }, subject: "test_pause.item")
-        sleep(Cosmo::Processor::STREAMS_PAUSED_IDLE_SLEEP + 0.2) # ensure the processor has time to check the paused state at least once
+        # ensure the processor has time to check the paused state at least once
+        sleep(Cosmo::Utils::Duration.parse(Cosmo::Processor::STREAMS_PAUSED_IDLE_SLEEP) + 0.2)
         expect(results).to be_empty
         expect(stream_size("test_pause")).to eq(1)
 
@@ -342,7 +364,7 @@ RSpec.describe Cosmo::Stream::Processor do
           .with("Ignoring `fetch_timeout: 0.0` (causes high CPU usage) with #{Cosmo::Stream::Data::DEFAULTS[:fetch_timeout]}s instead")
           .at_least(:once)
 
-        processor = described_class.new(pool, running, {})
+        processor = described_class.new(pool, running, {}, quiet: quiet)
         processor.run
         ZeroTimeoutProcessor.publish({ tag: "zero-timeout" }, subject: "test_zero_timeout.item")
         wait_until(timeout: 5) { results.any? }
@@ -371,7 +393,7 @@ RSpec.describe Cosmo::Stream::Processor do
           .with("Ignoring `fetch_timeout: -3.0` (causes high CPU usage) with #{Cosmo::Stream::Data::DEFAULTS[:fetch_timeout]}s instead")
           .at_least(:once)
 
-        processor = described_class.new(pool, running, {})
+        processor = described_class.new(pool, running, {}, quiet: quiet)
         processor.run
         NegTimeoutProcessor.publish({ tag: "neg-timeout" }, subject: "test_neg_timeout.item")
         wait_until(timeout: 15) { results.any? }

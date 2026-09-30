@@ -2,19 +2,27 @@
 
 module Cosmo
   class Processor
-    STREAM_PAUSED_RECHECK_TTL = 5.0 # Seconds a stream's paused state is cached before re-checking (override via COSMO_STREAM_PAUSED_RECHECK_TTL)
-    STREAMS_PAUSED_IDLE_SLEEP = 1.0 # Seconds to sleep when every stream is paused, preventing a tight CPU spin (override via COSMO_STREAMS_PAUSED_IDLE_SLEEP)
-    STREAM_EMPTY_BACKOFF_MAX = 5.0  # Max seconds to sleep between empty fetches (override via COSMO_STREAM_EMPTY_BACKOFF_MAX)
+    STREAM_PAUSED_RECHECK_TTL = "5s" # How long a stream's paused state is cached before re-checking (override via COSMO_STREAM_PAUSED_RECHECK_TTL)
+    STREAMS_PAUSED_IDLE_SLEEP = "1s" # How long to sleep when every stream is paused, preventing a tight CPU spin (override via COSMO_STREAMS_PAUSED_IDLE_SLEEP)
+    STREAM_EMPTY_BACKOFF_MAX = "5s"  # Max sleep between empty fetches (override via COSMO_STREAM_EMPTY_BACKOFF_MAX)
+    QUIET_SLEEP = "5s"               # How long to sleep between checks while in quiet mode (override via COSMO_QUIET_IDLE_SLEEP)
 
     def self.run(...)
       new(...).tap(&:run)
     end
 
+    # Checks the command-line options this processor understands, before anything is booted or connected.
+    #
+    # @param options [Hash]
+    # @return [void]
+    def self.validate_options!(_options); end
+
     attr_reader :consumers
 
-    def initialize(pool, running, options)
+    def initialize(pool, running, options, quiet:)
       @pool = pool
       @running = running
+      @quiet = quiet
       @options = options
       @threads = []
       @consumers = []
@@ -52,22 +60,27 @@ module Cosmo
       while running?
         break if shutdown
 
+        if quiet?
+          sleep(Utils::Duration.parse(ENV.fetch("COSMO_QUIET_IDLE_SLEEP", QUIET_SLEEP)))
+          next
+        end
+
         all_empty = true  # every stream is empty
         all_paused = true # every stream is paused
         consumers.each do |(subscription, config, processor)| # rubocop:disable Metrics/BlockLength
           break unless running?
 
           stream_name = config[:stream].to_s
-          ttl = ENV.fetch("COSMO_STREAM_PAUSED_RECHECK_TTL", STREAM_PAUSED_RECHECK_TTL).to_f
-          if @cache.fetch(stream_name, ttl:) { API::Stream.new(stream_name).paused? }
-            Logger.debug "stream #{stream_name} is paused, skipping fetch"
+          ttl = Utils::Duration.parse(ENV.fetch("COSMO_STREAM_PAUSED_RECHECK_TTL", STREAM_PAUSED_RECHECK_TTL))
+          if @cache.fetch("#{stream_name}:paused", ttl:) { API::Stream.new(stream_name).paused? }
+            Logger.trace "stream #{stream_name} is paused, skipping fetch"
             next
           end
           all_paused = false
 
           _, skip_t = consumer_state[stream_name]
           if skip_t && Time.now < skip_t
-            Logger.debug "stream #{stream_name} is empty, backing off"
+            Logger.trace "stream #{stream_name} is empty, backing off"
             next
           end
           all_empty = false
@@ -79,14 +92,14 @@ module Cosmo
               next if skip_t && Time.now < skip_t
 
               timeout = fetch_timeout(config)
-              Logger.debug "fetching #{fetch_subjects(config).inspect}, timeout=#{timeout}"
-              messages = lock(stream_name) { fetch(subscription, batch_size: config[:batch_size], timeout:) }
-              Logger.debug "fetched (#{messages&.size.to_i}) messages"
+              Logger.trace "fetching #{fetch_subjects(config).inspect}, timeout=#{timeout}"
+              messages = fetch(subscription, batch_size: config[:batch_size], timeout:)
+              Logger.trace "fetched (#{messages&.size.to_i}) messages"
               if messages&.any?
                 consumer_state.delete(stream_name)
                 process(messages, processor)
               else
-                max_backoff = ENV.fetch("COSMO_STREAM_EMPTY_BACKOFF_MAX", STREAM_EMPTY_BACKOFF_MAX).to_f
+                max_backoff = Utils::Duration.parse(ENV.fetch("COSMO_STREAM_EMPTY_BACKOFF_MAX", STREAM_EMPTY_BACKOFF_MAX))
                 consumer_state.compute(stream_name) do |current|
                   count = (current&.first || 0) + 1
                   backoff = [timeout * (2**(count - 1)), max_backoff].min
@@ -103,15 +116,15 @@ module Cosmo
         break unless running?
 
         if all_paused
-          period = ENV.fetch("COSMO_STREAMS_PAUSED_IDLE_SLEEP", STREAMS_PAUSED_IDLE_SLEEP).to_f
-          Logger.debug "all streams paused, sleep=#{period}"
+          period = Utils::Duration.parse(ENV.fetch("COSMO_STREAMS_PAUSED_IDLE_SLEEP", STREAMS_PAUSED_IDLE_SLEEP))
+          Logger.trace "all streams paused, sleep=#{period}"
           sleep(period)
         elsif all_empty
           next_wake = consumer_state.values.filter_map { |_, t| t }.min
           next unless next_wake # entry was deleted concurrently (messages arrived), re-loop immediately
 
           remaining = [next_wake - Time.now, 0.01].max
-          Logger.debug "all streams empty, sleep=#{remaining}"
+          Logger.trace "all streams empty, sleep=#{remaining}"
           sleep(remaining)
         end
       end
@@ -131,6 +144,10 @@ module Cosmo
 
     def running?
       @running.true?
+    end
+
+    def quiet?
+      @quiet.true?
     end
 
     def scheduler?
@@ -156,11 +173,6 @@ module Cosmo
 
     def stopwatch
       Utils::Stopwatch.new
-    end
-
-    def lock(stream_name, &)
-      @locks ||= Hash.new { |h, k| h[k] = Mutex.new }
-      @locks[stream_name].synchronize(&)
     end
 
     def consumer_state

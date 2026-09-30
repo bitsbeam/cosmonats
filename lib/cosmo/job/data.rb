@@ -7,6 +7,10 @@ module Cosmo
     class Data
       DEFAULTS = { stream: :default, retry: 3, dead: true, limit: nil }.freeze
 
+      def self.default_retry
+        Config[:max_retries] || DEFAULTS[:retry]
+      end
+
       attr_reader :jid
 
       def initialize(class_name, args, options = nil)
@@ -22,6 +26,10 @@ module Cosmo
         @jid = SecureRandom.hex(12)
       end
 
+      def batch_id
+        @options[:batch_id]
+      end
+
       def stream(target: false)
         return @options[:stream] if target
 
@@ -33,13 +41,8 @@ module Cosmo
       end
 
       def as_json
-        {
-          jid: jid,
-          class: @class_name,
-          args: @args,
-          retry: retries,
-          dead: dead
-        }
+        json = { jid: jid, class: @class_name, args: @args, retry: retries, dead: dead }
+        batch_id ? json.merge(batch_id: batch_id) : json
       end
 
       def to_json(*_args)
@@ -63,7 +66,10 @@ module Cosmo
       end
 
       def retries
-        @options[:retry].nil? ? DEFAULTS[:retry] : @options[:retry]
+        return self.class.default_retry if @options[:retry].nil?
+        return 0 if @options[:retry] == false
+
+        @options[:retry]
       end
 
       def dead

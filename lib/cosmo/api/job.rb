@@ -38,6 +38,22 @@ module Cosmo
         @message.subject
       end
 
+      def error_class
+        headers&.dig("X-Error-Class")
+      end
+
+      def error_message
+        headers&.dig("X-Error-Message")
+      end
+
+      def error_backtrace
+        headers&.dig("X-Error-Backtrace")
+      end
+
+      def error?
+        !error_class.to_s.empty? || !error_message.to_s.empty?
+      end
+
       def timestamp
         headers&.dig("Nats-Time-Stamp")
       end

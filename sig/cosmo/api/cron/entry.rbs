@@ -18,6 +18,8 @@ module Cosmo
 
         def schedule_subject: () -> ::String
         def target_subject: () -> ::String
+        def dispatch_subject: () -> ::String
+        def schedule_headers: () -> Hash[::String, ::String]
         def job_name: () -> ::String
         def job_payload: () -> ::String
         def as_json: () -> Hash[Symbol, untyped]

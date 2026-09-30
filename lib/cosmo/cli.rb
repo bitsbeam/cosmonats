@@ -4,7 +4,7 @@ require "yaml"
 require "optparse"
 
 module Cosmo
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
+  # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
   class CLI
     def self.run
       instance.run
@@ -16,11 +16,16 @@ module Cosmo
 
     def run
       flags, command, options = parse
+      return run_setup(flags) if flags[:setup]
+
       load_config(flags)
+      Engine.processors_for(command).each { _1.validate_options!(options) }
       puts self.class.banner
       boot_application
       require_path(flags[:require])
       Engine.run(command, options)
+    rescue Error => e
+      abort e.message
     end
 
     private
@@ -52,6 +57,34 @@ module Cosmo
       Config.set(:concurrency, flags[:concurrency]) if flags[:concurrency]
       Config.set(:timeout, flags[:timeout]) if flags[:timeout]
       Config.set(:http, :port, flags[:http_port]) if flags[:http_port]
+    end
+
+    def run_setup(flags)
+      load_config(flags)
+      boot_application
+
+      Config[:setup]&.each do |type, configs|
+        next if type == :cron
+
+        first_line = true
+        configs.each do |name, config|
+          meta = { metadata: { "_cosmo.type" => "jobs" } } if type == :jobs
+          Client.instance.setup_stream(name.to_s, config.merge(Hash(meta)))
+          first_line ? print("Stream is ready: #{name}") : print(", #{name}")
+          first_line = false
+        end
+        puts unless first_line
+      end
+
+      schedules = Config.dig(:setup, :cron)&.reduce(0) do |sum, (name, entry)|
+        class_name = entry.delete(:class)
+        API::Cron.instance.upsert!(**entry, name: name, class_name: class_name)
+        sum + 1
+      end.to_i
+
+      puts "Cron sync complete: #{schedules} schedule(s) registered" unless schedules.zero?
+      puts "Cosmo streams#{" and cron schedules" unless schedules.zero?} set up successfully."
+      exit(0)
     end
 
     def boot_application
@@ -109,31 +142,7 @@ module Cosmo
         end
 
         o.on "-S", "--setup", "Create/update streams and sync cron schedules, then exit" do
-          load_config(flags)
-          boot_application
-
-          Config[:setup]&.each do |type, configs|
-            next if type == :cron
-
-            first_line = true
-            configs.each do |name, config|
-              meta = { metadata: { "_cosmo.type" => "jobs" } } if type == :jobs
-              Client.instance.setup_stream(name.to_s, config.merge(Hash(meta)))
-              first_line ? print("Stream is ready: #{name}") : print(", #{name}")
-              first_line = false
-            end
-          end
-
-          puts
-          schedules = Config.dig(:setup, :cron)&.reduce(0) do |sum, (name, entry)|
-            class_name = entry.delete(:class)
-            API::Cron.instance.upsert!(**entry, name: name, class_name: class_name)
-            sum + 1
-          end
-
-          puts "Cron sync complete: #{schedules} schedule(s) registered" unless schedules.zero?
-          puts "Cosmo streams#{" and cron schedules" unless schedules.zero?} set up successfully."
-          exit(0)
+          flags[:setup] = true
         end
 
         o.on_tail "-v", "--version", "Print version" do
@@ -154,8 +163,16 @@ module Cosmo
         OptionParser.new do |o|
           o.banner = "Usage: cosmo jobs [options]"
 
-          o.on "--stream NAME", "Job's stream" do |arg|
-            options[:stream] = arg
+          o.on "--streams NAMES", "Only subscribe to these job streams (comma-separated), instead of all configured streams" do |arg|
+            options[:streams] = Array(options[:streams]) | arg.split(",")
+          end
+
+          o.on "--stream NAME", "Same as --streams, for a single job stream" do |arg|
+            options[:streams] = Array(options[:streams]) | [arg]
+          end
+
+          o.on "--[no-]scheduler", "Dispatch scheduled jobs (default: yes)" do |arg|
+            options[:scheduler] = arg
           end
 
           o.on "--subject NAME", "Job's subject" do |arg|
@@ -213,7 +230,7 @@ module Cosmo
       require path
     end
 
-    # rubocop:disable Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier
+    # rubocop:disable-next Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier
     def self.banner
       <<-TEXT
                     .#%+:                                                  
@@ -253,7 +270,5 @@ module Cosmo
                  :.                                                        
       TEXT
     end
-    # rubocop:enable Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
 end

@@ -14,7 +14,9 @@ module Cosmo
 
       def ack: () -> void
 
-      def nack: (?delay: Integer?) -> void
+      def nak: (?delay: Integer?) -> void
+
+      alias nack nak
 
       def term: () -> void
 

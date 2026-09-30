@@ -41,6 +41,64 @@ RSpec.describe Cosmo::CLI do
       # Suppress banner output
       expect { cli.run }.to output(anything).to_stdout
     end
+
+    it "hands the jobs stream filter and scheduler switch to the engine" do
+      ARGV.replace(%w[jobs --stream critical --stream high --no-scheduler])
+      allow(ARGV).to receive(:shift).and_call_original
+      allow(Cosmo::Config).to receive(:dig).with(:consumers, :jobs).and_return({ critical: {}, high: {} })
+      expect(Cosmo::Engine).to receive(:run).with("jobs", { streams: %w[critical high], scheduler: false })
+
+      expect { cli.run }.to output(anything).to_stdout
+    end
+
+    it "rejects an unknown job stream before booting the application" do
+      ARGV.replace(%w[jobs --stream nope])
+      allow(ARGV).to receive(:shift).and_call_original
+      allow(Cosmo::Config).to receive(:dig).with(:consumers, :jobs).and_return({ default: {} })
+      expect(cli).not_to receive(:boot_application)
+      expect(Cosmo::Engine).not_to receive(:run)
+
+      expect { cli.run }.to raise_error(SystemExit).and output(/Unknown job stream `nope`/).to_stderr
+    end
+
+    it "does not apply the jobs stream filter to the streams command" do
+      ARGV.replace(%w[streams])
+      ENV["COSMO_JOBS_STREAMS"] = "nope"
+      allow(ARGV).to receive(:shift).and_call_original
+      expect(Cosmo::Engine).to receive(:run).with("streams", {})
+
+      expect { cli.run }.to output(anything).to_stdout
+    ensure
+      ENV.delete("COSMO_JOBS_STREAMS")
+    end
+
+    context "with the setup flag" do
+      before do
+        ARGV.replace(%w[-S])
+        allow(ARGV).to receive(:shift).and_call_original
+        allow(cli).to receive(:load_config)
+        allow(cli).to receive(:exit)
+        allow(Cosmo::Client.instance).to receive(:setup_stream)
+        allow(Cosmo::Config).to receive(:[]).with(:setup).and_return(setup)
+        allow(Cosmo::Config).to receive(:dig).with(:setup, :cron).and_return(nil)
+      end
+
+      let(:setup) { { jobs: { default: {}, low: {} }, streams: { events: {} } } }
+
+      it "prints every stream type on its own line" do
+        expect { cli.run }.to output(
+          "Stream is ready: default, low\nStream is ready: events\nCosmo streams set up successfully.\n"
+        ).to_stdout
+      end
+
+      context "without streams to set up" do
+        let(:setup) { { cron: { daily: {} } } }
+
+        it "prints no leading blank line" do
+          expect { cli.run }.to output("Cosmo streams set up successfully.\n").to_stdout
+        end
+      end
+    end
   end
 
   describe "#parse (private)" do
@@ -172,6 +230,13 @@ RSpec.describe Cosmo::CLI do
       options = {}
       parser = cli.send(:options_parser, "streams", options)
       expect(parser).to be_a(OptionParser)
+    end
+
+    it "parses --streams flag for jobs command" do
+      options = {}
+      parser = cli.send(:options_parser, "jobs", options)
+      parser.parse!(%w[--streams default,high])
+      expect(options[:streams]).to eq(%w[default high])
     end
 
     it "parses --processors flag for streams command" do

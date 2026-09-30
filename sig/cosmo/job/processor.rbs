@@ -1,11 +1,25 @@
 module Cosmo
   module Job
     class Processor < ::Cosmo::Processor
+      DISPATCH_HEADERS: ::Array[::String]
+
+      @weights: Array[Symbol]?
+
+      def self.validate_options!: (Hash[Symbol, untyped] options) -> void
+
       private
 
       def setup: () -> void
 
+      def log_subscriptions: () -> void
+
+      def scheduled_config: () -> Hash[Symbol, untyped]?
+
+      def consumer_name: (::String | Symbol stream_name) -> ::String
+
       def schedule_loop: () -> void
+      def scheduled_by: (untyped message) -> ::String?
+      def enqueued_at: (untyped message) -> ::Time
 
       def scheduler?: () -> bool
 
@@ -17,17 +31,33 @@ module Cosmo
 
       def process: (Array[untyped] messages, untyped processor) -> void
 
-      def handle_failure: (untyped message, Hash[Symbol, untyped] data) -> bool
+      def handle_failure: (untyped worker_class, untyped message, Hash[Symbol, untyped] data, Exception? exception) -> bool
+
+      def nak_message: (untyped worker_class, untyped message, Hash[Symbol, untyped] data, Integer current_attempt, Exception? exception) -> void
+
+      def warn_capped: (untyped message, Hash[Symbol, untyped] data, Integer capped_at) -> void
+
+      def deliver_cap: (untyped stream_name, Integer desired_retries) -> Integer?
+
+      def consumer_entry: (untyped stream_name) -> [untyped, Hash[Symbol, untyped], untyped]?
+
+      def retry_delay: (untyped worker_class, Hash[Symbol, untyped] data, Integer current_attempt, Exception? exception) -> Numeric
+
+      def default_retry_delay: (Integer current_attempt) -> Integer
 
       def subscribe: (Symbol stream_name, Hash[Symbol, untyped] config) -> [untyped, Hash[Symbol, untyped], nil]
 
       def drop_message: (untyped message, Hash[Symbol, untyped] data) -> void
 
-      def move_message: (untyped message, ?Hash[Symbol, untyped]? data) -> void
+      def reject_message: (untyped message, Exception error, ?Hash[Symbol, untyped]? data) -> void
+
+      def move_message: (untyped message, ?Hash[Symbol, untyped]? data, ?Exception? exception) -> void
 
       def with_stats: (untyped message) { () -> untyped } -> void
 
       def acquire_concurrency_slot: (untyped worker_class, untyped message, Hash[Symbol, untyped] data) -> (::String | false)
+
+      def perform_job: (untyped job_instance, data: Hash[Symbol, untyped], message: untyped, ?duration: Float?) -> untyped
     end
   end
 end

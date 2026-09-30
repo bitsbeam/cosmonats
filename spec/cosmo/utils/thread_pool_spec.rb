@@ -58,6 +58,31 @@ RSpec.describe Cosmo::Utils::ThreadPool do
     end
   end
 
+  describe "#wait_idle" do
+    it "returns immediately when nothing is running" do
+      thread = Thread.new { pool.wait_idle }
+      expect(thread.join(0.2)).to be(thread)
+    end
+
+    it "blocks until all in-flight tasks finish" do
+      gate = Concurrent::IVar.new
+      pool.post { gate.value(2) }
+
+      idle = false
+      thread = Thread.new do
+        pool.wait_idle
+        idle = true
+      end
+
+      sleep 0.1
+      expect(idle).to be false
+
+      gate.set(true)
+      thread.join(1)
+      expect(idle).to be true
+    end
+  end
+
   describe "#shutdown" do
     it "delegates to underlying pool" do
       test_pool = described_class.new(concurrency)

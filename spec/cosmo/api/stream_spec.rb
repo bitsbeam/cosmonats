@@ -54,6 +54,15 @@ RSpec.describe Cosmo::API::Stream do
     end
   end
 
+  describe "#retries" do
+    subject(:stream) { described_class.new(stream_name) }
+
+    it "returns 0 when NATS times out listing consumers" do
+      allow(client).to receive(:list_consumers).and_raise(NATS::IO::Timeout)
+      expect(stream.retries).to eq(0)
+    end
+  end
+
   describe "#message" do
     subject(:stream) { described_class.new(stream_name) }
 
@@ -97,6 +106,33 @@ RSpec.describe Cosmo::API::Stream do
       jobs = stream.map { |j| j }
       expect(jobs.size).to eq(2)
       expect(jobs).to all(be_a(Cosmo::API::Job))
+    end
+  end
+
+  describe "#each with gaps" do
+    let(:cron_subject_pattern) { "cosmo.cron.#{stream_name}.>" }
+    subject(:stream) { described_class.new(stream_name) }
+
+    before do
+      destroy_streams
+      client.create_stream(stream_name, { subjects: [subject_pattern, cron_subject_pattern], allow_direct: true, storage: "memory" })
+
+      # Large run of jobs that get acked/deleted right away, leaving a big sequence gap, interleaved with a cron heartbeat entry.
+      acks = 20.times.map { client.publish("teststreamapi.job", Cosmo::Utils::Json.dump({ class: "W", args: [], jid: SecureRandom.hex })) }
+      acks.each { client.delete_message(stream_name, _1.seq) }
+      client.publish("cosmo.cron.#{stream_name}.daily_report", Cosmo::Utils::Json.dump({}))
+
+      @survivor_ack = client.publish("teststreamapi.job", Cosmo::Utils::Json.dump({ class: "W", args: [], jid: "survivor" }))
+    end
+
+    it "skips deleted messages and cron entries without walking every sequence" do
+      allow(client).to receive(:get_message).and_call_original
+
+      jobs = stream.messages
+
+      expect(jobs.size).to eq(1)
+      expect(jobs.first.seq.to_i).to eq(@survivor_ack.seq)
+      expect(client).to have_received(:get_message).at_most(5).times
     end
   end
 

@@ -4,7 +4,8 @@ RSpec.describe Cosmo::Job::Processor do
   let(:concurrency) { 3 }
   let(:pool)        { Cosmo::Utils::ThreadPool.new(concurrency) }
   let(:running)     { Concurrent::AtomicBoolean.new }
-  let(:processor)   { described_class.new(pool, running, {}) }
+  let(:quiet)       { Concurrent::AtomicBoolean.new }
+  let(:processor)   { described_class.new(pool, running, {}, quiet: quiet) }
   let(:results)     { Results.instance }
 
   before do
@@ -86,6 +87,25 @@ RSpec.describe Cosmo::Job::Processor do
       end.not_to change { results.size }.from(1)
     end
 
+    it "exposes enqueued_at, attempt, and scheduled_by on the job instance" do
+      stub_const("MetaJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(tag) = Results.instance << { tag: tag, enqueued_at: enqueued_at, attempt: attempt, scheduled_by: scheduled_by }
+      end)
+
+      MetaJob.perform_async("meta")
+      wait_until(timeout: 5) { results.any? }
+
+      result = results.first
+      expect(result[:tag]).to eq("meta")
+      expect(result[:enqueued_at]).to be_within(5).of(Time.now)
+      expect(result[:attempt]).to eq(1)
+      expect(result[:scheduled_by]).to be_nil
+    end
+
     it "has subscriptions for all configured priority tiers and processes jobs from each" do
       %w[default high critical low].each do |stream_name|
         stub_const("#{stream_name.capitalize}TierJob", Class.new do
@@ -104,6 +124,119 @@ RSpec.describe Cosmo::Job::Processor do
 
       wait_until(timeout: 5) { results.size >= 4 }
       expect(results).to contain_exactly("default", "high", "critical", "low")
+    end
+
+    context "with a stream filter (--streams)" do
+      let(:processor) { described_class.new(pool, running, { streams: ["default"] }, quiet: quiet) }
+
+      it "only subscribes to the given streams, leaving jobs on other streams unconsumed" do
+        stub_const("FilteredDefaultJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+        stub_const("FilteredHighJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :high, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+
+        FilteredDefaultJob.perform_async("in-scope")
+        FilteredHighJob.perform_async("out-of-scope")
+
+        wait_until(timeout: 5) { results.include?("in-scope") }
+        sleep 0.5
+
+        expect(results).to eq(["in-scope"])
+        expect(stream_size("high")).to eq(1)
+      end
+    end
+
+    context "with a stream filter (COSMO_JOBS_STREAMS)" do
+      let(:processor) { described_class.new(pool, running, {}, quiet: quiet) }
+
+      around do |example|
+        ENV["COSMO_JOBS_STREAMS"] = "default"
+        example.run
+        ENV.delete("COSMO_JOBS_STREAMS")
+      end
+
+      it "only subscribes to the streams the variable names" do
+        stub_const("EnvDefaultJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+        stub_const("EnvHighJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :high, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+
+        EnvDefaultJob.perform_async("in-scope")
+        EnvHighJob.perform_async("out-of-scope")
+
+        wait_until(timeout: 5) { results.include?("in-scope") }
+        sleep 0.5
+
+        expect(results).to eq(["in-scope"])
+        expect(stream_size("high")).to eq(1)
+      end
+    end
+
+    context "with an unknown stream in the filter" do
+      it "raises instead of subscribing to nothing" do
+        filtered = described_class.new(pool, running, { streams: %w[default nope] }, quiet: quiet)
+
+        expect { filtered.run }.to raise_error(Cosmo::UnknownJobStreamError, /`nope`.+`default`/)
+      end
+    end
+
+    context "with the scheduled stream in the filter" do
+      let(:processor) { described_class.new(pool, running, { streams: %w[default scheduled] }, quiet: quiet) }
+
+      it "ignores the service stream and subscribes to the rest" do
+        stub_const("AlongsideServiceStreamJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+
+        AlongsideServiceStreamJob.perform_async("in-scope")
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results).to eq(["in-scope"])
+      end
+    end
+
+    context "with the scheduler turned off (--no-scheduler)" do
+      let(:processor) { described_class.new(pool, running, { scheduler: false }, quiet: quiet) }
+
+      it "leaves a due scheduled job undispatched" do
+        stub_const("UndispatchedJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(...) = Results.instance << :dispatched
+        end)
+
+        UndispatchedJob.perform_at(Time.now - 120, "past-due")
+        sleep 1
+
+        expect(results).to be_empty
+        expect(stream_size("scheduled")).to eq(1)
+      end
     end
 
     context "with scheduler" do
@@ -138,6 +271,67 @@ RSpec.describe Cosmo::Job::Processor do
         expect(results).not_to include(:future_ran)
         expect(stream_size("scheduled")).to eq(1)
         expect(stream_size("default")).to eq(0)
+      end
+    end
+
+    context "with a cron schedule" do
+      before do
+        stub_const("CronReportJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << { tag: tag, scheduled_by: scheduled_by }
+        end)
+
+        Cosmo::API::Cron.instance.upsert!(class_name: "CronReportJob", stream: "default",
+                                          schedule: "@every 1s", args: ["nightly"])
+      end
+
+      it "dispatches the fired schedule to the stream that runs the job" do
+        wait_until(timeout: 15) { results.any? }
+
+        expect(results.first).to eq({ tag: "nightly", scheduled_by: "cosmo.cron.default.cron_report_job" })
+      end
+
+      it "keeps the schedule deployed after it fires" do
+        wait_until(timeout: 15) { results.any? }
+
+        expect(Cosmo::API::Cron.instance.all).to include(
+          hash_including(class: "CronReportJob", stream: "default", schedule: "@every 1s",
+                         schedule_subject: "cosmo.cron.default.cron_report_job",
+                         dispatch_subject: "jobs.default.cron_report_job")
+        )
+      end
+
+      it "reports the firing time as enqueued_at, not the time the scheduler dispatched it" do
+        processor.stop
+
+        stub_const("LateCronJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << { tag: tag, enqueued_at: enqueued_at, ran_at: Time.now }
+        end)
+
+        Cosmo::API::Cron.instance.upsert!(class_name: "LateCronJob", stream: "default",
+                                          schedule: "@every 1s", args: ["late"])
+        sleep 3
+
+        pool = Cosmo::Utils::ThreadPool.new(concurrency)
+        late_processor = described_class.new(pool, Concurrent::AtomicBoolean.new, {},
+                                             quiet: Concurrent::AtomicBoolean.new)
+        late_processor.run
+
+        begin
+          wait_until(timeout: 15) { results.any? { _1.is_a?(Hash) && _1[:tag] == "late" } }
+        ensure
+          late_processor.stop
+        end
+
+        fired = results.find { _1.is_a?(Hash) && _1[:tag] == "late" }
+        expect(fired[:ran_at] - fired[:enqueued_at]).to be > 2
       end
     end
 
@@ -235,6 +429,16 @@ RSpec.describe Cosmo::Job::Processor do
           expect(stream_size("dead")).to eq(1)
           expect(stream_size("default")).to eq(0)
         end
+
+        it "records the timeout as the dead job error" do
+          SlowJob.perform_async
+          wait_until(timeout: 8) { stream_size("dead") >= 1 }
+
+          job = Cosmo::API::Stream.new("dead").messages.first
+          expect(job.error_class).to eq("Timeout::Error")
+          expect(job.error_message).to eq("execution expired after the 1s duration limit")
+          expect(job.error_backtrace).not_to be_nil
+        end
       end
     end
   end
@@ -253,8 +457,39 @@ RSpec.describe Cosmo::Job::Processor do
 
         ImmediatelyDeadJob.perform_async("trigger")
         wait_until(timeout: 5) { stream_size("dead") >= 1 }
+        expect(stream_size("default")).to eq(0)
+      end
 
-        expect(stream_size("dead")).to eq(1)
+      it "records the raised exception as the dead job error" do
+        stub_const("ExplainedDeadJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0, dead: true
+
+          def perform(...) = raise ArgumentError, "intentional failure"
+        end)
+
+        ExplainedDeadJob.perform_async("trigger")
+        wait_until(timeout: 5) { stream_size("dead") >= 1 }
+
+        job = Cosmo::API::Stream.new("dead").messages.first
+        expect(job.error_class).to eq("ArgumentError")
+        expect(job.error_message).to eq("intentional failure")
+        expect(job.error_backtrace).to include("processor_spec.rb")
+      end
+
+      it "treats retry: false as retry: 0 and moves the failing job straight to DLQ" do
+        stub_const("NoRetryJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: false, dead: true
+
+          def perform(...) = raise "intentional failure"
+        end)
+        expect(stream_size("dead")).to eq(0)
+
+        NoRetryJob.perform_async("trigger")
+        wait_until(timeout: 5) { stream_size("dead") >= 1 }
         expect(stream_size("default")).to eq(0)
       end
 
@@ -278,6 +513,53 @@ RSpec.describe Cosmo::Job::Processor do
         expect(results).to eq(["attempt-0"])
 
         # First attempt lands quickly, the second arrives after NATS backoff ~16s.
+        wait_until(timeout: 20) { stream_size("dead") >= 1 }
+        expect(results).to eq(%w[attempt-0 attempt-1])
+        expect(stream_size("dead")).to eq(1)
+      end
+
+      it "uses the job class's custom retry_in handler, passing it the attempt count and exception" do
+        stub_const("CustomRetryInJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 1, dead: true, retry_in: lambda { |count, exception|
+            Results.instance << { count: count, message: exception.message }
+            1
+          }
+
+          def perform
+            raise StandardError, "still broken"
+          end
+        end)
+
+        CustomRetryInJob.perform_async
+
+        # With the default backoff this would take ~16s; the custom retry_in returns 1s.
+        wait_until(timeout: 5) { stream_size("dead") >= 1 }
+        expect(results).to eq([{ count: 1, message: "still broken" }])
+        expect(stream_size("dead")).to eq(1)
+      end
+
+      it "falls back to the default backoff when retry_in raises or returns garbage" do
+        stub_const("BrokenRetryInJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 1, dead: true, retry_in: ->(count, _exception) { count.odd? ? "not a number" : (raise "boom") }
+
+          def perform
+            Results.instance << "attempt-#{Results.instance.counter}"
+            Results.instance.increment
+
+            raise StandardError, "still broken"
+          end
+        end)
+
+        BrokenRetryInJob.perform_async
+
+        wait_until(timeout: 5) { results.any? }
+        expect(results).to eq(["attempt-0"])
+
+        # Both the "not a number" and the raising cases fall back to the default ~16s backoff.
         wait_until(timeout: 20) { stream_size("dead") >= 1 }
         expect(results).to eq(%w[attempt-0 attempt-1])
         expect(stream_size("dead")).to eq(1)
@@ -330,6 +612,93 @@ RSpec.describe Cosmo::Job::Processor do
 
         expect(stream_size("dead")).to eq(0)
       end
+    end
+  end
+
+  context "with Sentry integration" do
+    let(:processor_class) do
+      stub_const("Cosmo::Job::SentryProcessor", Class.new(Cosmo::Job::Processor) do
+        prepend Cosmo::Sentry::JobProcessorMiddleware
+      end)
+    end
+    let(:processor) { processor_class.new(pool, running, {}, quiet: quiet) }
+    let(:transport) { Sentry.get_current_client.transport }
+
+    before(:all) do
+      require "sentry-ruby"
+      require "cosmo/sentry/job_processor_middleware"
+
+      Sentry.init do |config|
+        config.dsn = "http://12345:67890@sentry.localdomain/sentry/42"
+        config.background_worker_threads = 0
+        config.traces_sample_rate = 1.0
+        config.transport.transport_class = Sentry::DummyTransport
+      end
+    end
+
+    before do
+      transport.events.clear
+
+      stub_const("GreeterJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(name) = Results.instance << name
+      end)
+
+      stub_const("GreeterJobFail", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(_name) = raise "Boom!"
+      end)
+    end
+
+    it "calls successfully" do
+      GreeterJob.perform_async("Alice")
+      wait_until(timeout: 5) { results.any? }
+
+      expect(results).to include("Alice")
+      expect(transport.events).not_to be_empty
+      expect(transport.events.last.contexts[:trace]).to include(
+        status: "ok",
+        origin: "auto.queue.cosmonats",
+        op: "queue.cosmonats"
+      )
+      expect(transport.events.last.contexts[:trace][:data]).to include(
+        "messaging.message.id" => be_kind_of(String),
+        "messaging.destination.name" => "default:jobs.default.greeter_job",
+        "messaging.message.retry.count" => 0,
+        "http.response.status_code" => 200
+      )
+    end
+
+    it "handles error" do
+      GreeterJobFail.perform_async("Alice")
+      wait_until(timeout: 5) { transport.events.size > 1 }
+
+      error = transport.events.find { _1.instance_of?(Sentry::ErrorEvent) }
+      expect(error.contexts[:cosmonats]).to include(
+        class: "GreeterJobFail",
+        args: ["Alice"],
+        nats_stream: "default",
+        nats_subject: "jobs.default.greeter_job_fail"
+      )
+      expect(error.contexts[:trace]).to include(trace_id: a_kind_of(String), span_id: a_kind_of(String))
+      expect(error.exception.values.first.type).to eq("RuntimeError")
+      expect(error.exception.values.first.value).to match("Boom!")
+
+      error = transport.events.find { _1.instance_of?(Sentry::TransactionEvent) }
+      expect(error.contexts[:trace]).to include(status: "internal_error", origin: "auto.queue.cosmonats", op: "queue.cosmonats")
+      expect(error.contexts[:trace]).to include(trace_id: a_kind_of(String), span_id: a_kind_of(String))
+      expect(error.contexts[:trace][:data]).to include(
+        "messaging.message.id" => be_kind_of(String),
+        "messaging.destination.name" => "default:jobs.default.greeter_job_fail",
+        "messaging.message.retry.count" => 0,
+        "http.response.status_code" => 500
+      )
     end
   end
 end

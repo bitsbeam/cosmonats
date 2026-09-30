@@ -1,0 +1,23 @@
+module Cosmo
+  class Batch
+    module Dispatcher
+      private
+
+      def release_pending: (::String bid, ?msg_id: ::String?) -> void
+
+      def finalize: (::String bid) -> void
+
+      def purge_counters: (::String bid) -> void
+
+      def parent_propagate: (::String bid, failed: ::Integer) -> void
+
+      def link: (::String parent_id) -> void
+
+      def try_fire: (::String bid, Symbol event, ?stats: Hash[Symbol, untyped]?) -> void
+
+      def fireable?: (untyped callback_entry, Symbol event, Hash[Symbol, untyped]? stats) -> bool
+
+      def dispatch_callback: (untyped callback_entry, ::String bid, Symbol event, Hash[Symbol, untyped] stats) -> void
+    end
+  end
+end

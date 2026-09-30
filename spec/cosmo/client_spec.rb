@@ -25,18 +25,57 @@ RSpec.describe Cosmo::Client do
 
   describe "#initialize" do
     it "connects to NATS server" do
-      expect(NATS).to receive(:connect).with("nats://localhost:4222").and_call_original
+      expect(NATS).to receive(:connect)
+        .with("nats://localhost:4222", hash_including(:name, :connect_timeout)).and_call_original
       instance = described_class.new(nats_url: "nats://localhost:4222")
     ensure
       instance.close
     end
 
     it "uses NATS_URL from ENV" do
+      allow(ENV).to receive(:fetch).and_call_original
       allow(ENV).to receive(:fetch).with("NATS_URL", "nats://localhost:4222").and_return("nats://example.com:4222")
-      expect(NATS).to receive(:connect).with("nats://example.com:4222").and_return(double(:nc, jetstream: nil, close: nil))
+      expect(NATS).to receive(:connect)
+        .with("nats://example.com:4222", hash_including(:name)).and_return(double(:nc, jetstream: nil, close: nil))
       instance = described_class.new
     ensure
       instance.close
+    end
+
+    it "names the connection so it can be found in connz" do
+      expect(client.name).to eq(described_class.default_name)
+      expect(client.name).to start_with("cosmo-")
+    end
+
+    it "takes an explicit name" do
+      instance = described_class.new(name: "cosmo-web-1")
+      expect(instance.name).to eq("cosmo-web-1")
+    ensure
+      instance.close
+    end
+
+    it "applies the JetStream timeout" do
+      expect(client.js.opts[:timeout]).to eq(described_class.js_timeout)
+    end
+  end
+
+  describe ".default_name" do
+    it "is overridden by COSMO_CLIENT_NAME" do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with("COSMO_CLIENT_NAME").and_return("cosmo-custom")
+      expect(described_class.default_name).to eq("cosmo-custom")
+    end
+  end
+
+  describe ".js_timeout" do
+    it "defaults to JS_TIMEOUT" do
+      expect(described_class.js_timeout).to eq(described_class::JS_TIMEOUT)
+    end
+
+    it "is overridden by COSMO_JS_TIMEOUT" do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with("COSMO_JS_TIMEOUT", described_class::JS_TIMEOUT).and_return("42")
+      expect(described_class.js_timeout).to eq(42)
     end
   end
 
@@ -100,6 +139,54 @@ RSpec.describe Cosmo::Client do
       expect(info.num_waiting).to eq(0)
       expect(info.num_pending).to eq(0)
     end
+
+    context "without a consumer name" do
+      let(:config) { { stream: stream_name, inactive_threshold: 60 } }
+
+      it "creates an ephemeral consumer with a server-assigned name" do
+        client.create_stream(stream_name, { subjects: subjects })
+
+        subscription = client.subscribe(subject_name, nil, config)
+
+        info = subscription.consumer_info
+        expect(info.stream_name).to eq(stream_name)
+        expect(info.name).not_to be_nil
+        expect(info.config.durable_name).to be_nil
+        expect(info.config.filter_subject).to eq(subject_name)
+        expect(info.config.inactive_threshold).to eq(60)
+      end
+
+      it "fetches messages published before subscribing" do
+        client.create_stream(stream_name, { subjects: subjects })
+        client.publish(subject_name, "payload")
+
+        subscription = client.subscribe(subject_name, nil, config)
+
+        messages = subscription.fetch(1, timeout: 2)
+        expect(messages.first.data).to eq("payload")
+      end
+
+      it "raises without :stream" do
+        expect { client.subscribe(subject_name, nil, { inactive_threshold: 60 }) }
+          .to raise_error(Cosmo::ArgumentError, /stream/)
+      end
+
+      it "raises without :inactive_threshold" do
+        expect { client.subscribe(subject_name, nil, { stream: stream_name }) }
+          .to raise_error(Cosmo::ArgumentError, /inactive_threshold/)
+      end
+    end
+  end
+
+  describe "#delete_consumer" do
+    it "deletes the named consumer" do
+      client.create_stream(stream_name, { subjects: subjects })
+      client.subscribe("test.subject", "consumer", { ack_policy: "explicit" })
+
+      client.delete_consumer(stream_name, "consumer")
+
+      expect(client.list_consumers(stream_name)).to eq([])
+    end
   end
 
   describe "#stream_info" do
@@ -145,6 +232,11 @@ RSpec.describe Cosmo::Client do
       client.create_stream(stream_name, { subjects: ["test.>"] })
 
       expect(client.list_streams.map { _1.dig("config", "name") }).to eq([stream_name])
+    end
+
+    it "returns [] when NATS times out" do
+      allow(client.nc).to receive(:request).and_raise(NATS::IO::Timeout)
+      expect(client.list_streams).to eq([])
     end
   end
 
