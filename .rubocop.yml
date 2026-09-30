@@ -61,6 +61,3 @@ Style/RescueModifier:
 Security/MarshalLoad:
   Exclude:
     - spec/**/*
-
-Gemspec/DevelopmentDependencies:
-  Enabled: false
