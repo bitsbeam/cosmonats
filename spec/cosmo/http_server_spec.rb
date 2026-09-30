@@ -19,6 +19,12 @@ RSpec.describe Cosmo::HTTPServer do
     expect(JSON.parse(response.body)).to eq("status" => "ok", "checks" => { "engine" => true, "nats" => true })
   end
 
+  it "answers HEAD without a body" do
+    response = Net::HTTP.start("127.0.0.1", server.port) { _1.head("/health") }
+    expect(response.code).to eq("200")
+    expect(response.body).to be_nil
+  end
+
   it "returns 404 for unknown paths" do
     expect(get("/nope").code).to eq("404")
   end

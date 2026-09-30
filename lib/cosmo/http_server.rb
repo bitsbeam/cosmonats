@@ -2,12 +2,12 @@
 
 begin
   require "rack"
-  require "rackup/handler/webrick"
   require "webrick"
 rescue LoadError => e
-  raise LoadError, "Cosmo::HTTPServer requires `rack`, `rackup` and `webrick` gems, add them to your Gemfile (#{e.message})"
+  raise LoadError, "Cosmo::HTTPServer requires `rack` and `webrick` gems, add them to your Gemfile (#{e.message})"
 end
 require "json"
+require "cosmo/http_server/handler"
 require "cosmo/http_server/health"
 
 module Cosmo
@@ -37,7 +37,7 @@ module Cosmo
         Logger: ::WEBrick::Log.new(IO::NULL),
         AccessLog: []
       )
-      @server.mount("/", ::Rackup::Handler::WEBrick, @app)
+      @server.mount("/", Handler, @app)
       @thread = Thread.new { @server.start }
       Logger.info "HTTP server listening on #{@host}:#{port}"
       self

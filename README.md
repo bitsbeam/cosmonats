@@ -173,12 +173,11 @@ gem "cosmonats"
 | Feature                               | Gems                          |
 |---------------------------------------|-------------------------------|
 | Monitoring UI (`Cosmo::Web`)          | `rack`                        |
-| Health check HTTP server (`/health`)  | `rack`, `rackup`, `webrick`   |
+| Health check HTTP server (`/health`)  | `rack`, `webrick`             |
 
 ```ruby
 # Gemfile
 gem "rack", "~> 3.0"
-gem "rackup", "~> 2.2"
 gem "webrick", "~> 1.9"
 ```
 
@@ -714,7 +713,7 @@ The `scheduled` stream is a service stream: it is always dispatched, and naming 
 ### Health check
 
 Pass `-p/--http-port` (or set `http.port` in the config) to start a small WEBrick HTTP server alongside the workers.
-It needs the optional `rack`, `rackup` and `webrick` gems (see [Installation](#-installation)); without a port they're never loaded.
+It needs the optional `rack` and `webrick` gems (see [Installation](#-installation)); without a port they're never loaded.
 
 ```yaml
 http:

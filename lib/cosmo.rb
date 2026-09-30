@@ -18,7 +18,7 @@ require "cosmo/railtie" if defined?(Rails::Railtie)
 module Cosmo
   # Optional, requires rack
   autoload :Web, "cosmo/web"
-  # Optional, requires rack, rackup and webrick gems. Loaded only when an HTTP port is configured.
+  # Optional, requires rack and webrick gems. Loaded only when an HTTP port is configured.
   autoload :HTTPServer, "cosmo/http_server"
 
   class Error < StandardError; end
