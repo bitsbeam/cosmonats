@@ -1,0 +1,17 @@
+module Cosmo
+  class HTTPServer
+    class Handler < ::WEBrick::HTTPServlet::AbstractServlet
+      @app: untyped
+
+      def initialize: (untyped server, untyped app) -> void
+
+      def service: (untyped req, untyped res) -> void
+
+      private
+
+      def env_for: (untyped req) -> Hash[String, untyped]
+
+      def write_headers: (untyped res, Hash[String, untyped] headers) -> void
+    end
+  end
+end

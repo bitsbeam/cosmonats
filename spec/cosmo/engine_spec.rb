@@ -81,6 +81,29 @@ RSpec.describe Cosmo::Engine do
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
+    context "when http port is configured" do
+      let(:http_server) { instance_double(Cosmo::HTTPServer) }
+
+      before do
+        allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+        allow(Cosmo::Config).to receive(:dig).and_call_original
+        allow(Cosmo::Config).to receive(:dig).with(:http, :port).and_return(9090)
+        allow(Cosmo::Config).to receive(:dig).with(:http, :host).and_return("127.0.0.1")
+      end
+
+      it "starts the HTTP server" do
+        expect(Cosmo::HTTPServer).to receive(:new).with(host: "127.0.0.1", port: 9090).and_return(http_server)
+        expect(http_server).to receive(:start).and_return(http_server)
+        expect { engine.run("jobs", {}) }.to output(anything).to_stdout
+      end
+    end
+
+    it "does not start the HTTP server without a port" do
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      expect(Cosmo::HTTPServer).not_to receive(:new)
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
+    end
+
     it "enters quiet mode on TSTP without shutting down, then shuts down on a later INT/TERM" do
       allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
       allow(signal_handler).to receive(:wait).and_return("TSTP", "INT")
@@ -153,6 +176,13 @@ RSpec.describe Cosmo::Engine do
 
     it "waits for termination with timeout" do
       expect(pool).to receive(:wait_for_termination).with(10)
+      engine.shutdown
+    end
+
+    it "stops the HTTP server" do
+      http_server = instance_double(Cosmo::HTTPServer)
+      engine.instance_variable_set(:@http_server, http_server)
+      expect(http_server).to receive(:stop)
       engine.shutdown
     end
   end

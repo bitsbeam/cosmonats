@@ -30,5 +30,4 @@ Gem::Specification.new do |s|
   s.add_dependency "concurrent-ruby", "~> 1.3"
   s.add_dependency "logger", ">= 1.7"
   s.add_dependency "nats-pure", "~> 2.5"
-  s.add_dependency "rack", "~> 3.0"
 end

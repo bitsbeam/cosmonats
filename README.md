@@ -168,6 +168,19 @@ gem "cosmonats"
 
 **Requirements:** Ruby ≥ 3.1, NATS Server ([install guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
 
+**Optional gems** — not installed with `cosmonats`, add them only for the features you use:
+
+| Feature                               | Gems                          |
+|---------------------------------------|-------------------------------|
+| Monitoring UI (`Cosmo::Web`)          | `rack`                        |
+| Health check HTTP server (`/health`)  | `rack`, `webrick`             |
+
+```ruby
+# Gemfile
+gem "rack", "~> 3.0"
+gem "webrick", "~> 1.9"
+```
+
 Spin up NATS instantly with Docker — one command, that's it:
 ```bash
 docker run -p 4222:4222 -p 8222:8222 nats:alpine -js
@@ -695,6 +708,25 @@ The `scheduled` stream is a service stream: it is always dispatched, and naming 
 | `--subject NAME`         | Subject name                         | `--subject orders.created`     |
 | `--consumer_name NAME`   | Consumer name                        | `--consumer_name orders-consumer` |
 | `--batch_size NUM`       | Messages per fetch batch             | `--batch_size 50`               |
+
+
+### Health check
+
+Pass `-p/--http-port` (or set `http.port` in the config) to start a small WEBrick HTTP server alongside the workers.
+It needs the optional `rack` and `webrick` gems (see [Installation](#-installation)); without a port they're never loaded.
+
+```yaml
+http:
+  port: 9090
+  host: 0.0.0.0 # default
+```
+
+`GET /health` returns `200` when processors are running and NATS is connected, `503` otherwise:
+
+```bash
+curl localhost:9090/health
+# {"status":"ok","checks":{"engine":true,"nats":true}}
+```
 
 
 ## 🚢 Deployment

@@ -144,7 +144,7 @@ cosmo -C config/cosmo.yml -c 10            # both
 # A third command, `actions`, is declared in the CLI but has no processor behind it yet.
 
 # Start monitoring UI
-bundle exec rackup
+bundle exec puma
 ```
 
 Spin up NATS for local dev/test:

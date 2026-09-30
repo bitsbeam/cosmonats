@@ -30,6 +30,7 @@ module Cosmo
       @pool = Utils::ThreadPool.new(@concurrency)
       @running = Concurrent::AtomicBoolean.new
       @quiet = Concurrent::AtomicBoolean.new
+      @http_server = nil
     end
 
     def run(type, options)
@@ -42,13 +43,20 @@ module Cosmo
         return
       end
 
+      start_http_server
+
       signal = handle_shutdown(handler)
       Logger.info "Shutting down... (#{signal} received)"
       shutdown
     end
 
+    def running?
+      @running.true?
+    end
+
     def shutdown
       @running.make_false
+      @http_server&.stop
       @pool.shutdown
       Logger.info "Pausing to allow jobs to finish..."
       @pool.wait_for_termination(Config[:timeout])
@@ -56,6 +64,16 @@ module Cosmo
     end
 
     private
+
+    # HTTPServer is autoloaded, so it's referenced only after the port is checked
+    # to keep its optional dependencies (rack, webrick) unloaded otherwise.
+    def start_http_server
+      port = Config.dig(:http, :port)
+      return unless port
+
+      host = Config.dig(:http, :host) || HTTPServer::DEFAULT_HOST
+      @http_server = HTTPServer.new(port: port, host: host).start
+    end
 
     def handle_shutdown(handler)
       loop do

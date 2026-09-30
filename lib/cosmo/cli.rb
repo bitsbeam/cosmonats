@@ -56,6 +56,7 @@ module Cosmo
       Config.load(path)
       Config.set(:concurrency, flags[:concurrency]) if flags[:concurrency]
       Config.set(:timeout, flags[:timeout]) if flags[:timeout]
+      Config.set(:http, :port, flags[:http_port]) if flags[:http_port]
     end
 
     def run_setup(flags)
@@ -130,6 +131,10 @@ module Cosmo
 
         o.on "-t", "--timeout NUM", Integer, "Shutdown timeout" do |arg|
           flags[:timeout] = arg
+        end
+
+        o.on "-p", "--http-port INT", Integer, "Start HTTP server with /health endpoint on port" do |arg|
+          flags[:http_port] = arg
         end
 
         o.on "-C", "--config PATH", "Path to config file" do |arg|
