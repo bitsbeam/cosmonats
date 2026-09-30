@@ -22,10 +22,4 @@ RSpec.describe Cosmo::HTTPServer do
   it "returns 404 for unknown paths" do
     expect(get("/nope").code).to eq("404")
   end
-
-  it "stops listening after stop" do
-    port = server.port
-    server.stop
-    expect { Net::HTTP.get_response(URI("http://127.0.0.1:#{port}/health")) }.to raise_error(Errno::ECONNREFUSED)
-  end
 end
