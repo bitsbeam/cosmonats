@@ -45,7 +45,6 @@ module Cosmo
 
       start_http_server
 
-      signal = handler.wait
       signal = handle_shutdown(handler)
       Logger.info "Shutting down... (#{signal} received)"
       shutdown
@@ -75,7 +74,7 @@ module Cosmo
       host = Config.dig(:http, :host) || HTTPServer::DEFAULT_HOST
       @http_server = HTTPServer.new(port: port, host: host).start
     end
-    
+
     def handle_shutdown(handler)
       loop do
         signal = handler.wait
