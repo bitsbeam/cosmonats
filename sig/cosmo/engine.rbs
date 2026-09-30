@@ -7,6 +7,7 @@ module Cosmo
     @pool: Utils::ThreadPool
     @running: untyped
     @processors: Array[Processor]
+    @http_server: HTTPServer?
 
     def self.run: (*untyped) -> void
 
@@ -16,6 +17,12 @@ module Cosmo
 
     def run: (::String? type, Hash[Symbol, untyped] options) -> void
 
+    def running?: () -> bool
+
     def shutdown: () -> void
+
+    private
+
+    def start_http_server: () -> void
   end
 end

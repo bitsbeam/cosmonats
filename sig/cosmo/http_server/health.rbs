@@ -1,0 +1,21 @@
+module Cosmo
+  class HTTPServer
+    class Health
+      PATH: String
+      HEADERS: Hash[String, String]
+
+      @app: untyped
+      @check: ^() -> Hash[Symbol, bool]
+
+      def initialize: (untyped app, ?check: (^() -> Hash[Symbol, bool])?) -> void
+
+      def call: (Hash[String, untyped] env) -> [Integer, Hash[String, String], Array[String]]
+
+      private
+
+      def default_check: () -> Hash[Symbol, bool]
+
+      def nats_connected?: () -> bool
+    end
+  end
+end

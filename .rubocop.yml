@@ -42,6 +42,7 @@ Metrics/ModuleLength:
 Metrics/BlockLength:
   Exclude:
     - spec/**/*.rb
+    - "*.gemspec"
 
 Metrics/AbcSize:
   Exclude:

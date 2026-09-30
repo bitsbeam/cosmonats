@@ -472,7 +472,26 @@ cosmo -C config/cosmo.yml -c 20                    # Both
 | `-c, --concurrency INT` | Worker threads         | `-c 20`               |
 | `-r, --require PATH`    | Auto-require directory | `-r ./app/jobs`       |
 | `-t, --timeout NUM`     | Shutdown timeout (sec) | `-t 60`               |
+| `-p, --http-port INT`   | Serve `/health` on port | `-p 9090`            |
 | `-S, --setup`           | Setup streams & exit   | `--setup`             |
+
+
+### Health check
+
+Pass `-p/--http-port` (or set `http.port` in the config) to start a small WEBrick HTTP server alongside the workers:
+
+```yaml
+http:
+  port: 9090
+  host: 0.0.0.0 # default
+```
+
+`GET /health` returns `200` when processors are running and NATS is connected, `503` otherwise:
+
+```bash
+curl localhost:9090/health
+# {"status":"ok","checks":{"engine":true,"nats":true}}
+```
 
 
 ## 🚢 Deployment

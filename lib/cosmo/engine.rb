@@ -21,6 +21,7 @@ module Cosmo
       @concurrency = Config.fetch(:concurrency, 1)
       @pool = Utils::ThreadPool.new(@concurrency)
       @running = Concurrent::AtomicBoolean.new
+      @http_server = nil
     end
 
     def run(type, options)
@@ -34,17 +35,34 @@ module Cosmo
         return
       end
 
+      start_http_server
+
       signal = handler.wait
       Logger.info "Shutting down... (#{signal} received)"
       shutdown
     end
 
+    def running?
+      @running.true?
+    end
+
     def shutdown
       @running.make_false
+      @http_server&.stop
       @pool.shutdown
       Logger.info "Pausing to allow jobs to finish..."
       @pool.wait_for_termination(Config[:timeout])
       Logger.info "Bye!"
+    end
+
+    private
+
+    def start_http_server
+      port = Config.dig(:http, :port)
+      return unless port
+
+      host = Config.dig(:http, :host) || HTTPServer::DEFAULT_HOST
+      @http_server = HTTPServer.new(port: port, host: host).start
     end
   end
 end

@@ -12,6 +12,7 @@ require "cosmo/stream"
 require "cosmo/cli"
 require "cosmo/engine"
 require "cosmo/api"
+require "cosmo/http_server"
 require "cosmo/railtie" if defined?(Rails::Railtie)
 
 module Cosmo
