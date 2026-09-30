@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
-require "rack"
+begin
+  require "rack"
+  require "rackup/handler/webrick"
+  require "webrick"
+rescue LoadError => e
+  raise LoadError, "Cosmo::HTTPServer requires `rack`, `rackup` and `webrick` gems, add them to your Gemfile (#{e.message})"
+end
 require "json"
-require "webrick"
-require "rackup/handler/webrick"
 require "cosmo/http_server/health"
 
 module Cosmo

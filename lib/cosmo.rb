@@ -12,10 +12,14 @@ require "cosmo/stream"
 require "cosmo/cli"
 require "cosmo/engine"
 require "cosmo/api"
-require "cosmo/http_server"
 require "cosmo/railtie" if defined?(Rails::Railtie)
 
 module Cosmo
+  # Optional, requires rack
+  autoload :Web, "cosmo/web"
+  # Optional, requires rack, rackup and webrick gems. Loaded only when an HTTP port is configured.
+  autoload :HTTPServer, "cosmo/http_server"
+
   class Error < StandardError; end
 
   class ArgumentError < Error; end

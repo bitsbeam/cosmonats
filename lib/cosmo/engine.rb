@@ -57,6 +57,8 @@ module Cosmo
 
     private
 
+    # HTTPServer is autoloaded, so it's referenced only after the port is checked
+    # to keep its optional dependencies (rack, rackup, webrick) unloaded otherwise.
     def start_http_server
       port = Config.dig(:http, :port)
       return unless port

@@ -156,6 +156,20 @@ gem "cosmonats"
 
 **Requirements:** Ruby ≥ 3.1, NATS Server ([install guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
 
+**Optional gems** — not installed with `cosmonats`, add them only for the features you use:
+
+| Feature                               | Gems                          |
+|---------------------------------------|-------------------------------|
+| Monitoring UI (`Cosmo::Web`)          | `rack`                        |
+| Health check HTTP server (`/health`)  | `rack`, `rackup`, `webrick`   |
+
+```ruby
+# Gemfile
+gem "rack", "~> 3.0"
+gem "rackup", "~> 2.2"
+gem "webrick", "~> 1.9"
+```
+
 Spin up NATS instantly with Docker — one command, that's it:
 ```bash
 docker run -p 4222:4222 -p 8222:8222 nats:alpine -js
@@ -478,7 +492,8 @@ cosmo -C config/cosmo.yml -c 20                    # Both
 
 ### Health check
 
-Pass `-p/--http-port` (or set `http.port` in the config) to start a small WEBrick HTTP server alongside the workers:
+Pass `-p/--http-port` (or set `http.port` in the config) to start a small WEBrick HTTP server alongside the workers.
+It needs the optional `rack`, `rackup` and `webrick` gems (see [Installation](#-installation)); without a port they're never loaded.
 
 ```yaml
 http:
