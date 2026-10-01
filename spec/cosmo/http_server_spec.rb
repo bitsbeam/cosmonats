@@ -25,6 +25,13 @@ RSpec.describe Cosmo::HTTPServer do
     expect(response.body).to be_nil
   end
 
+  it "serves /ping without checks" do
+    allow(Cosmo::Engine.instance).to receive(:running?).and_return(false)
+    response = get("/ping")
+    expect(response.code).to eq("200")
+    expect(response.body).to eq("pong")
+  end
+
   it "returns 404 for unknown paths" do
     expect(get("/nope").code).to eq("404")
   end
