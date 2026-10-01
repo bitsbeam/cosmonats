@@ -170,10 +170,10 @@ gem "cosmonats"
 
 **Optional gems** — not installed with `cosmonats`, add them only for the features you use:
 
-| Feature                               | Gems                          |
-|---------------------------------------|-------------------------------|
-| Monitoring UI (`Cosmo::Web`)          | `rack`                        |
-| Health check HTTP server (`/health`)  | `rack`, `webrick`             |
+| Feature                                       | Gems              |
+|-----------------------------------------------|-------------------|
+| Monitoring UI (`Cosmo::Web`)                  | `rack`            |
+| Health check HTTP server (`/health`, `/ping`) | `rack`, `webrick` |
 
 ```ruby
 # Gemfile
@@ -726,6 +726,13 @@ http:
 ```bash
 curl localhost:9090/health
 # {"status":"ok","checks":{"engine":true,"nats":true}}
+```
+
+`GET /ping` always returns `200 pong` without checking anything, handy as a liveness probe (use `/health` for readiness):
+
+```bash
+curl localhost:9090/ping
+# pong
 ```
 
 
