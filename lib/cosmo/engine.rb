@@ -34,7 +34,7 @@ module Cosmo
     end
 
     def run(type, options)
-      handler = Utils::Signal.trap(:INT, :TERM, :TSTP, :CONT, :USR1)
+      handler = Utils::Signal.trap(:INT, :TERM, :TSTP, :CONT, :USR1, :TTIN)
       Logger.info "Starting processing, hit Ctrl-C to stop [concurrency=#{@concurrency}]"
 
       @processors = self.class.processors_for(type).map { _1.run(@pool, @running, options, quiet: @quiet) }
@@ -82,6 +82,7 @@ module Cosmo
         when "TSTP" then quiet
         when "CONT" then unquiet
         when "USR1" then drain_and_exit(handler)
+        when "TTIN" then dump_threads
         else return signal
         end
       end
@@ -106,6 +107,16 @@ module Cosmo
       Thread.new do
         @pool.wait_idle
         handler.push(:TERM)
+      end
+    end
+
+    def dump_threads
+      threads = Thread.list
+      Logger.warn "Received TTIN, dumping backtraces of #{threads.size} threads"
+      threads.each do |thread|
+        backtrace = thread.backtrace || ["<no backtrace available>"]
+        tid = (thread.object_id ^ ::Process.pid).to_s(36)
+        Logger.warn "Thread tid=#{tid} name=#{thread.name} [#{thread.status}]\n#{backtrace.join("\n")}"
       end
     end
   end

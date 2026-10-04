@@ -26,7 +26,7 @@ CLI → Engine → ThreadPool
   singleton; call `Config.set(:key, value)` for programmatic overrides.
 - **`Cosmo::Engine`** (`lib/cosmo/engine.rb`) — singleton; starts `Job::Processor` and/or `Stream::Processor` sharing
   one `Utils::ThreadPool`. Traps `INT`/`TERM` (graceful shutdown), `TSTP`/`CONT` (quiet / resume fetching), and `USR1`
-  (quiet, then exit once in-flight work drains).
+  (quiet, then exit once in-flight work drains), and `TTIN` (log every thread's backtrace).
 - **`Cosmo::Publisher`** (`lib/cosmo/publisher.rb`) — singleton; serializes and publishes to NATS. Job publishing goes
   via `publish_job(data)`, stream publishing via `publish(subject, data, ...)`.
 - **`Cosmo::Web`** (`lib/cosmo/web.rb`) — Rack app for the monitoring UI (HTMX), served via `config.ru` or mounted

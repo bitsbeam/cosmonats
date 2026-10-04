@@ -35,5 +35,7 @@ module Cosmo
     def unquiet: () -> void
 
     def drain_and_exit: (Utils::Signal handler) -> void
+
+    def dump_threads: () -> void
   end
 end

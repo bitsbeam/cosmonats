@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `COSMO_WEB_POLL_INTERVAL` sets the web UI's htmx auto-refresh interval (default 5s, unchanged).
 - Enqueued jobs can be removed one by one from the web UI: each row has a Remove button backed by
   `DELETE /jobs/enqueued/<seq>?stream_name=<stream>`, which drops that message from the stream
+- `kill -TTIN <pid>` logs every thread's backtrace at WARN, tagged with the same `tid` as regular log
+  lines, so a stuck worker can be diagnosed without restarting it
 
 ### Fixed
 

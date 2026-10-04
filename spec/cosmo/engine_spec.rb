@@ -59,7 +59,7 @@ RSpec.describe Cosmo::Engine do
     end
 
     it "traps signals" do
-      expect(Cosmo::Utils::Signal).to receive(:trap).with(:INT, :TERM, :TSTP, :CONT, :USR1)
+      expect(Cosmo::Utils::Signal).to receive(:trap).with(:INT, :TERM, :TSTP, :CONT, :USR1, :TTIN)
       expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
@@ -134,6 +134,35 @@ RSpec.describe Cosmo::Engine do
       expect(thread.join(1)).to eq(thread)
       expect(engine.instance_variable_get(:@quiet).true?).to be true
       expect(pool).to have_received(:wait_idle)
+    end
+  end
+
+  describe "#run on TTIN" do
+    let(:engine) { described_class.new }
+    let(:signal_handler) { instance_double(Cosmo::Utils::Signal) }
+
+    before do
+      allow(Cosmo::Utils::Signal).to receive(:trap).and_return(signal_handler)
+      allow(signal_handler).to receive(:wait).and_return("TTIN", "TERM")
+      allow(Cosmo::Job::Processor).to receive(:run)
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      allow(engine).to receive(:shutdown)
+    end
+
+    it "logs every thread's backtrace and keeps running until a shutdown signal" do
+      stuck = Thread.new { sleep }
+      stuck.name = "stuck-worker"
+      sleep 0.01 until stuck.status == "sleep"
+
+      allow(Cosmo::Logger).to receive(:warn)
+
+      engine.run("jobs", {})
+
+      expect(Cosmo::Logger).to have_received(:warn).with(/Received TTIN/)
+      expect(Cosmo::Logger).to have_received(:warn).with(/Thread tid=\w+ name=stuck-worker \[sleep\]\n.*:in .*sleep/m)
+      expect(engine).to have_received(:shutdown).once
+    ensure
+      stuck&.kill
     end
   end
 
