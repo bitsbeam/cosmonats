@@ -8,12 +8,6 @@ RSpec.describe Cosmo::API::Counter do
   before { destroy_streams }
   after { destroy_streams }
 
-  describe ".instance" do
-    it "returns a singleton" do
-      expect(described_class.instance).to be(described_class.instance)
-    end
-  end
-
   describe "#get" do
     it "returns 0 when no messages exist" do
       expect(counter.get(:processed)).to eq(0)
@@ -66,25 +60,6 @@ RSpec.describe Cosmo::API::Counter do
       counter.increment(:processed, by: 2)
       counter.decr(:processed)
       expect(counter.get(:processed)).to eq(1)
-    end
-  end
-
-  describe "#with" do
-    it "increments :processed when block returns true" do
-      counter.with { true }
-      expect(counter.get(:processed)).to eq(1)
-      expect(counter.get(:failed)).to eq(0)
-    end
-
-    it "increments :failed when block returns false" do
-      counter.with { false }
-      expect(counter.get(:failed)).to eq(1)
-      expect(counter.get(:processed)).to eq(0)
-    end
-
-    it "increments :failed on exception" do
-      expect { counter.with { raise "boom" } }.not_to raise_error
-      expect(counter.get(:failed)).to eq(1)
     end
   end
 

@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `kill -TTIN <pid>` logs every thread's backtrace at WARN, tagged with the same `tid` as regular log
   lines, so a stuck worker can be diagnosed without restarting it
 
+### Changed
+
+- Dashboard stats live under `API::Stats` on top of base classes: `API::Busy` is now `API::Stats::Busy`,
+  and `API::Counter.instance`/`#with` moved to `API::Stats::Totals`
+
 ### Fixed
 
 - A cron job's `enqueued_at` is the time NATS fired the schedule again, not the time the scheduler

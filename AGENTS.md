@@ -36,7 +36,7 @@ CLI → Engine → ThreadPool
   destructive routes (retry/delete dead jobs, pause streams, delete/run crons).
 - **`Cosmo::Heartbeat`** (`lib/cosmo/heartbeat.rb`) — started by `Engine#run`; every 10s writes this process's
   details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `cosmo_processes`
-  KV bucket via `API::Processes`. Unregisters on graceful shutdown; a crashed process expires by the bucket's 60s TTL.
+  KV bucket via `API::Stats::Processes`. Unregisters on graceful shutdown; a crashed process expires by the bucket's 60s TTL.
 - **`Cosmo::Batch`** (`lib/cosmo/batch.rb`) — groups jobs and fires a `:success`/`:complete` callback when the group
   finishes; state lives in `API::Counter` counters plus a TTL'd KV bucket. Nested batches are created with
   `Batch.new(parent: bid)`.
@@ -167,7 +167,7 @@ docker compose up nats
 ---
 
 ## Singleton Pattern
-`Client`, `Config`, `Engine`, `Publisher`, `CLI`, `Job::Limit`, `API::Counter`, `API::Busy`, `API::Processes`, `API::Cron` all use
+`Client`, `Config`, `Engine`, `Publisher`, `CLI`, `Job::Limit`, `API::Stats::Totals`, `API::Stats::Busy`, `API::Stats::Processes`, `API::Cron` all use
 `@instance ||= new`. Reset between tests if needed by clearing `@instance` via `instance_variable_set`.
 
 ---
@@ -177,6 +177,8 @@ docker compose up nats
 |---|---|
 | Config file (not in repo — see README; test copy at `spec/support/cosmo.yml`) | `config/cosmo.yml` |
 | Job mixin + ClassMethods | `lib/cosmo/job.rb` + `lib/cosmo/job/` |
+| API base classes (KV bucket, counter, TTL'd registry) | `lib/cosmo/api/{kv,counter,registry}.rb` |
+| Dashboard stats built on them (`API::Stats.summary`) | `lib/cosmo/api/stats.rb` + `lib/cosmo/api/stats/` |
 | Batch grouping + callbacks | `lib/cosmo/batch.rb` + `lib/cosmo/api/batch.rb` |
 | Cron schedules (NATS 2.14) | `lib/cosmo/api/cron.rb` + `lib/cosmo/api/cron/entry.rb` |
 | Concurrency limiter | `lib/cosmo/job/limit.rb` |

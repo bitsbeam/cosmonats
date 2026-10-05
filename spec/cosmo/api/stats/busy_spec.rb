@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Cosmo::API::Busy do
+RSpec.describe Cosmo::API::Stats::Busy do
   subject(:busy) { described_class.new }
 
   let(:message) { double("message", metadata: double(sequence: double(stream: 42), stream: "jobs", num_delivered: 1)) }

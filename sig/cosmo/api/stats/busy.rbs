@@ -1,0 +1,31 @@
+module Cosmo
+  module API
+    module Stats
+      class Busy < Registry
+        TTL: ::Integer
+        HEARTBEAT: ::Integer
+        BUCKET: ::String
+
+        @messages: Hash[::Integer, Hash[Symbol, untyped]]
+        @thread: Thread?
+        @worker_id: ::String
+
+        def initialize: () -> void
+
+        def with: (untyped message) { () -> void } -> void
+
+        def add: (untyped message) -> void
+
+        def delete: (untyped message) -> void
+
+        def list: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+
+        private
+
+        def heartbeat_loop: () -> void
+
+        def worker_id: () -> ::String
+      end
+    end
+  end
+end

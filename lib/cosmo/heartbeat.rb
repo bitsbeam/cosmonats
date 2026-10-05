@@ -4,7 +4,7 @@ require "socket"
 require "shellwords"
 
 module Cosmo
-  # Publishes this process's identity and live state to API::Processes, so the Web UI lists
+  # Publishes this process's identity and live state to API::Stats::Processes, so the Web UI lists
   # every running worker, the idle ones included.
   class Heartbeat
     INTERVAL = 10
@@ -123,7 +123,7 @@ module Cosmo
     end
 
     def processes
-      API::Processes.instance
+      API::Stats::Processes.instance
     end
   end
 end

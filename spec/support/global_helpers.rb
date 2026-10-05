@@ -12,9 +12,9 @@ RSpec.shared_context "Global helpers" do
   def cleanup_state
     Results.instance.clear
     Cosmo::Config.internal[:streams] = []
-    Cosmo::API::Busy.instance_variable_set(:@instance, nil)
-    Cosmo::API::Processes.instance_variable_set(:@instance, nil)
-    Cosmo::API::Counter.instance_variable_set(:@instance, nil)
+    Cosmo::API::Stats::Busy.instance_variable_set(:@instance, nil)
+    Cosmo::API::Stats::Processes.instance_variable_set(:@instance, nil)
+    Cosmo::API::Stats::Totals.instance_variable_set(:@instance, nil)
     Cosmo::Publisher.instance_variable_set(:@instance, nil)
     Cosmo::Job::Limit.instance_variable_set(:@instance, nil)
     Cosmo::Batch.instance_variable_set(:@counter, nil)

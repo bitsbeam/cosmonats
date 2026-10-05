@@ -1,0 +1,30 @@
+module Cosmo
+  module API
+    class Registry
+      LIMIT: ::Integer
+
+      self.@instance: Registry
+      @kv: KV
+
+      def self.instance: () -> instance
+
+      def initialize: () -> void
+
+      def put: (::String | ::Integer key, Hash[Symbol, untyped] value) -> void
+
+      def remove: (::String | ::Integer key) -> void
+
+      def list: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+
+      def all: () -> Array[Hash[Symbol, untyped]]
+
+      def size: () -> ::Integer
+
+      private
+
+      def bucket: () -> KV
+
+      def sanitize: (::String | ::Integer key) -> ::String
+    end
+  end
+end

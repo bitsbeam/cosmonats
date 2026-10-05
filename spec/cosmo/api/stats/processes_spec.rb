@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Cosmo::API::Processes do
+RSpec.describe Cosmo::API::Stats::Processes do
   subject(:processes) { described_class.new }
 
   before { processes.instance_variable_get(:@kv).clean rescue nil }

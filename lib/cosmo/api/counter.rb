@@ -5,20 +5,8 @@ module Cosmo
     class Counter
       STREAM_NAME = "_cosmostats"
 
-      def self.instance
-        @instance ||= new("jobs")
-      end
-
       def initialize(namespace)
         @namespace = namespace
-      end
-
-      def with
-        result = yield
-        increment(:processed) if result == true
-        increment(:failed) if result == false
-      rescue Exception # rubocop:disable Lint/RescueException
-        increment(:failed)
       end
 
       def increment(key, by: 1, msg_id: nil)

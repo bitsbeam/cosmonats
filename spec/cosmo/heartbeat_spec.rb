@@ -6,7 +6,7 @@ RSpec.describe Cosmo::Heartbeat do
   let(:engine) do
     instance_double(Cosmo::Engine, state: "running", busy: 1, concurrency: 5, subscriptions: { jobs: %w[default scheduled] })
   end
-  let(:processes) { Cosmo::API::Processes.instance }
+  let(:processes) { Cosmo::API::Stats::Processes.instance }
 
   before do
     processes.instance_variable_get(:@kv).clean rescue nil

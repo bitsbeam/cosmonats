@@ -1,0 +1,16 @@
+module Cosmo
+  module API
+    module Stats
+      class Processes < Registry
+        TTL: ::Integer
+        BUCKET: ::String
+
+        def list: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+
+        def register: (::String identity, Hash[Symbol, untyped] info) -> void
+
+        def unregister: (::String identity) -> void
+      end
+    end
+  end
+end

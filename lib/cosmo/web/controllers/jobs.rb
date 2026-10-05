@@ -74,17 +74,17 @@ module Cosmo
         end
 
         def _busy
-          busy = API::Busy.instance
+          busy = API::Stats::Busy.instance
           total = busy.size
-          page, limit, total_pages = paginate(total, API::Busy::LIMIT)
+          page, limit, total_pages = paginate(total, API::Stats::Busy::LIMIT)
           polling = params["poll"].to_s != "0"
           ok render("jobs/_busy", { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages:, polling: })
         end
 
         def _processes
-          processes = API::Processes.instance
+          processes = API::Stats::Processes.instance
           total = processes.size
-          page, limit, total_pages = paginate(total, API::Processes::LIMIT)
+          page, limit, total_pages = paginate(total, API::Stats::Processes::LIMIT)
           polling = params["poll"].to_s != "0"
           ok render("jobs/_processes", { processes: processes.list(page:, limit:), total:, page:, limit:, total_pages:, polling: })
         end

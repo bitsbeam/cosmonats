@@ -29,8 +29,8 @@ module Cosmo
         filter = StreamFilter.from(@options[:streams]).validate!
 
         # Initialize singletons before starting to process messages
-        API::Busy.instance
-        API::Counter.instance
+        API::Stats::Busy.instance
+        API::Stats::Totals.instance
         Limit.instance
 
         jobs_config = Config.dig(:consumers, :jobs)
@@ -306,8 +306,8 @@ module Cosmo
       end
 
       def with_stats(message, &block)
-        API::Busy.instance.with(message) do
-          API::Counter.instance.with(&block)
+        API::Stats::Busy.instance.with(message) do
+          API::Stats::Totals.instance.with(&block)
         end
       end
 

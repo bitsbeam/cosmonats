@@ -1,15 +1,12 @@
 # frozen_string_literal: true
 
 RSpec.describe Cosmo::API::Stats do
-  let(:counter) { instance_double(Cosmo::API::Counter) }
-  let(:busy) { instance_double(Cosmo::API::Busy) }
+  let(:counter) { instance_double(Cosmo::API::Stats::Totals, processed: 42, failed: 3) }
+  let(:busy) { instance_double(Cosmo::API::Stats::Busy, size: 2) }
 
   before do
-    allow(Cosmo::API::Counter).to receive(:instance).and_return(counter)
-    allow(Cosmo::API::Busy).to receive(:instance).and_return(busy)
-    allow(counter).to receive(:get).with(:processed).and_return(42)
-    allow(counter).to receive(:get).with(:failed).and_return(3)
-    allow(busy).to receive(:size).and_return(2)
+    allow(Cosmo::API::Stats::Totals).to receive(:instance).and_return(counter)
+    allow(Cosmo::API::Stats::Busy).to receive(:instance).and_return(busy)
     allow(Cosmo::API::Stream).to receive(:jobs).and_return([])
     allow(Cosmo::API::Stream).to receive(:new).with("scheduled").and_return(double(size: 5))
     allow(Cosmo::API::Stream).to receive(:new).with("dead").and_return(double(size: 1))

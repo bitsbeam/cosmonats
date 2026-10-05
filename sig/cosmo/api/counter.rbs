@@ -3,14 +3,9 @@ module Cosmo
     class Counter
       STREAM_NAME: ::String
 
-      self.@instance: Counter
       @namespace: ::String
 
-      def self.instance: () -> Counter
-
       def initialize: (::String namespace) -> void
-
-      def with: () { () -> bool } -> void
 
       def increment: (Symbol key, ?by: ::Integer) -> ::Integer
       alias incr increment

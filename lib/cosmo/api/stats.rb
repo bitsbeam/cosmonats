@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "cosmo/api/counter"
-require "cosmo/api/busy"
-require "cosmo/api/processes"
+require "cosmo/api/stats/totals"
+require "cosmo/api/stats/busy"
+require "cosmo/api/stats/processes"
 
 module Cosmo
   module API
@@ -14,11 +14,11 @@ module Cosmo
       end
 
       def processed
-        Counter.instance.get(:processed)
+        Totals.instance.processed
       end
 
       def failed
-        Counter.instance.get(:failed)
+        Totals.instance.failed
       end
 
       def busy
