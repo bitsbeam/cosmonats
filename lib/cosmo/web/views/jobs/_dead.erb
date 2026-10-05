@@ -57,17 +57,17 @@
             <td style="white-space: nowrap;">
               <time><%= h(job.timestamp) %></time>
             </td>
-            <td>
+            <td style="white-space: nowrap;">
               <a hx-patch="<%= url_for("/jobs/retry/#{job.seq}") %>"
                  hx-target="#dead-row-<%= job.seq %>"
                  hx-swap="innerHTML"
-                 class="btn btn-primary"
-                 style="width: 100%; text-align: center; margin-bottom: 3px">&#x21BB; Retry</a>
+                 title="Retry"
+                 class="btn btn-primary btn-sm">&#x21BB;</a>
               <a hx-delete="<%= url_for("/jobs/delete/#{job.seq}") %>"
                  hx-target="#dead-row-<%= job.seq %>"
                  hx-swap="innerHTML"
-                 class="btn btn-danger"
-                 style="width: 100%; text-align: center; margin-bottom: 3px">&#x2715; Delete</a>
+                 title="Delete"
+                 class="btn btn-danger btn-sm">&#x2715;</a>
             </td>
           </tr>
           <% end -%>
