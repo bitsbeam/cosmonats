@@ -36,7 +36,7 @@ module Cosmo
 
       def total
         all_msgs = info[:state].messages.to_i
-        cron_count = Client.instance.cron_subjects_in_stream(name, "#{Cron::Entry::SUBJECT_PREFIX}.#{name}.>").size
+        cron_count = Client.instance.cron_subjects_in_stream(name, "#{Cron::Entry::SUBJECT_PREFIX}.>").size
         [all_msgs - cron_count, 0].max
       rescue NATS::Error
         0

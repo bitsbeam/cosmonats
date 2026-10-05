@@ -52,6 +52,14 @@ RSpec.describe Cosmo::API::Stream do
     it "is aliased as #size" do
       expect(stream.size).to eq(stream.total)
     end
+
+    it "excludes cron templates targeting other streams" do
+      client.delete_stream(stream_name)
+      client.create_stream(stream_name, { subjects: [subject_pattern, "cosmo.cron.>"], allow_direct: true, storage: "memory" })
+      client.publish("cosmo.cron.default.report_job", payload)
+      client.publish("teststreamapi.job", payload)
+      expect(stream.total).to eq(1)
+    end
   end
 
   describe "#retries" do
