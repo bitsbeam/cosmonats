@@ -8,6 +8,7 @@ module Cosmo
     class Failure
       HEADER_LIMIT = 1024
       BACKTRACE_LINES = 10
+      BACKTRACE_SEPARATOR = " | "
 
       # @param exception [Exception]
       # @return [Hash{String => String}] headers describing the failure
@@ -39,7 +40,7 @@ module Cosmo
       end
 
       def backtrace
-        @backtrace ||= single_line(Array(@exception.backtrace).first(BACKTRACE_LINES).join(" | "))
+        @backtrace ||= single_line(Array(@exception.backtrace).first(BACKTRACE_LINES).join(BACKTRACE_SEPARATOR))
       end
 
       # NATS header values are a single line, so whitespace collapses and the value is capped.

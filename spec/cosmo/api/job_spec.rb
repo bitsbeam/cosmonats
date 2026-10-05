@@ -82,6 +82,7 @@ RSpec.describe Cosmo::API::Job do
       expect(job.error_class).to eq("Timeout::Error")
       expect(job.error_message).to eq("execution expired")
       expect(job.error_backtrace).to eq("a.rb:1 | b.rb:2")
+      expect(job.error_backtrace_lines).to eq(["a.rb:1", "b.rb:2"])
       expect(job).to be_error
     end
 

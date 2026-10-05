@@ -43,7 +43,7 @@
                 <% if job.error_backtrace -%>
                 <details>
                   <summary>Backtrace</summary>
-                  <code><%= h(job.error_backtrace) %></code>
+                  <code><%= h(job.error_backtrace_lines.join("\n")) %></code>
                 </details>
                 <% end -%>
               </div>

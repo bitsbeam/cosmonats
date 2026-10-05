@@ -3,6 +3,7 @@ module Cosmo
     class Failure
       HEADER_LIMIT: Integer
       BACKTRACE_LINES: Integer
+      BACKTRACE_SEPARATOR: String
 
       @exception: Exception
       @backtrace: ::String?

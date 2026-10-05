@@ -50,6 +50,11 @@ module Cosmo
         headers&.dig("X-Error-Backtrace")
       end
 
+      # @return [Array<String>] the backtrace frames, which travel as a single header line
+      def error_backtrace_lines
+        error_backtrace.to_s.split(::Cosmo::Job::Failure::BACKTRACE_SEPARATOR)
+      end
+
       def error?
         !error_class.to_s.empty? || !error_message.to_s.empty?
       end

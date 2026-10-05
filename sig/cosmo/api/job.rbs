@@ -29,6 +29,8 @@ module Cosmo
 
       def error_backtrace: () -> ::String?
 
+      def error_backtrace_lines: () -> Array[::String]
+
       def error?: () -> bool
 
       def stream: () -> ::String

@@ -493,6 +493,12 @@ time {
   font-size: var(--font-size-small);
   word-wrap: break-word;
 }
+.error-message details code {
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre;
+  font-size: var(--font-size-small);
+}
 
 /* ── Links ─────────────────────────────────────────────────────────────── */
 .stream-link { color: var(--color-primary); font-weight: 600; }
