@@ -1,7 +1,4 @@
-<div id="dead-poller"
-     hx-get="<%= url_for('/jobs/_dead') %>"
-     hx-trigger="every <%= poll_interval %>s"
-     hx-swap="outerHTML">
+<div id="dead-jobs">
   <% if @jobs.empty? -%>
     <div class="alert alert-success">No dead jobs found</div>
   <% else -%>
