@@ -80,6 +80,8 @@ module Cosmo
         puts unless first_line
       end
 
+      API::Counter.setup!
+
       schedules = Config.dig(:setup, :cron)&.reduce(0) do |sum, (name, entry)|
         class_name = entry.delete(:class)
         API::Cron.instance.upsert!(**entry, name: name, class_name: class_name)

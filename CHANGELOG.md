@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `_cosmostats` counters stream kept every increment forever (one message per processed job). It now keeps
+  only the latest message per counter (`max_msgs_per_subject: 1`); `cosmo --setup` applies this to existing
+  streams, trimming them without changing the totals
 - A cron job's `enqueued_at` is the time NATS fired the schedule again, not the time the scheduler
   dispatched it on. The firing's timestamp is forwarded as `X-Enqueued-At` across the re-publish, so a
   job that derives anything from `enqueued_at` is unaffected by a backlogged or restarted worker

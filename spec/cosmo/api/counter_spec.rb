@@ -70,4 +70,35 @@ RSpec.describe Cosmo::API::Counter do
       expect(counter.get(:processed)).to eq(0)
     end
   end
+
+  describe "stream retention" do
+    it "keeps only the latest message per counter, which carries the total" do
+      3.times { counter.increment(:processed) }
+      counter.decrement(:processed)
+
+      expect(client.stream_info(stream_name).state.messages).to eq(1)
+      expect(counter.get(:processed)).to eq(2)
+    end
+  end
+
+  describe ".setup!" do
+    it "trims an existing unlimited stream to one message per counter without losing totals" do
+      client.create_stream(stream_name, described_class::STREAM_CONFIG.except(:max_msgs_per_subject))
+      5.times { counter.increment(:processed) }
+      2.times { counter.increment(:failed) }
+
+      described_class.setup!
+
+      expect(client.stream_info(stream_name).state.messages).to eq(2)
+      expect(counter.get(:processed)).to eq(5)
+      expect(counter.get(:failed)).to eq(2)
+      counter.increment(:processed)
+      expect(counter.get(:processed)).to eq(6)
+    end
+
+    it "creates the stream when it is missing" do
+      described_class.setup!
+      expect(client.stream_info(stream_name).config.max_msgs_per_subject).to eq(1)
+    end
+  end
 end

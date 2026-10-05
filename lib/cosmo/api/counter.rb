@@ -4,6 +4,21 @@ module Cosmo
   module API
     class Counter
       STREAM_NAME = "_cosmostats"
+      STREAM_CONFIG = {
+        subjects: ["#{STREAM_NAME}.>"],
+        allow_msg_counter: true,
+        allow_direct: true,
+        max_msgs_per_subject: 1,
+        description: "Cosmo statistics"
+      }.freeze
+
+      # Creates the counters stream, or brings an existing one up to STREAM_CONFIG. Every stored
+      # counter message carries the running total, so only the last one per subject is kept.
+      #
+      # @return [void]
+      def self.setup!
+        Client.instance.setup_stream(STREAM_NAME, STREAM_CONFIG)
+      end
 
       def initialize(namespace)
         @namespace = namespace
@@ -52,7 +67,7 @@ module Cosmo
           raise if rescued
 
           rescued = true
-          client.create_stream(STREAM_NAME, subjects: ["#{STREAM_NAME}.>"], allow_msg_counter: true, allow_direct: true, description: "Cosmo statistics")
+          client.create_stream(STREAM_NAME, STREAM_CONFIG)
           retry
         end
       end

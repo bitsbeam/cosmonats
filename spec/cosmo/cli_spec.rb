@@ -81,6 +81,7 @@ RSpec.describe Cosmo::CLI do
         allow(Cosmo::Client.instance).to receive(:setup_stream)
         allow(Cosmo::Config).to receive(:[]).with(:setup).and_return(setup)
         allow(Cosmo::Config).to receive(:dig).with(:setup, :cron).and_return(nil)
+        allow(Cosmo::API::Counter).to receive(:setup!)
       end
 
       let(:setup) { { jobs: { default: {}, low: {} }, streams: { events: {} } } }
@@ -89,6 +90,11 @@ RSpec.describe Cosmo::CLI do
         expect { cli.run }.to output(
           "Stream is ready: default, low\nStream is ready: events\nCosmo streams set up successfully.\n"
         ).to_stdout
+      end
+
+      it "sets up the counters stream" do
+        expect(Cosmo::API::Counter).to receive(:setup!)
+        expect { cli.run }.to output(anything).to_stdout
       end
 
       context "without streams to set up" do
