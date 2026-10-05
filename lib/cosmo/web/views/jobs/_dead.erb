@@ -33,7 +33,7 @@
               </div>
             </td>
             <td>
-              <code><%= h(job.stream) %></code>
+              <% if job.x_stream -%><code><%= h(job.x_stream) %></code><% else -%><span class="text-muted">&mdash;</span><% end -%>
             </td>
             <td style="max-width: 400px;">
               <% if job.error? -%>
