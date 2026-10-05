@@ -93,6 +93,7 @@ module Cosmo
 
               timeout = fetch_timeout(config)
               Logger.trace "fetching #{fetch_subjects(config).inspect}, timeout=#{timeout}"
+              started_at = Time.now
               messages = fetch(subscription, batch_size: config[:batch_size], timeout:)
               Logger.trace "fetched (#{messages&.size.to_i}) messages"
               if messages&.any?
@@ -100,8 +101,10 @@ module Cosmo
                 process(messages, processor)
               else
                 max_backoff = Utils::Duration.parse(ENV.fetch("COSMO_STREAM_EMPTY_BACKOFF_MAX", STREAM_EMPTY_BACKOFF_MAX))
-                consumer_state.compute(stream_name) do |current|
-                  count = (current&.first || 0) + 1
+                consumer_state.compute(stream_name) do |(count, wake_at)|
+                  next [count, wake_at] if wake_at && wake_at > started_at
+
+                  count = count.to_i + 1
                   backoff = [timeout * (2**(count - 1)), max_backoff].min
                   [count, Time.now + backoff]
                 end

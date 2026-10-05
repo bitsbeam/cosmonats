@@ -59,6 +59,38 @@ RSpec.describe Cosmo::Processor do
     end
   end
 
+  describe "#work_loop" do
+    let(:pool) { Cosmo::Utils::ThreadPool.new(3) }
+    let(:subscription) { double("subscription") }
+    let(:fetches) { Concurrent::AtomicFixnum.new }
+
+    before do
+      allow(Cosmo::API::Stream).to receive(:new).and_return(instance_double(Cosmo::API::Stream, paused?: false))
+      allow(processor).to receive_messages(
+        consumers: [[subscription, { stream: :default, batch_size: 1 }, nil]], fetch_timeout: 0.1, fetch_subjects: "jobs.default.>"
+      )
+      allow(processor).to receive(:fetch) do
+        fetches.increment
+        sleep 0.05
+        nil
+      end
+    end
+
+    after { pool.shutdown }
+
+    it "backs off once per round of parallel empty fetches" do
+      running.make_true
+      loop_thread = Thread.new { processor.send(:work_loop) }
+      sleep 0.2
+      running.make_false
+      loop_thread.join(1)
+      pool.wait_idle
+
+      expect(fetches.value).to be >= 3
+      expect(processor.send(:consumer_state)["default"].first).to eq(fetches.value / 3)
+    end
+  end
+
   describe "#fetch_messages" do
     let(:subscription) { double("subscription") }
     let(:messages) { [double("message")] }
