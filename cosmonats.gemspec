@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.homepage      = "https://github.com/bitsbeam/cosmonats"
   s.summary       = "Lightweight background and stream processing"
   s.description   = "Lightweight background and stream processing for Ruby"
-  s.license       = "LGPL-3.0"
+  s.license       = "MIT"
   s.bindir        = "bin"
   s.executables   = ["cosmo"]
   s.require_paths = ["lib"]

@@ -10,7 +10,7 @@ Background jobs + real-time event streaming for Ruby — unified, in one gem, ba
 [![Gem Version](https://badge.fury.io/rb/cosmonats.svg)](https://rubygems.org/gems/cosmonats)
 [![Downloads](https://img.shields.io/gem/dt/cosmonats.svg)](https://rubygems.org/gems/cosmonats)
 [![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.1-red)](https://www.ruby-lang.org)
-[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](LICENSE.txt)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
 [![Build Status](https://github.com/bitsbeam/cosmonats/actions/workflows/ci.yml/badge.svg)](https://github.com/bitsbeam/cosmonats/actions)
 
 *Battle-tested in production. Tens of millions of jobs processed and counting.*
