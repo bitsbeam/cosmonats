@@ -3,6 +3,11 @@
 module Cosmo
   module Stream
     class Processor < ::Cosmo::Processor
+      # @return [Array<String>] names of the stream classes being processed
+      def subscriptions
+        @consumers.map { |(_, config, _)| config[:class].name }
+      end
+
       private
 
       def setup

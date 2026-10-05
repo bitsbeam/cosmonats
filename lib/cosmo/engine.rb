@@ -25,12 +25,15 @@ module Cosmo
       @instance ||= new
     end
 
+    attr_reader :concurrency
+
     def initialize
       @concurrency = Config.fetch(:concurrency, 1)
       @pool = Utils::ThreadPool.new(@concurrency)
       @running = Concurrent::AtomicBoolean.new
       @quiet = Concurrent::AtomicBoolean.new
       @http_server = nil
+      @heartbeat = nil
     end
 
     def run(type, options)
@@ -43,6 +46,7 @@ module Cosmo
         return
       end
 
+      @heartbeat = Heartbeat.new(self, options:).start
       start_http_server
 
       signal = handle_shutdown(handler)
@@ -54,12 +58,31 @@ module Cosmo
       @running.true?
     end
 
+    # @return [String] +running+, +quiet+ (no new work fetched) or +stopping+
+    def state
+      return "stopping" unless running?
+
+      @quiet.true? ? "quiet" : "running"
+    end
+
+    # @return [Integer] threads processing messages right now, across all processors
+    def busy
+      Array(@processors).sum(&:busy)
+    end
+
+    # @return [Hash{Symbol => Array<String>}] what each running processor pulls from, keyed by processor type
+    def subscriptions
+      Array(@processors).to_h { [PROCESSORS.key(_1.class), _1.subscriptions] }
+    end
+
     def shutdown
       @running.make_false
+      @heartbeat&.beat
       @http_server&.stop
       @pool.shutdown
       Logger.info "Pausing to allow jobs to finish..."
       @pool.wait_for_termination(Config[:timeout])
+      @heartbeat&.stop
       Logger.info "Bye!"
     end
 
@@ -92,18 +115,21 @@ module Cosmo
       return unless @quiet.make_true
 
       Logger.info "Received TSTP, no new jobs will be fetched; finishing in-flight work"
+      @heartbeat&.beat
     end
 
     def unquiet
       return unless @quiet.make_false
 
       Logger.info "Received CONT, resuming normal fetching"
+      @heartbeat&.beat
     end
 
     def drain_and_exit(handler)
       return unless @quiet.make_true
 
       Logger.info "Received USR1, no new jobs will be fetched, exiting when work drains"
+      @heartbeat&.beat
       Thread.new do
         @pool.wait_idle
         handler.push(:TERM)

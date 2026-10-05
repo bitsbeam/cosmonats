@@ -16,6 +16,13 @@ module Cosmo
         StreamFilter.from(options[:streams]).validate!
       end
 
+      # @return [Array<String>] job streams pulled from, plus +scheduled+ when dispatching scheduled jobs
+      def subscriptions
+        names = @consumers.map { |(_, config, _)| config[:stream].to_s }
+        names << StreamFilter::SCHEDULED.to_s if scheduler? && scheduled_config
+        names
+      end
+
       private
 
       def setup

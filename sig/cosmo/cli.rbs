@@ -8,6 +8,10 @@ module Cosmo
 
     def self.banner: () -> ::String
 
+    @argv: Array[::String]?
+
+    attr_reader argv: Array[::String]?
+
     def run: () -> void
 
     private

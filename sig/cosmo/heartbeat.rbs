@@ -1,0 +1,36 @@
+module Cosmo
+  class Heartbeat
+    INTERVAL: ::Integer
+
+    @engine: Engine
+    @options: Hash[Symbol, untyped]
+    @started_at: ::Integer
+    @thread: Thread?
+    @identity: ::String
+    @static_info: Hash[Symbol, untyped]
+
+    def initialize: (Engine engine, ?options: Hash[Symbol, untyped]) -> void
+
+    def start: () -> self
+
+    def stop: () -> void
+
+    def beat: () -> void
+
+    def identity: () -> ::String
+
+    def info: () -> Hash[Symbol, untyped]
+
+    private
+
+    def static_info: () -> Hash[Symbol, untyped]
+
+    def nats_info: () -> Hash[Symbol, untyped]
+
+    def rtt: (untyped connection) -> ::Float?
+
+    def rss: () -> ::Integer?
+
+    def processes: () -> API::Processes
+  end
+end

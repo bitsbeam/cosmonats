@@ -3,6 +3,8 @@ module Cosmo
     class Processor < ::Cosmo::Processor
       @configs: Array[Hash[Symbol, untyped]]
 
+      def subscriptions: () -> Array[::String]
+
       private
 
       def setup: () -> void

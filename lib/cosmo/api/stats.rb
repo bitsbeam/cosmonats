@@ -2,6 +2,7 @@
 
 require "cosmo/api/counter"
 require "cosmo/api/busy"
+require "cosmo/api/processes"
 
 module Cosmo
   module API

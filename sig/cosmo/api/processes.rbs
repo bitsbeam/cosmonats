@@ -1,0 +1,30 @@
+module Cosmo
+  module API
+    class Processes
+      TTL: ::Integer
+      LIMIT: ::Integer
+      BUCKET: ::String
+
+      self.@instance: Processes
+      @kv: KV
+
+      def self.instance: () -> Processes
+
+      def initialize: () -> void
+
+      def register: (::String identity, Hash[Symbol, untyped] info) -> void
+
+      def unregister: (::String identity) -> void
+
+      def list: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+
+      def size: () -> ::Integer
+
+      private
+
+      def bucket: () -> KV
+
+      def key: (::String identity) -> ::String
+    end
+  end
+end

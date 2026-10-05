@@ -11,6 +11,7 @@ require "cosmo/job"
 require "cosmo/batch"
 require "cosmo/stream"
 require "cosmo/cli"
+require "cosmo/heartbeat"
 require "cosmo/engine"
 require "cosmo/api"
 require "cosmo/railtie" if defined?(Rails::Railtie)

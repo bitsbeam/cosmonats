@@ -1,0 +1,131 @@
+<% nav = @polling ? { limit: @limit } : { limit: @limit, poll: 0 } -%>
+<% states = { "running" => "badge-success", "quiet" => "badge-warning", "stopping" => "badge-danger" } -%>
+<div id="processes-poller"
+     <% if @polling -%>
+     hx-get="<%= url_for('/jobs/_processes', page: @page, limit: @limit) %>"
+     hx-trigger="every <%= poll_interval %>s"
+     hx-swap="outerHTML"
+     <% end -%>
+     >
+  <div class="pending">
+    <span></span>
+    <span class="poll-status">
+      <span class="text-muted"><%= @total %> process(es) alive</span>
+      <% if @polling -%>
+        <a class="btn btn-sm"
+           hx-get="<%= url_for('/jobs/_processes', nav.merge(page: @page, poll: 0)) %>"
+           hx-target="#processes-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner">&#9209; Stop Polling</a>
+      <% else -%>
+        <a class="btn btn-sm btn-primary"
+           hx-get="<%= url_for('/jobs/_processes', page: @page, limit: @limit) %>"
+           hx-target="#processes-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner">&#x25B6; Live Poll</a>
+      <% end -%>
+    </span>
+  </div>
+
+  <% if @processes.empty? -%>
+    <div class="alert alert-warning">No worker processes are running</div>
+  <% else -%>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Process</th>
+            <th>Command</th>
+            <th>Subscriptions</th>
+            <th>Busy</th>
+            <th>State</th>
+            <th>RTT</th>
+            <th>Reconnects</th>
+            <th>Memory</th>
+            <th>Uptime</th>
+            <th>Last beat</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @processes.each do |process| -%>
+          <% nats = Hash(process[:nats]) -%>
+          <tr>
+            <td>
+              <div class="job-class"><%= h(process[:hostname]) %>:<%= h(process[:pid]) %></div>
+              <div class="text-muted" style="font-size: var(--font-size-small);">
+                <%= h(nats[:ip] || "unknown IP") %>
+                <% if nats[:name] -%>&middot; <code><%= h(nats[:name]) %></code><% end -%>
+              </div>
+            </td>
+            <td>
+              <% cmdline = process[:cmdline].to_s -%>
+              <div class="job-id">
+                <details>
+                  <summary>
+                    <code><%= h(cmdline.length > 40 ? "#{cmdline[0, 40]}…" : cmdline) %></code>
+                  </summary>
+                  <code style="font-size: var(--font-size-small);"><%= h(cmdline) %></code>
+                  <div class="text-muted" style="font-size: var(--font-size-small);">
+                    cosmo <%= h(process[:version]) %> &middot; <%= h(process[:ruby]) %>
+                    <% if process[:http_port] -%>&middot; http :<%= h(process[:http_port]) %><% end -%>
+                  </div>
+                </details>
+              </div>
+            </td>
+            <td>
+              <% Hash(process[:subscriptions]).each do |type, names| -%>
+                <div><span class="text-muted"><%= h(type) %>:</span> <code><%= h(Array(names).join(", ")) %></code></div>
+              <% end -%>
+            </td>
+            <td><%= h(process[:busy]) %> / <%= h(process[:concurrency]) %></td>
+            <td><span class="badge <%= states.fetch(process[:state].to_s, 'badge-info') %>"><%= h(process[:state]) %></span></td>
+            <td><%= nats[:rtt] ? "#{h(nats[:rtt])}ms" : '&mdash;' %></td>
+            <td><%= h(nats[:reconnects].to_i) %></td>
+            <td><%= process[:rss] ? format_bytes(process[:rss].to_i * 1024) : '&mdash;' %></td>
+            <td><%= elapsed(process[:started_at]) %></td>
+            <td><%= elapsed(process[:beat_at]) %> ago</td>
+          </tr>
+          <% end -%>
+        </tbody>
+      </table>
+    </div>
+  <% end -%>
+
+  <% if @total_pages.to_i > 1 -%>
+    <div class="pagination">
+      <% if @page > 1 -%>
+        <a hx-get="<%= url_for('/jobs/_processes', nav.merge(page: @page - 1)) %>"
+           hx-target="#processes-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner"
+           class="btn">&#x2190; Prev</a>
+      <% else -%>
+        <span class="btn btn-disabled">&#x2190; Prev</span>
+      <% end -%>
+
+      <% pages(@page, @total_pages).each do |p| -%>
+        <% if p == :gap -%>
+          <span class="pagination-gap">&hellip;</span>
+        <% elsif p == @page -%>
+          <span class="btn btn-primary btn-disabled"><%= p %></span>
+        <% else -%>
+          <a hx-get="<%= url_for('/jobs/_processes', nav.merge(page: p)) %>"
+             hx-target="#processes-poller"
+             hx-swap="outerHTML"
+             hx-indicator="#global-spinner"
+             class="btn"><%= p %></a>
+        <% end -%>
+      <% end -%>
+
+      <% if @page < @total_pages -%>
+        <a hx-get="<%= url_for('/jobs/_processes', nav.merge(page: @page + 1)) %>"
+           hx-target="#processes-poller"
+           hx-swap="outerHTML"
+           hx-indicator="#global-spinner"
+           class="btn">Next &#x2192;</a>
+      <% else -%>
+        <span class="btn btn-disabled">Next &#x2192;</span>
+      <% end -%>
+    </div>
+  <% end -%>
+</div>

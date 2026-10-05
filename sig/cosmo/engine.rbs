@@ -9,6 +9,7 @@ module Cosmo
     @quiet: untyped
     @processors: Array[Processor]
     @http_server: HTTPServer?
+    @heartbeat: Heartbeat?
 
     def self.run: (*untyped) -> void
 
@@ -16,11 +17,19 @@ module Cosmo
 
     def self.instance: () -> Engine
 
+    attr_reader concurrency: Integer
+
     def initialize: () -> void
 
     def run: (::String? type, Hash[Symbol, untyped] options) -> void
 
     def running?: () -> bool
+
+    def state: () -> ::String
+
+    def busy: () -> Integer
+
+    def subscriptions: () -> Hash[Symbol, Array[::String]]
 
     def shutdown: () -> void
 

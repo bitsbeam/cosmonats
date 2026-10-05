@@ -14,7 +14,11 @@ module Cosmo
       @instance ||= new
     end
 
+    # @return [Array<String>, nil] the arguments the process was started with, before parsing consumed them
+    attr_reader :argv
+
     def run
+      @argv = ARGV.dup
       flags, command, options = parse
       return run_setup(flags) if flags[:setup]
 

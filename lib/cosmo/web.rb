@@ -39,6 +39,7 @@ module Cosmo
                  in [:get,    "/jobs/_scheduled"]       then [Controllers::Jobs,    :_scheduled]
                  in [:get,    "/jobs/_dead"]            then [Controllers::Jobs,    :_dead]
                  in [:get,    "/jobs/_busy"]            then [Controllers::Jobs,    :_busy]
+                 in [:get,    "/jobs/_processes"]       then [Controllers::Jobs,    :_processes]
                  in [:get,    "/jobs/_enqueued"]        then [Controllers::Jobs,    :_enqueued]
                  in [:get,    "/streams"]               then [Controllers::Streams, :index]
                  in [:get,    "/streams/info"]          then [Controllers::Streams, :info]

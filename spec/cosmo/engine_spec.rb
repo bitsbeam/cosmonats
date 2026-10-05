@@ -3,6 +3,7 @@
 RSpec.describe Cosmo::Engine do
   let(:pool) { instance_double(Cosmo::Utils::ThreadPool) }
   let(:running) { Concurrent::AtomicBoolean.new }
+  let(:heartbeat) { instance_double(Cosmo::Heartbeat, beat: nil).tap { allow(_1).to receive(:start).and_return(_1) } }
 
   before do
     allow(Cosmo::Config).to receive(:fetch).with(:concurrency, 1).and_return(2)
@@ -10,6 +11,7 @@ RSpec.describe Cosmo::Engine do
     allow(Cosmo::Utils::ThreadPool).to receive(:new).and_return(pool)
     allow(pool).to receive(:shutdown)
     allow(pool).to receive(:wait_for_termination)
+    allow(Cosmo::Heartbeat).to receive(:new).and_return(heartbeat)
   end
 
   describe ".instance" do
@@ -96,6 +98,25 @@ RSpec.describe Cosmo::Engine do
         expect(http_server).to receive(:start).and_return(http_server)
         expect { engine.run("jobs", {}) }.to output(anything).to_stdout
       end
+    end
+
+    it "starts the heartbeat with the command options" do
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      expect(Cosmo::Heartbeat).to receive(:new).with(engine, options: { streams: ["default"] }).and_return(heartbeat)
+      expect(heartbeat).to receive(:start).and_return(heartbeat)
+      expect { engine.run("jobs", { streams: ["default"] }) }.to output(anything).to_stdout
+    end
+
+    it "does not start the heartbeat when no processors are running" do
+      expect(Cosmo::Heartbeat).not_to receive(:new)
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
+    end
+
+    it "beats right away when quiet mode changes" do
+      allow_any_instance_of(Concurrent::AtomicBoolean).to receive(:false?).and_return(false)
+      allow(signal_handler).to receive(:wait).and_return("TSTP", "CONT", "TERM")
+      expect(heartbeat).to receive(:beat).twice
+      expect { engine.run("jobs", {}) }.to output(anything).to_stdout
     end
 
     it "does not start the HTTP server without a port" do
@@ -208,11 +229,56 @@ RSpec.describe Cosmo::Engine do
       engine.shutdown
     end
 
+    it "reports stopping, then unregisters the heartbeat once the pool drains" do
+      heartbeat = instance_double(Cosmo::Heartbeat)
+      engine.instance_variable_set(:@heartbeat, heartbeat)
+      expect(heartbeat).to(receive(:beat).ordered { expect(engine.state).to eq("stopping") })
+      expect(pool).to receive(:wait_for_termination).ordered
+      expect(heartbeat).to receive(:stop).ordered
+      engine.shutdown
+    end
+
     it "stops the HTTP server" do
       http_server = instance_double(Cosmo::HTTPServer)
       engine.instance_variable_set(:@http_server, http_server)
       expect(http_server).to receive(:stop)
       engine.shutdown
+    end
+  end
+
+  describe "#state" do
+    let(:engine) { described_class.new }
+
+    it "is stopping until processors are running" do
+      expect(engine.state).to eq("stopping")
+    end
+
+    it "is running, or quiet while no new work is fetched" do
+      engine.instance_variable_get(:@running).make_true
+      expect(engine.state).to eq("running")
+
+      engine.instance_variable_get(:@quiet).make_true
+      expect(engine.state).to eq("quiet")
+    end
+  end
+
+  describe "#busy" do
+    let(:engine) { described_class.new }
+
+    it "sums the threads processing messages across processors" do
+      engine.instance_variable_set(:@processors, [instance_double(Cosmo::Job::Processor, busy: 2), instance_double(Cosmo::Stream::Processor, busy: 1)])
+      expect(engine.busy).to eq(3)
+    end
+  end
+
+  describe "#subscriptions" do
+    let(:engine) { described_class.new }
+
+    it "keys each running processor's subscriptions by its type" do
+      job_processor = Cosmo::Job::Processor.allocate
+      allow(job_processor).to receive(:subscriptions).and_return(%w[default scheduled])
+      engine.instance_variable_set(:@processors, [job_processor])
+      expect(engine.subscriptions).to eq(jobs: %w[default scheduled])
     end
   end
 end

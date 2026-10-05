@@ -11,6 +11,7 @@ module Cosmo
     @consumers: Array[untyped]
     @threads: Array[Thread]
     @cache: Utils::TTLCache
+    @busy: untyped
     @options: Hash[Symbol, untyped]
     @consumer_state: untyped
 
@@ -23,6 +24,8 @@ module Cosmo
     def initialize: (Utils::ThreadPool pool, untyped running, Hash[Symbol, untyped] options, quiet: untyped) -> void
 
     def run: () -> void
+
+    def busy: () -> Integer
 
     def stop: (?::Integer | ::Float timeout) -> void
 
@@ -43,6 +46,8 @@ module Cosmo
     def fetch_timeout: (Hash[Symbol, untyped] config) -> Float
 
     def fetch_subjects: (Hash[Symbol, untyped] config) -> untyped
+
+    def track_busy: [T] () { () -> T } -> T
 
     def running?: () -> bool
 

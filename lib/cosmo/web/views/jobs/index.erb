@@ -8,5 +8,11 @@
   </div>
 
   <div id="content">
+    <div id="processes-poller"
+         hx-get="<%= url_for('/jobs/_processes') %>"
+         hx-trigger="load"
+         hx-swap="outerHTML">
+      <div class="alert alert-info">Loading processes&hellip;</div>
+    </div>
   </div>
 </section>

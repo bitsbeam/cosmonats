@@ -34,6 +34,9 @@ CLI → Engine → ThreadPool
   Sidekiq, it ships **no authentication** — wrap it with your own (Devise `authenticate` / route constraints when
   mounted, `Rack::Auth::Basic` standalone). Unlike Sidekiq, it also has **no CSRF protection** yet, while exposing
   destructive routes (retry/delete dead jobs, pause streams, delete/run crons).
+- **`Cosmo::Heartbeat`** (`lib/cosmo/heartbeat.rb`) — started by `Engine#run`; every 10s writes this process's
+  details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `cosmo_processes`
+  KV bucket via `API::Processes`. Unregisters on graceful shutdown; a crashed process expires by the bucket's 60s TTL.
 - **`Cosmo::Batch`** (`lib/cosmo/batch.rb`) — groups jobs and fires a `:success`/`:complete` callback when the group
   finishes; state lives in `API::Counter` counters plus a TTL'd KV bucket. Nested batches are created with
   `Batch.new(parent: bid)`.
@@ -164,7 +167,7 @@ docker compose up nats
 ---
 
 ## Singleton Pattern
-`Client`, `Config`, `Engine`, `Publisher`, `CLI`, `Job::Limit`, `API::Counter`, `API::Busy`, `API::Cron` all use
+`Client`, `Config`, `Engine`, `Publisher`, `CLI`, `Job::Limit`, `API::Counter`, `API::Busy`, `API::Processes`, `API::Cron` all use
 `@instance ||= new`. Reset between tests if needed by clearing `@instance` via `instance_variable_set`.
 
 ---

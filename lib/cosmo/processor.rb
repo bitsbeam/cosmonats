@@ -27,6 +27,7 @@ module Cosmo
       @threads = []
       @consumers = []
       @cache = Utils::TTLCache.new
+      @busy = Concurrent::AtomicFixnum.new
     end
 
     def run
@@ -35,6 +36,13 @@ module Cosmo
 
       @running.make_true
       run_loop
+    end
+
+    # Threads processing fetched messages right now; threads waiting on a fetch don't count.
+    #
+    # @return [Integer]
+    def busy
+      @busy.value
     end
 
     def stop(timeout = Config[:timeout])
@@ -98,7 +106,7 @@ module Cosmo
               Logger.trace "fetched (#{messages&.size.to_i}) messages"
               if messages&.any?
                 consumer_state.delete(stream_name)
-                process(messages, processor)
+                track_busy { process(messages, processor) }
               else
                 max_backoff = Utils::Duration.parse(ENV.fetch("COSMO_STREAM_EMPTY_BACKOFF_MAX", STREAM_EMPTY_BACKOFF_MAX))
                 consumer_state.compute(stream_name) do |(count, wake_at)|
@@ -143,6 +151,13 @@ module Cosmo
 
     def process(...)
       raise NotImplementedError
+    end
+
+    def track_busy
+      @busy.increment
+      yield
+    ensure
+      @busy.decrement
     end
 
     def running?

@@ -89,6 +89,28 @@ RSpec.describe Cosmo::Processor do
       expect(fetches.value).to be >= 3
       expect(processor.send(:consumer_state)["default"].first).to eq(fetches.value / 3)
     end
+
+    it "counts threads processing messages as busy, but not threads waiting on a fetch" do
+      release = Concurrent::Event.new
+      delivered = Concurrent::AtomicBoolean.new
+      allow(processor).to receive(:fetch) do
+        sleep 0.05
+        [double("message")] if delivered.make_true
+      end
+      allow(processor).to receive(:process) { release.wait(2) }
+
+      running.make_true
+      loop_thread = Thread.new { processor.send(:work_loop) }
+      wait_until(timeout: 2) { processor.busy == 1 }
+      sleep 0.1
+      expect(processor.busy).to eq(1)
+
+      release.set
+      wait_until(timeout: 2) { processor.busy.zero? }
+    ensure
+      running.make_false
+      loop_thread&.join(1)
+    end
   end
 
   describe "#fetch_messages" do

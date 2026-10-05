@@ -81,6 +81,14 @@ module Cosmo
           ok render("jobs/_busy", { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages:, polling: })
         end
 
+        def _processes
+          processes = API::Processes.instance
+          total = processes.size
+          page, limit, total_pages = paginate(total, API::Processes::LIMIT)
+          polling = params["poll"].to_s != "0"
+          ok render("jobs/_processes", { processes: processes.list(page:, limit:), total:, page:, limit:, total_pages:, polling: })
+        end
+
         def _enqueued # rubocop:disable Metrics/AbcSize
           stream_name, stream_names = streams
           limit = (params["limit"] || API::Stream::LIMIT).to_i

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Processes page in the Web UI listing every live worker with its host, IP, command line, subscriptions,
+  busy threads, and state, fed by a heartbeat into the `cosmo_processes` KV bucket
 - `Cosmo::Client` names its NATS connection (`cosmo-<program>-<host>-<pid>`), so a process can be
   identified in `nats server report connections` / `/connz` without cross-referencing host IPs.
   Override with `COSMO_CLIENT_NAME`
