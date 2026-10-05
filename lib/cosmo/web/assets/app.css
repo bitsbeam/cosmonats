@@ -494,6 +494,7 @@ time {
   word-wrap: break-word;
 }
 .error-message details code {
+  max-width: 600px;
   max-height: 320px;
   overflow: auto;
   white-space: pre;

@@ -32,10 +32,10 @@
                 </details>
               </div>
             </td>
-            <td>
+            <td style="white-space: nowrap;">
               <% if job.x_stream -%><code><%= h(job.x_stream) %></code><% else -%><span class="text-muted">&mdash;</span><% end -%>
             </td>
-            <td style="max-width: 400px;">
+            <td style="min-width: 420px;">
               <% if job.error? -%>
               <div class="error-message">
                 <strong><%= h(job.error_class.to_s.empty? ? "Error" : job.error_class) %></strong>
@@ -55,7 +55,12 @@
               <% end -%>
             </td>
             <td style="white-space: nowrap;">
-              <time><%= h(job.timestamp) %></time>
+              <% if (failed_at = job.stored_at) -%>
+              <time datetime="<%= h(job.timestamp) %>" title="<%= h(job.timestamp) %>"><%= h(format_timestamp(failed_at)) %></time>
+              <div class="text-muted" style="font-size: var(--font-size-small);"><%= elapsed(failed_at) %> ago</div>
+              <% else -%>
+              <span class="text-muted">&mdash;</span>
+              <% end -%>
             </td>
             <td style="white-space: nowrap;">
               <a hx-patch="<%= url_for("/jobs/retry/#{job.seq}") %>"

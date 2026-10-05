@@ -36,6 +36,8 @@ module Cosmo
       def stream: () -> ::String
 
       def timestamp: () -> ::String?
+
+      def stored_at: () -> ::Time?
     end
   end
 end

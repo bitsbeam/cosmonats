@@ -73,6 +73,17 @@ RSpec.describe Cosmo::API::Job do
     end
   end
 
+  describe "#stored_at" do
+    it "parses the Nats-Time-Stamp header" do
+      expect(job.stored_at).to eq(Time.utc(2023, 11, 14, 22, 13, 20))
+    end
+
+    it "is nil when the header is not a timestamp" do
+      allow(message).to receive(:headers).and_return({ "Nats-Time-Stamp" => "garbage" })
+      expect(job.stored_at).to be_nil
+    end
+  end
+
   describe "error details" do
     let(:headers) do
       { "X-Error-Class" => "Timeout::Error", "X-Error-Message" => "execution expired", "X-Error-Backtrace" => "a.rb:1 | b.rb:2" }

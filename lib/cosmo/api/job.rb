@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "time"
+
 module Cosmo
   module API
     class Job
@@ -61,6 +63,13 @@ module Cosmo
 
       def timestamp
         headers&.dig("Nats-Time-Stamp")
+      end
+
+      # @return [Time, nil] when the message was stored in its stream, parsed from +Nats-Time-Stamp+
+      def stored_at
+        Time.iso8601(timestamp) if timestamp
+      rescue ::ArgumentError
+        nil
       end
     end
   end

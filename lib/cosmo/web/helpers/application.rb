@@ -49,8 +49,10 @@ module Cosmo
             "#{elapsed}s"
           elsif elapsed < 3600
             "#{elapsed / 60}m #{elapsed % 60}s"
-          else
+          elsif elapsed < 86_400
             "#{elapsed / 3600}h #{(elapsed % 3600) / 60}m"
+          else
+            "#{elapsed / 86_400}d #{(elapsed % 86_400) / 3600}h"
           end
         end
 
