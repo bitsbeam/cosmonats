@@ -9,7 +9,7 @@
 
   <div id="content">
     <div id="processes-poller"
-         hx-get="<%= url_for('/jobs/_processes') %>"
+         hx-get="<%= url_for('/jobs/_processes', (@processes_query unless @processes_query.empty?)) %>"
          hx-trigger="load"
          hx-swap="outerHTML">
       <div class="alert alert-info">Loading processes&hellip;</div>

@@ -26,4 +26,9 @@ RSpec.describe Cosmo::Web, "processes table" do
     expect(groups).to eq([["Jobs", "1"], ["Streams", "2"], ["Jobs &amp; Streams", "1"]])
     expect(rows).to eq(%w[b:2 a:1 d:4 c:3])
   end
+
+  it "loads the table with the page and limit the jobs page was opened with" do
+    expect(get("/jobs?limit=10&page=2").body).to include('hx-get="/jobs/_processes?page=2&limit=10"')
+    expect(get("/jobs?limit=x%22%3E&page=-1").body).to include('hx-get="/jobs/_processes"')
+  end
 end

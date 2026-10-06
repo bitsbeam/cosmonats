@@ -8,7 +8,8 @@ module Cosmo
       class Jobs < Application
         def index
           content_for :title, "Jobs"
-          ok render("jobs/index", layout: true)
+          processes_query = params.slice("page", "limit").transform_values(&:to_i).select { _2.positive? }
+          ok render("jobs/index", { processes_query: }, layout: true)
         end
 
         def busy
