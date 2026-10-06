@@ -102,3 +102,14 @@ RSpec.describe "NATS::JetStream::PullSubscription#fetch patch" do
     expect(messages.map(&:data)).to eq(["late-but-real"])
   end
 end
+
+RSpec.describe "nats-pure struct patches" do
+  it "leaves structs alone once they already carry the patched fields" do
+    stream_config = NATS::JetStream::API::StreamConfig
+    pub_ack = NATS::JetStream::PubAck
+
+    expect { load File.expand_path("../../../lib/cosmo/utils/overrides.rb", __dir__) }.not_to raise_error
+    expect(NATS::JetStream::API::StreamConfig).to equal(stream_config)
+    expect(NATS::JetStream::PubAck).to equal(pub_ack)
+  end
+end

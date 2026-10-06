@@ -1,20 +1,24 @@
 # frozen_string_literal: true
 
 Cosmo::Utils::Warnings.silence do
-  members = NATS::JetStream::API::StreamConfig.members + %i[allow_msg_counter allow_msg_schedules]
-  NATS::JetStream::API::StreamConfig = Struct.new(*members, keyword_init: true) do
-    def initialize(opts = {})
-      rem = opts.keys - members
-      opts.delete_if { |k| rem.include?(k) }
-      super
+  unless NATS::JetStream::API::StreamConfig.members.include?(:allow_msg_schedules)
+    members = NATS::JetStream::API::StreamConfig.members + %i[allow_msg_counter allow_msg_schedules]
+    NATS::JetStream::API::StreamConfig = Struct.new(*members, keyword_init: true) do
+      def initialize(opts = {})
+        rem = opts.keys - members
+        opts.delete_if { |k| rem.include?(k) }
+        super
+      end
     end
   end
 
-  members = NATS::JetStream::PubAck.members + [:val]
-  NATS::JetStream::PubAck = Struct.new(*members, keyword_init: true)
+  unless NATS::JetStream::PubAck.members.include?(:val)
+    members = NATS::JetStream::PubAck.members + [:val]
+    NATS::JetStream::PubAck = Struct.new(*members, keyword_init: true)
+  end
 end
 
-# Upstream bug in nats-pure 2.5.0 (https://github.com/nats-io/nats.rb):
+# Upstream bug in nats-pure 2.5.0 and 2.6.0 (https://github.com/nats-io/nats-pure.rb):
 # NATS::JetStream::PullSubscription#fetch only assigns its `start_time` local in the
 # `batch > 1` branch, but the final "did we time out" check outside the case statement
 # reads it unconditionally. For `batch == 1` (what Cosmo::Processor always uses),
@@ -44,7 +48,9 @@ end
 #
 # Vendored copy of nats-pure's PullSubscription#fetch, kept as close to
 # upstream as possible (two one-line fixes, see comments above), so it's easy to diff against the
-# next nats-pure release and drop once fixed there.
+# next nats-pure release and drop once fixed there. Fixed on nats-pure main by the fetch rewrite
+# (#181), recognized by its private #take_pending, in which case this copy is not loaded.
+return if NATS::JetStream.const_get(:PullSubscription).private_method_defined?(:take_pending)
 
 # rubocop:disable all
 module NATS
