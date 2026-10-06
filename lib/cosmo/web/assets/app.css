@@ -439,6 +439,15 @@ td {
 tr:last-child td { border-bottom: none; }
 tr:hover         { background: var(--color-table-bg-alt); }
 
+tr.group-row td,
+tr.group-row:hover { background: var(--color-table-bg-alt); }
+tr.group-row td {
+  color: var(--color-text-light);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  padding: var(--space) var(--space-2x);
+}
+
 /* ── Subjects ──────────────────────────────────────────────────────────── */
 .subjects { display: flex; flex-wrap: wrap; gap: var(--space-1-2); }
 
@@ -539,6 +548,15 @@ details summary {
 details summary code { display: inline; user-select: text; }
 details[open] summary { margin-bottom: var(--space); }
 details code { display: block; max-width: 400px; white-space: pre-wrap; }
+details summary:has(> code.truncate) { white-space: nowrap; }
+details summary code.truncate {
+  display: inline-block;
+  max-width: 32ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
 
 /* ── HTMX ──────────────────────────────────────────────────────────────── */
 .htmx-indicator { opacity: 0; transition: opacity 200ms; }

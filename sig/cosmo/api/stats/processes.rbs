@@ -4,6 +4,9 @@ module Cosmo
       class Processes < Registry
         TTL: ::Integer
         BUCKET: ::String
+        KINDS: Array[::String]
+
+        def self.kind: (Hash[Symbol, untyped] process) -> ::String
 
         def list: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
 

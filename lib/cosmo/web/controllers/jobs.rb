@@ -86,7 +86,8 @@ module Cosmo
           total = processes.size
           page, limit, total_pages = paginate(total, API::Stats::Processes::LIMIT)
           polling = params["poll"].to_s != "0"
-          ok render("jobs/_processes", { processes: processes.list(page:, limit:), total:, page:, limit:, total_pages:, polling: })
+          groups = processes.list(page:, limit:).chunk { API::Stats::Processes.kind(_1) }.to_a
+          ok render("jobs/_processes", { groups:, total:, page:, limit:, total_pages:, polling: })
         end
 
         def _enqueued # rubocop:disable Metrics/AbcSize

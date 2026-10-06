@@ -1,5 +1,6 @@
 <% nav = @polling ? { limit: @limit } : { limit: @limit, poll: 0 } -%>
 <% states = { "running" => "badge-success", "quiet" => "badge-warning", "stopping" => "badge-danger" } -%>
+<% kinds = { "jobs" => "Jobs", "streams" => "Streams", "jobs+streams" => "Jobs & Streams", "none" => "No subscriptions" } -%>
 <div id="processes-poller"
      <% if @polling -%>
      hx-get="<%= url_for('/jobs/_processes', page: @page, limit: @limit) %>"
@@ -27,7 +28,7 @@
     </span>
   </div>
 
-  <% if @processes.empty? -%>
+  <% if @groups.empty? -%>
     <div class="alert alert-warning">No worker processes are running</div>
   <% else -%>
     <div class="table-container">
@@ -47,44 +48,57 @@
           </tr>
         </thead>
         <tbody>
-          <% @processes.each do |process| -%>
-          <% nats = Hash(process[:nats]) -%>
-          <tr>
-            <td>
-              <div class="job-class"><%= h(process[:hostname]) %>:<%= h(process[:pid]) %></div>
-              <div class="text-muted" style="font-size: var(--font-size-small);">
-                <%= h(nats[:ip] || "unknown IP") %>
-                <% if nats[:name] -%>&middot; <code><%= h(nats[:name]) %></code><% end -%>
-              </div>
-            </td>
-            <td>
-              <% cmdline = process[:cmdline].to_s -%>
-              <div class="job-id">
-                <details>
-                  <summary>
-                    <code><%= h(cmdline.length > 40 ? "#{cmdline[0, 40]}…" : cmdline) %></code>
-                  </summary>
-                  <code style="font-size: var(--font-size-small);"><%= h(cmdline) %></code>
+          <% @groups.each do |kind, group| -%>
+            <tr class="group-row">
+              <td colspan="10"><%= h(kinds.fetch(kind, kind)) %> <span class="text-muted">(<%= group.size %>)</span></td>
+            </tr>
+            <% group.each do |process| -%>
+            <% nats = Hash(process[:nats]) -%>
+            <tr>
+              <td>
+                <div class="job-class"><%= h(process[:hostname]) %>:<%= h(process[:pid]) %></div>
+                <div class="text-muted" style="font-size: var(--font-size-small);">
+                  <%= h(nats[:ip] || "unknown IP") %>
+                  <% if nats[:name] -%>&middot; <code><%= h(nats[:name]) %></code><% end -%>
+                </div>
+              </td>
+              <td>
+                <% cmdline = process[:cmdline].to_s -%>
+                <div class="job-id">
+                  <% if cmdline.length > 32 -%>
+                    <details>
+                      <summary>
+                        <code class="truncate" title="<%= h(cmdline) %>"><%= h(cmdline) %></code>
+                      </summary>
+                      <code style="font-size: var(--font-size-small);"><%= h(cmdline) %></code>
+                    </details>
+                  <% else -%>
+                    <code style="font-size: var(--font-size-small);"><%= h(cmdline) %></code>
+                  <% end -%>
                   <div class="text-muted" style="font-size: var(--font-size-small);">
                     cosmo <%= h(process[:version]) %> &middot; <%= h(process[:ruby]) %>
                     <% if process[:http_port] -%>&middot; http :<%= h(process[:http_port]) %><% end -%>
                   </div>
-                </details>
-              </div>
-            </td>
-            <td>
-              <% Hash(process[:subscriptions]).each do |type, names| -%>
-                <div><span class="text-muted"><%= h(type) %>:</span> <code><%= h(Array(names).join(", ")) %></code></div>
-              <% end -%>
-            </td>
-            <td><%= h(process[:busy]) %> / <%= h(process[:concurrency]) %></td>
-            <td><span class="badge <%= states.fetch(process[:state].to_s, 'badge-info') %>"><%= h(process[:state]) %></span></td>
-            <td><%= nats[:rtt] ? "#{h(nats[:rtt])}ms" : '&mdash;' %></td>
-            <td><%= h(nats[:reconnects].to_i) %></td>
-            <td><%= process[:rss] ? format_bytes(process[:rss].to_i * 1024) : '&mdash;' %></td>
-            <td><%= elapsed(process[:started_at]) %></td>
-            <td><%= elapsed(process[:beat_at]) %> ago</td>
-          </tr>
+                </div>
+              </td>
+              <td>
+                <% Hash(process[:subscriptions]).each do |type, names| -%>
+                  <% next if Array(names).empty? -%>
+                  <div>
+                    <% if kind == "jobs+streams" -%><span class="text-muted"><%= h(type) %>:</span><% end -%>
+                    <code><%= h(Array(names).join(", ")) %></code>
+                  </div>
+                <% end -%>
+              </td>
+              <td><%= h(process[:busy]) %> / <%= h(process[:concurrency]) %></td>
+              <td><span class="badge <%= states.fetch(process[:state].to_s, 'badge-info') %>"><%= h(process[:state]) %></span></td>
+              <td><%= nats[:rtt] ? "#{h(nats[:rtt])}ms" : '&mdash;' %></td>
+              <td><%= h(nats[:reconnects].to_i) %></td>
+              <td><%= process[:rss] ? format_bytes(process[:rss].to_i * 1024) : '&mdash;' %></td>
+              <td><%= elapsed(process[:started_at]) %></td>
+              <td><%= elapsed(process[:beat_at]) %> ago</td>
+            </tr>
+            <% end -%>
           <% end -%>
         </tbody>
       </table>

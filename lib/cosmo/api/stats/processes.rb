@@ -7,16 +7,26 @@ module Cosmo
       class Processes < Registry
         TTL = 60
         BUCKET = "cosmo_processes"
+        KINDS = %w[jobs streams jobs+streams none].freeze
 
-        # Sorted by host and pid before paging: every heartbeat rewrites an entry, so the bucket's own
-        # order shifts constantly and would move processes between pages.
+        # Which processors a process is pulling for, judged by its non-empty subscriptions.
+        #
+        # @param process [Hash]
+        # @return [String] one of {KINDS}
+        def self.kind(process)
+          types = Hash(process[:subscriptions]).reject { |_, names| Array(names).empty? }.keys.map(&:to_s).sort
+          types.empty? ? "none" : types.join("+")
+        end
+
+        # Sorted by kind, host and pid before paging: every heartbeat rewrites an entry, so the bucket's own
+        # order shifts constantly and would move processes between pages, and each kind stays contiguous.
         #
         # @param page [Integer, nil]
         # @param limit [Integer]
         # @return [Array<Hash>]
         def list(page: nil, limit: LIMIT)
           offset = ([page.to_i, 1].max - 1) * limit
-          all.sort_by { [_1[:hostname].to_s, _1[:pid].to_i] }.slice(offset, limit).to_a
+          all.sort_by { [KINDS.index(self.class.kind(_1)) || KINDS.size, _1[:hostname].to_s, _1[:pid].to_i] }.slice(offset, limit).to_a
         end
 
         # @param identity [String] a unique process id, e.g. +hostname-pid+
