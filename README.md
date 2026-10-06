@@ -166,7 +166,7 @@ nothing else to run.
 gem "cosmonats"
 ```
 
-**Requirements:** Ruby ≥ 3.1, NATS Server ([install guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
+**Requirements:** Ruby ≥ 3.1, NATS Server ≥ 2.14 with JetStream enabled ([install guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
 
 **Optional gems** — not installed with `cosmonats`, add them only for the features you use:
 
@@ -206,6 +206,26 @@ mount Cosmo::Web => "/cosmo"
 
 # Any Rack app (config.ru)
 map "/cosmo" { run Cosmo::Web }
+```
+
+> [!WARNING]
+> `Cosmo::Web` ships with **no authentication and no CSRF protection**, yet it exposes destructive actions
+> (retrying and deleting jobs, pausing streams, running and deleting crons). Never expose it unprotected.
+
+```ruby
+# Rails, with Devise
+authenticate :user, ->(user) { user.admin? } do
+  mount Cosmo::Web => "/cosmo"
+end
+
+# Any Rack app (config.ru), with HTTP Basic auth
+map "/cosmo" do
+  use Rack::Auth::Basic, "Cosmo" do |user, password|
+    Rack::Utils.secure_compare(user, ENV.fetch("COSMO_WEB_USER")) &
+      Rack::Utils.secure_compare(password, ENV.fetch("COSMO_WEB_PASSWORD"))
+  end
+  run Cosmo::Web
+end
 ```
 
 
@@ -292,6 +312,16 @@ ReportJob.perform_in(30.minutes, 42)                     # Delayed
 ReportJob.perform_at(Time.parse("2026-01-25 10:00"), 42) # Scheduled
 ReportJob.perform_sync(42)                               # Inline, no NATS (great for tests)
 ```
+
+Inside `perform`, the job instance knows about the message it came from:
+
+| Accessor       | Value                                                                                   |
+|----------------|-----------------------------------------------------------------------------------------|
+| `jid`          | Job id, returned by `perform_async`                                                     |
+| `attempt`      | 1-based delivery attempt                                                                |
+| `enqueued_at`  | `Time` the job was enqueued; for a cron job, when NATS fired the schedule               |
+| `scheduled_by` | Subject of the cron schedule that fired the job, `nil` for jobs enqueued any other way  |
+| `batch_id`     | Id of the [batch](#batches) the job belongs to, `nil` outside a batch                   |
 
 ### Streams
 
@@ -425,11 +455,17 @@ Cosmo::Config.set(:setup, :streams, :custom, { storage: "file", subjects: ["cust
 ```
 
 **Environment variables:**
-```bash
-export NATS_URL=nats://localhost:4222
-export COSMO_JOBS_FETCH_TIMEOUT=0.1
-export COSMO_STREAMS_FETCH_TIMEOUT=0.1
-```
+
+| Variable                   | Default                              | Description                                                                         |
+|----------------------------|--------------------------------------|-------------------------------------------------------------------------------------|
+| `NATS_URL`                 | `nats://localhost:4222`              | NATS server(s) to connect to                                                        |
+| `COSMO_LOG_LEVEL`          | `info`                               | `trace`, `debug`, `info`, `warn`, `error` or `fatal`                                |
+| `COSMO_CLIENT_NAME`        | `cosmo-<program>-<host>-<pid>`       | NATS connection name, shown in `nats server report connections` and `/connz`        |
+| `COSMO_JS_TIMEOUT`         | `5`                                  | JetStream API timeout in seconds; raise it for the web UI on a busy server          |
+| `COSMO_CONNECT_TIMEOUT`    | `2`                                  | NATS TCP connect timeout in seconds                                                 |
+| `COSMO_JOBS_STREAMS`       | all configured                       | Comma-separated job streams to subscribe to, when `--streams`/`--stream` isn't given |
+| `COSMO_JOBS_FETCH_TIMEOUT` | `0.1`                                | Seconds a jobs worker waits on each fetch                                           |
+| `COSMO_WEB_POLL_INTERVAL`  | `5`                                  | Web UI auto-refresh interval in seconds                                             |
 
 
 ## 🔧 Advanced Usage
@@ -684,6 +720,7 @@ The `scheduled` stream is a service stream: it is always dispatched, and naming 
 | `-c, --concurrency INT` | Worker threads                        | `-c 20`               |
 | `-r, --require PATH`    | Auto-require directory                | `-r ./app/jobs`       |
 | `-t, --timeout NUM`     | Shutdown timeout (sec)                | `-t 60`               |
+| `-p, --http-port INT`   | Serve `/health` and `/ping` on a port | `-p 9090`             |
 | `-S, --setup`           | Setup streams & sync cron, then exit  | `--setup`             |
 | `-v, --version`         | Print version and exit                | `--version`           |
 | `-h, --help`            | Show help and exit                    | `--help`               |
@@ -709,6 +746,23 @@ The `scheduled` stream is a service stream: it is always dispatched, and naming 
 | `--consumer_name NAME`   | Consumer name                        | `--consumer_name orders-consumer` |
 | `--batch_size NUM`       | Messages per fetch batch             | `--batch_size 50`               |
 
+
+### Signals
+
+| Signal           | Effect                                                                                     |
+|------------------|--------------------------------------------------------------------------------------------|
+| `INT`, `TERM`    | Graceful shutdown: stop fetching, wait up to `--timeout` seconds for in-flight work, exit  |
+| `TSTP`           | Quiet: stop fetching new work, keep running in-flight work                                 |
+| `CONT`           | Resume fetching after `TSTP`                                                               |
+| `USR1`           | Quiet, then exit once in-flight work drains                                                |
+| `TTIN`           | Log every thread's backtrace at `WARN`, tagged with the same `tid` as regular log lines     |
+
+```bash
+kill -TSTP <pid>  # before a deploy: let the old worker finish what it has
+kill -TTIN <pid>  # a worker looks stuck: see what each thread is doing
+```
+
+The worker's state (`running`, `quiet`, `stopping`) is shown on the web UI's Processes list.
 
 ### Health check
 
