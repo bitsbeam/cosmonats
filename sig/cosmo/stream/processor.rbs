@@ -13,6 +13,8 @@ module Cosmo
 
       def fetch_subjects: (Hash[Symbol, untyped] config) -> untyped
 
+      def backoff_key: (Hash[Symbol, untyped] config) -> String
+
       def fetch_timeout: (Hash[Symbol, untyped] config) -> Float
 
       def static_config: -> Array[Hash[Symbol, untyped]]

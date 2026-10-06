@@ -60,5 +60,7 @@ module Cosmo
     def stopwatch: () -> Utils::Stopwatch
 
     def consumer_state: () -> untyped
+
+    def backoff_key: (Hash[Symbol, untyped] config) -> String
   end
 end

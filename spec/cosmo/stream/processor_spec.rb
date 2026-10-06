@@ -514,4 +514,43 @@ RSpec.describe Cosmo::Stream::Processor do
       expect(results).not_to include("broken")
     end
   end
+
+  describe "#work_loop" do
+    let(:idle) { double("idle subscription") }
+    let(:busy) { double("busy subscription") }
+    let(:busy_fetches) { Concurrent::AtomicFixnum.new }
+
+    before do
+      ENV["COSMO_STREAM_EMPTY_BACKOFF_MAX"] = "5"
+      allow(Cosmo::API::Stream).to receive(:new).and_return(instance_double(Cosmo::API::Stream, paused?: false))
+      allow(processor).to receive_messages(
+        consumers: [
+          [idle, { stream: :shared, consumer_name: "idle", batch_size: 1, fetch_timeout: 0.05 }, nil],
+          [busy, { stream: :shared, consumer_name: "busy", batch_size: 1, fetch_timeout: 0.05 }, nil]
+        ],
+        fetch_subjects: "shared.>"
+      )
+      allow(processor).to receive(:fetch) do |subscription, **|
+        next sleep(0.05) && nil if subscription == idle
+
+        busy_fetches.increment
+        [double("message")]
+      end
+      allow(processor).to receive(:process) { sleep 0.01 }
+    end
+
+    after { pool.shutdown }
+
+    it "keeps fetching a busy consumer while another consumer on the same stream backs off" do
+      running.make_true
+      loop_thread = Thread.new { processor.send(:work_loop) }
+      sleep 0.5
+      running.make_false
+      loop_thread.join(1)
+      pool.wait_idle
+
+      expect(processor.send(:consumer_state).keys).to eq(["idle"])
+      expect(busy_fetches.value).to be > 10
+    end
+  end
 end

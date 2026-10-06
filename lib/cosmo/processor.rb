@@ -86,9 +86,10 @@ module Cosmo
           end
           all_paused = false
 
-          _, skip_t = consumer_state[stream_name]
+          key = backoff_key(config)
+          _, skip_t = consumer_state[key]
           if skip_t && Time.now < skip_t
-            Logger.trace "stream #{stream_name} is empty, backing off"
+            Logger.trace "#{key} is empty, backing off"
             next
           end
           all_empty = false
@@ -96,7 +97,7 @@ module Cosmo
           begin
             @pool.post do
               # Re-check, after possibly being blocked on post to thread pool
-              _, skip_t = consumer_state[stream_name]
+              _, skip_t = consumer_state[key]
               next if skip_t && Time.now < skip_t
 
               timeout = fetch_timeout(config)
@@ -105,11 +106,11 @@ module Cosmo
               messages = fetch(subscription, batch_size: config[:batch_size], timeout:)
               Logger.trace "fetched (#{messages&.size.to_i}) messages"
               if messages&.any?
-                consumer_state.delete(stream_name)
+                consumer_state.delete(key)
                 track_busy { process(messages, processor) }
               else
                 max_backoff = Utils::Duration.parse(ENV.fetch("COSMO_STREAM_EMPTY_BACKOFF_MAX", STREAM_EMPTY_BACKOFF_MAX))
-                consumer_state.compute(stream_name) do |(count, wake_at)|
+                consumer_state.compute(key) do |(count, wake_at)|
                   next [count, wake_at] if wake_at && wake_at > started_at
 
                   count = count.to_i + 1
@@ -195,6 +196,10 @@ module Cosmo
 
     def consumer_state
       @consumer_state ||= Concurrent::Map.new
+    end
+
+    def backoff_key(config)
+      config[:stream].to_s
     end
   end
 end

@@ -70,6 +70,10 @@ module Cosmo
         config.dig(:consumer, :subjects)
       end
 
+      def backoff_key(config)
+        config[:consumer_name] || config[:class].name
+      end
+
       def fetch_timeout(config)
         timeout = config[:fetch_timeout].to_f
         if timeout <= 0
