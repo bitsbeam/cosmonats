@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] - 2026-10-06
 
 ### Added
 
@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DELETE /jobs/enqueued/<seq>?stream_name=<stream>`, which drops that message from the stream
 - `kill -TTIN <pid>` logs every thread's backtrace at WARN, tagged with the same `tid` as regular log
   lines, so a stuck worker can be diagnosed without restarting it
+- `kill -TSTP <pid>` quiets a worker (no new jobs are fetched, in-flight work finishes) and `kill -CONT <pid>`
+  resumes it; `kill -USR1 <pid>` quiets it and exits once in-flight work drains
+- Jobs workers can pick their streams with `--streams a,b` / `--stream a` or `COSMO_JOBS_STREAMS`; unknown names
+  abort before boot. `--no-scheduler` keeps a worker off scheduled dispatch, so it fires no delayed jobs or crons
+- `Cosmo::HTTPServer`: `-p/--http-port` (or `http.port`) serves `GET /health` (200 when the engine runs and NATS
+  is connected, 503 otherwise) and `GET /ping` (liveness)
+- `Cosmo::Batch.new(bid:)` takes your own batch id instead of a generated one
+- The busy jobs page is paginated, shows each job's delivery attempt, and can stop live polling
 
 ### Changed
 
@@ -29,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dashboard stats live under `API::Stats` on top of base classes: `API::Busy` is now `API::Stats::Busy`,
   and `API::Counter.instance`/`#with` moved to `API::Stats::Totals`
 - nats-pure is capped below 2.7, and Cosmo's nats-pure patches skip themselves where nats-pure already has the fix
+- `rack`, `rackup` and `webrick` are no longer runtime dependencies: add `rack` to your Gemfile for the web UI,
+  and `rack`, `rackup` and `webrick` for `Cosmo::HTTPServer`
 
 ### Fixed
 
@@ -38,6 +48,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A cron job's `enqueued_at` is the time NATS fired the schedule again, not the time the scheduler
   dispatched it on. The firing's timestamp is forwarded as `X-Enqueued-At` across the re-publish, so a
   job that derives anything from `enqueued_at` is unaffected by a backlogged or restarted worker
+- Dead jobs record the exception class, message and backtrace, so the web UI's Error column is no longer empty.
+  The dead jobs page shows the stream a job came from and keeps expanded errors open
+- `API::KV#size` stopped at 25 keys, so the web UI showed at most 25 busy jobs
+- The dashboard's Scheduled count included cron templates, which the scheduled jobs page doesn't list
+- The scheduler dropped a job's headers when dispatching it from the scheduled stream
+- Several idle threads polling the same stream advanced its fetch backoff once each per round, reaching the
+  maximum backoff after a few rounds; it now advances once per round
+- `Message#nack` in stream processors raised `NoMethodError`; it is now an alias of nats-pure's `nak`
+- JSON parsing works with json 3
 
 ## [0.6.0] - 2026-08-07
 
@@ -228,6 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release: background jobs and stream processing for Ruby, backed by NATS JetStream.
 
+[0.7.0]: https://github.com/bitsbeam/cosmonats/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bitsbeam/cosmonats/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/bitsbeam/cosmonats/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/bitsbeam/cosmonats/compare/v0.4.3...v0.5.0
