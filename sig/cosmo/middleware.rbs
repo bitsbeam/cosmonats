@@ -1,0 +1,15 @@
+module Cosmo
+  module Middleware
+    class Busy
+      def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
+    end
+
+    class Totals
+      def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
+
+      private
+
+      def increment: (Symbol key) -> void
+    end
+  end
+end

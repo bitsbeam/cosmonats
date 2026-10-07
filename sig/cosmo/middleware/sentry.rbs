@@ -1,0 +1,13 @@
+module Cosmo
+  module Middleware
+    class Sentry
+      NAME_PREFIX: ::String
+      OP_NAME: ::String
+      SPAN_ORIGIN: ::String
+      STATUS_OK: ::Integer
+      STATUS_FAIL: ::Integer
+
+      def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
+    end
+  end
+end

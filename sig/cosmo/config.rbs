@@ -30,9 +30,14 @@ module Cosmo
 
     def self.load: (?::String? path) -> void
 
+    def self.server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
+
+    @server_middleware: Middleware::Chain
 
     def set: (*untyped) -> untyped
 
     def load: (?::String? path) -> void
+
+    def server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
   end
 end

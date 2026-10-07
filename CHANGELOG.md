@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `Cosmo.configure` with `config.server_middleware`: a middleware chain around every job execution
+
+### Changed
+
+- The Web UI's Failed total counts every failed execution, retries included, instead of only jobs that gave up
+- Sentry is the `Cosmo::Middleware::Sentry` middleware: `require "cosmo/middleware/sentry"` and add it to the chain;
+  `cosmo/sentry/auto` and `Cosmo::Sentry::JobProcessorMiddleware` are removed
+
 ## [0.7.0] - 2026-10-06
 
 ### Added

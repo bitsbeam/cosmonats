@@ -32,6 +32,7 @@ module Cosmo
         API::Stats::Busy.instance
         API::Stats::Totals.instance
         Limit.instance
+        Config.server_middleware
 
         jobs_config = Config.dig(:consumers, :jobs)
         jobs_config&.each do |stream_name, config|
@@ -116,27 +117,26 @@ module Cosmo
 
         duration = worker_class.default_options[:limit]&.dig(:duration)&.to_i
 
-        with_stats(message) do
+        begin
           sw = stopwatch
           Logger.with(jid: data[:jid])
           Logger.info "start"
 
           instance = build_worker(worker_class, data, message)
-          perform_job(instance, data: data, message: message, duration: duration)
+          Config.server_middleware.invoke(instance, data, message) do
+            perform_job(instance, data: data, message: message, duration: duration)
+          end
 
           message.ack
           notify_batch(data, success: true)
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
-          true
         rescue Timeout::Error => e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[timeout]" }
-          dropped = handle_failure(worker_class, message, data, e)
-          false if dropped
+          handle_failure(worker_class, message, data, e)
         rescue StandardError => e
           Logger.debug e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[error]" }
-          dropped = handle_failure(worker_class, message, data, e)
-          false if dropped
+          handle_failure(worker_class, message, data, e)
         rescue Exception # rubocop:disable Lint/RescueException
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[exception]" }
           raise
@@ -303,12 +303,6 @@ module Cosmo
 
       def fetch_timeout(_config)
         ENV.fetch("COSMO_JOBS_FETCH_TIMEOUT", 0.1).to_f
-      end
-
-      def with_stats(message, &block)
-        API::Stats::Busy.instance.with(message) do
-          API::Stats::Totals.instance.with(&block)
-        end
       end
 
       # @param job_instance [Cosmo::Job]

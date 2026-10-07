@@ -11,7 +11,7 @@ module Cosmo
     class << self
       extend Forwardable
 
-      delegate %i[[] fetch dig to_h set load] => :instance
+      delegate %i[[] fetch dig to_h set load server_middleware] => :instance
     end
 
     def self.to_ns(seconds)
@@ -92,6 +92,28 @@ module Cosmo
       return unless path
 
       replace(self.class.parse_file(path))
+    end
+
+    # The chain every job execution runs through, starting with the built-in {Middleware::Busy} and
+    # {Middleware::Totals}. It lives outside the loaded YAML, so {#load} keeps it. Register middleware
+    # at boot, before workers start:
+    #
+    #   Cosmo.configure do |config|
+    #     config.server_middleware do |chain|
+    #       chain.add MyMiddleware
+    #       chain.remove Cosmo::Middleware::Busy
+    #     end
+    #   end
+    #
+    # @yieldparam chain [Middleware::Chain]
+    # @return [Middleware::Chain]
+    def server_middleware
+      @server_middleware ||= Middleware::Chain.new do |chain|
+        chain.add Middleware::Busy
+        chain.add Middleware::Totals
+      end
+      yield @server_middleware if block_given?
+      @server_middleware
     end
   end
 end

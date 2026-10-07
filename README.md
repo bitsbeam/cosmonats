@@ -77,6 +77,7 @@ bundle exec cosmo -C config/cosmo.yml -c 20 streams # Streams only
   - [Concurrency Limiting](#concurrency-limiting)
   - [Custom Serializers](#custom-serializers)
   - [Error Handling](#error-handling)
+  - [Middleware](#middleware)
   - [Testing](#testing)
   - [Integrations](#integrations)
 - [CLI Reference](#-cli-reference)
@@ -648,6 +649,38 @@ If the proc returns something non-numeric/non-positive, or raises, the default b
 instead. Note: if this job class also sets `limit: { concurrency: ... }` (see above), `count`
 includes deliveries that were turned away for lack of a free slot, not just failed attempts.
 
+### Middleware
+
+Every job execution on a worker runs through the server middleware chain. A middleware gets the
+job instance, its parsed payload, and the NATS message, and yields to run the rest of the chain:
+```ruby
+class TimingMiddleware
+  def initialize(threshold:)
+    @threshold = threshold
+  end
+
+  def call(job, data, message)
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    yield
+  ensure
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+    job.logger.warn("#{data[:class]} took #{elapsed.round(2)}s on #{message.metadata.stream}") if elapsed > @threshold
+  end
+end
+
+Cosmo.configure do |config|
+  config.server_middleware do |chain|
+    chain.add TimingMiddleware, threshold: 5
+  end
+end
+```
+Register middleware at boot, before workers start (e.g. in a Rails initializer; loading `cosmo.yml` afterwards keeps
+it). The chain starts with the built-in `Cosmo::Middleware::Busy`
+(the Web UI's Busy page) and `Cosmo::Middleware::Totals` (processed/failed counts, one per execution);
+`add` appends innermost, and `prepend`, `insert_before`, `insert_after`, and `remove` reorder it.
+A middleware that raises sends the job through the usual retry/DLQ path, and one that doesn't yield skips the job
+and acks it. A fresh instance is built for every job. `perform_sync` doesn't run the chain.
+
 ### Testing
 
 ```ruby
@@ -687,11 +720,15 @@ ActiveJob::Base.queue_adapter = Cosmo::ActiveJobAdapter::Adapter.new
 
 **Sentry:**
 ```ruby
-require "cosmo/sentry/auto"
+require "cosmo/middleware/sentry"
+
+Cosmo.configure do |config|
+  config.server_middleware { |c| c.add Cosmo::Middleware::Sentry }
+end
 ```
-Wraps every job execution in a Sentry transaction (`queue.cosmonats`) and captures unhandled
-exceptions with the job's id, stream, subject, and retry count attached as context — no other
-setup beyond having `sentry-ruby` initialized.
+A [middleware](#middleware) that wraps every job execution in a Sentry transaction (`queue.cosmonats`)
+and captures unhandled exceptions with the job's id, stream, subject, and retry count attached as
+context — no other setup beyond having `sentry-ruby` initialized.
 
 
 ## 🖥️ CLI Reference

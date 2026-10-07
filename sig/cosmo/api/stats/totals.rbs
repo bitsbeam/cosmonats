@@ -6,8 +6,6 @@ module Cosmo
 
         def self.instance: () -> Totals
 
-        def with: () { () -> bool } -> void
-
         def processed: () -> ::Integer
 
         def failed: () -> ::Integer

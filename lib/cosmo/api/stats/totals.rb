@@ -9,17 +9,6 @@ module Cosmo
           @instance ||= new("jobs")
         end
 
-        # Counts the block's outcome: +true+ is processed, +false+ or a raise is failed.
-        #
-        # @return [void]
-        def with
-          result = yield
-          increment(:processed) if result == true
-          increment(:failed) if result == false
-        rescue Exception # rubocop:disable Lint/RescueException
-          increment(:failed)
-        end
-
         # @return [Integer]
         def processed
           get(:processed)

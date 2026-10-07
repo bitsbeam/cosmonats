@@ -22,17 +22,18 @@ CLI → Engine → ThreadPool
   JetStream. URL from `NATS_URL` env (default `nats://localhost:4222`).
 - **`Cosmo::Config`** (`lib/cosmo/config.rb`) — a `Hash` subclass holding the parsed YAML. No defaults ship with the
   gem: `Config.load(path)` **replaces** the contents with that file (default `config/cosmo.yml`), so the config file
-  must be explicit and complete. Class-level `[]`, `fetch`, `dig`, `to_h`, `set`, `load` are delegated to the
-  singleton; call `Config.set(:key, value)` for programmatic overrides.
+  must be explicit and complete. Class-level `[]`, `fetch`, `dig`, `to_h`, `set`, `load`, `server_middleware` are
+  delegated to the singleton; call `Config.set(:key, value)` for programmatic overrides. `Cosmo.configure { |config| }`
+  yields the same singleton. `server_middleware` is an instance variable, not a key, so `load` keeps it.
 - **`Cosmo::Engine`** (`lib/cosmo/engine.rb`) — singleton; starts `Job::Processor` and/or `Stream::Processor` sharing
   one `Utils::ThreadPool`. Traps `INT`/`TERM` (graceful shutdown), `TSTP`/`CONT` (quiet / resume fetching), and `USR1`
   (quiet, then exit once in-flight work drains), and `TTIN` (log every thread's backtrace).
 - **`Cosmo::Publisher`** (`lib/cosmo/publisher.rb`) — singleton; serializes and publishes to NATS. Job publishing goes
   via `publish_job(data)`, stream publishing via `publish(subject, data, ...)`.
 - **`Cosmo::Web`** (`lib/cosmo/web.rb`) — Rack app for the monitoring UI (HTMX), served via `config.ru` or mounted
-  (routes match `request.path_info`, which is mount-relative, and `Renderer#url_for` prepends `script_name`). Like
-  Sidekiq, it ships **no authentication** — wrap it with your own (Devise `authenticate` / route constraints when
-  mounted, `Rack::Auth::Basic` standalone). Unlike Sidekiq, it also has **no CSRF protection** yet, while exposing
+  (routes match `request.path_info`, which is mount-relative, and `Renderer#url_for` prepends `script_name`). It
+  ships **no authentication** — wrap it with your own (Devise `authenticate` / route constraints when
+  mounted, `Rack::Auth::Basic` standalone). It also has **no CSRF protection** yet, while exposing
   destructive routes (retry/delete dead jobs, pause streams, delete/run crons).
 - **`Cosmo::Heartbeat`** (`lib/cosmo/heartbeat.rb`) — started by `Engine#run`; every 10s writes this process's
   details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `cosmo_processes`
@@ -52,15 +53,20 @@ CLI → Engine → ThreadPool
 - **`Cosmo::ActiveJobAdapter`** (`lib/cosmo/active_job/`) — `config.active_job.queue_adapter = :cosmonats`; the
   ActiveJob queue name maps to a Cosmo stream. Wired up automatically inside Rails by `Cosmo::Railtie`. See
   `docs/active_job.md`.
-- **Sentry** (`lib/cosmo/sentry/`) — `require "cosmo/sentry/auto"` prepends a module onto `Job::Processor`. There is
-  no formal middleware chain yet; `Job::Processor#perform_job(job_instance, data:, message:, duration:)` is the seam
-  to `prepend` around.
+- **Server middleware** (`Config#server_middleware`, `lib/cosmo/middleware/`) — a `Middleware::Chain`, registered via
+  `Cosmo.configure { |config| config.server_middleware { |chain| ... } }`, that `Job::Processor#process` invokes as
+  `call(job, data, message)` around `perform_job`, inside
+  the retry/DLQ rescue. It starts as `[Middleware::Busy, Middleware::Totals]`; Totals counts every execution, retries
+  included. Logging, concurrency slots, and batch notification stay hard-wired in the processor. Server-side only:
+  there is no client (publish) chain, and `perform_sync` and stream processors don't run it.
+- **Sentry** (`lib/cosmo/middleware/sentry.rb`) — `Middleware::Sentry`, not loaded by default (needs `sentry-ruby`):
+  apps `require "cosmo/middleware/sentry"` and add it to the chain themselves.
 
 ---
 
 ## Adding Jobs vs Streams
 
-**Jobs** — one-shot tasks, Sidekiq-like API:
+**Jobs** — one-shot tasks:
 ```ruby
 class MyJob
   include Cosmo::Job
@@ -186,6 +192,7 @@ docker compose up nats
 | ActiveJob adapter + Railtie | `lib/cosmo/active_job/` + `lib/cosmo/railtie.rb` |
 | Vendored nats-pure fixes | `lib/cosmo/utils/overrides.rb` |
 | Stream mixin + registration | `lib/cosmo/stream.rb` + `lib/cosmo/stream/` |
+| Server middleware chain + built-ins | `lib/cosmo/middleware.rb` + `lib/cosmo/middleware/` |
 | Engine / signal handling | `lib/cosmo/engine.rb` |
 | NATS client wrapper | `lib/cosmo/client.rb` |
 | Structured logger | `lib/cosmo/logger.rb` |

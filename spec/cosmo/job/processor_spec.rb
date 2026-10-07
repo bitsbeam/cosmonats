@@ -615,18 +615,86 @@ RSpec.describe Cosmo::Job::Processor do
     end
   end
 
-  context "with Sentry integration" do
-    let(:processor_class) do
-      stub_const("Cosmo::Job::SentryProcessor", Class.new(Cosmo::Job::Processor) do
-        prepend Cosmo::Sentry::JobProcessorMiddleware
+  context "with server middleware" do
+    let(:tracer) do
+      Class.new do
+        def initialize(tag) = @tag = tag
+
+        def call(job, data, message)
+          Results.instance << [@tag, job.class.name, data[:jid] == job.jid, message.metadata.stream]
+          yield
+        end
+      end
+    end
+
+    before do
+      stub_const("GreeterJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(name) = Results.instance << name
+      end)
+      stub_const("FailingJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 1, dead: true
+
+        def perform(...) = raise "intentional failure"
       end)
     end
-    let(:processor) { processor_class.new(pool, running, {}, quiet: quiet) }
+
+    it "runs every registered middleware around perform, outermost first" do
+      Cosmo.configure do |config|
+        config.server_middleware do |chain|
+          chain.add(Class.new(tracer), :outer)
+          chain.add(Class.new(tracer), :inner)
+        end
+      end
+
+      GreeterJob.perform_async("Alice")
+      wait_until(timeout: 5) { results.include?("Alice") }
+
+      expect(results).to eq([[:outer, "GreeterJob", true, "default"], [:inner, "GreeterJob", true, "default"], "Alice"])
+    end
+
+    it "acks the job without performing it when a middleware does not yield" do
+      Cosmo::Config.server_middleware.add(Class.new { def call(*) = Results.instance << :skipped })
+
+      GreeterJob.perform_async("Alice")
+      wait_until(timeout: 5) { results.include?(:skipped) && stream_size("default").zero? }
+
+      expect(results).to eq([:skipped])
+      expect(stream_size("dead")).to eq(0)
+    end
+
+    it "dead-letters the job when a middleware raises" do
+      Cosmo::Config.server_middleware.add(Class.new { def call(*) = raise("middleware failure") })
+
+      GreeterJob.perform_async("Alice")
+      wait_until(timeout: 5) { stream_size("dead") >= 1 }
+
+      expect(results).to be_empty
+      expect(Cosmo::API::Stream.new("dead").messages.first.error_message).to eq("middleware failure")
+    end
+
+    it "counts every execution in the processed and failed totals" do
+      allow(processor).to receive(:default_retry_delay).and_return(0.1)
+
+      GreeterJob.perform_async("Alice")
+      FailingJob.perform_async("Bob")
+      wait_until(timeout: 10) { stream_size("dead") >= 1 && Cosmo::API::Stats.failed == 2 }
+
+      expect(Cosmo::API::Stats.processed).to eq(1)
+    end
+  end
+
+  context "with Sentry integration" do
     let(:transport) { Sentry.get_current_client.transport }
 
     before(:all) do
       require "sentry-ruby"
-      require "cosmo/sentry/job_processor_middleware"
+      require "cosmo/middleware/sentry"
 
       Sentry.init do |config|
         config.dsn = "http://12345:67890@sentry.localdomain/sentry/42"
@@ -638,6 +706,7 @@ RSpec.describe Cosmo::Job::Processor do
 
     before do
       transport.events.clear
+      Cosmo::Config.server_middleware.add(Cosmo::Middleware::Sentry)
 
       stub_const("GreeterJob", Class.new do
         include Cosmo::Job

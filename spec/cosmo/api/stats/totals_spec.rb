@@ -12,21 +12,12 @@ RSpec.describe Cosmo::API::Stats::Totals do
     end
   end
 
-  describe "#with" do
-    it "counts a block returning true as processed" do
-      counter.with { true }
-      expect(counter.processed).to eq(1)
-      expect(counter.failed).to eq(0)
-    end
+  describe "#processed and #failed" do
+    it "reads each counter independently" do
+      2.times { counter.increment(:processed) }
+      counter.increment(:failed)
 
-    it "counts a block returning false as failed" do
-      counter.with { false }
-      expect(counter.failed).to eq(1)
-      expect(counter.processed).to eq(0)
-    end
-
-    it "counts a raising block as failed without re-raising" do
-      expect { counter.with { raise "boom" } }.not_to raise_error
+      expect(counter.processed).to eq(2)
       expect(counter.failed).to eq(1)
     end
   end

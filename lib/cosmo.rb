@@ -14,6 +14,7 @@ require "cosmo/cli"
 require "cosmo/heartbeat"
 require "cosmo/engine"
 require "cosmo/api"
+require "cosmo/middleware"
 require "cosmo/railtie" if defined?(Rails::Railtie)
 
 module Cosmo
@@ -21,6 +22,18 @@ module Cosmo
   autoload :Web, "cosmo/web"
   # Optional, requires rack and webrick gems. Loaded only when an HTTP port is configured.
   autoload :HTTPServer, "cosmo/http_server"
+
+  # Programmatic setup, typically from an initializer:
+  #
+  #   Cosmo.configure do |config|
+  #     config.server_middleware { |c| c.add MyMiddleware }
+  #   end
+  #
+  # @yieldparam config [Config] the {Config} singleton
+  # @return [void]
+  def self.configure
+    yield Config.instance
+  end
 
   class Error < StandardError; end
 

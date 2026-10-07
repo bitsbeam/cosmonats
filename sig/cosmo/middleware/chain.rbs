@@ -1,0 +1,51 @@
+module Cosmo
+  module Middleware
+    class Chain
+      include Enumerable[Entry]
+
+      class Entry
+        attr_accessor klass: Class
+        attr_accessor args: Array[untyped]
+        attr_accessor kwargs: Hash[Symbol, untyped]
+
+        def self.new: (Class klass, Array[untyped] args, Hash[Symbol, untyped] kwargs) -> Entry
+
+        def build: () -> untyped
+      end
+
+      @entries: Array[Entry]
+
+      def initialize: () ?{ (Chain chain) -> void } -> void
+
+      def each: () { (Entry entry) -> void } -> Array[Entry]
+
+      def add: (Class klass, *untyped args, **untyped kwargs) -> Chain
+
+      def prepend: (Class klass, *untyped args, **untyped kwargs) -> Chain
+
+      def insert_before: (Class existing, Class klass, *untyped args, **untyped kwargs) -> Chain
+
+      def insert_after: (Class existing, Class klass, *untyped args, **untyped kwargs) -> Chain
+
+      def remove: (Class klass) -> Chain
+
+      def exists?: (Class klass) -> bool
+
+      alias include? exists?
+
+      def empty?: () -> bool
+
+      def clear: () -> Chain
+
+      def invoke: (*untyped args) { () -> untyped } -> untyped
+
+      private
+
+      def traverse: (Array[untyped] chain, Integer position, Array[untyped] args) { () -> untyped } -> untyped
+
+      def index: (Class klass) -> Integer?
+
+      def take: (Class klass, Array[untyped] args, Hash[Symbol, untyped] kwargs) -> Entry
+    end
+  end
+end

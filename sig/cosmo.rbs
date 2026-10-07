@@ -1,6 +1,8 @@
 module Cosmo
   VERSION: ::String
 
+  def self.configure: () { (Config config) -> void } -> void
+
   class Error < StandardError
   end
 
