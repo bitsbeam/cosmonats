@@ -163,6 +163,7 @@ docker compose up nats
   streams between tests.
 - `RSpec.shared_context "Global helpers"` is included globally; gives `client` and `destroy_streams` helpers.
 - Use `perform_sync` to test job logic without NATS.
+- Never write specs for the web UI (`lib/cosmo/web/`: controllers, views, assets); verify UI changes by running it.
 
 ---
 
