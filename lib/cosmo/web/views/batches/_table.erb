@@ -8,7 +8,9 @@
           <th>Batch</th>
           <th>Parent</th>
           <th>Status</th>
+          <th>Progress</th>
           <th>Total</th>
+          <th>Pending</th>
           <th>Succeeded</th>
           <th>Failed</th>
           <th>Created</th>
@@ -17,6 +19,7 @@
       <tbody>
         <% @batches.each do |b| -%>
           <% stats = b.stats -%>
+          <% total = stats[:total].to_i -%>
           <tr>
             <td><code><%= h(b.bid) %></code></td>
             <td>
@@ -35,7 +38,15 @@
                 <span class="badge badge-success">Success</span>
               <% end -%>
             </td>
+            <td>
+              <% if total.positive? -%>
+                <%= ((total - stats[:pending].to_i) * 100 / total).clamp(0, 100) %>%
+              <% else -%>
+                <span class="text-muted">&mdash;</span>
+              <% end -%>
+            </td>
             <td><%= format_numbers(stats[:total]) %></td>
+            <td><%= format_numbers(stats[:pending]) %></td>
             <td><%= format_numbers(stats[:succeeded]) %></td>
             <td><%= format_numbers(stats[:failed]) %></td>
             <td><%= format_timestamp(b.created_at) %></td>
