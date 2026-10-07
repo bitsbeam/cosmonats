@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `Cosmo.configure` with `config.server_middleware`: a middleware chain around every job execution
+- `config.logger = ...` and `config.log_level = ...` in `Cosmo.configure`; a logger without `trace` no longer raises
 
 ### Changed
 

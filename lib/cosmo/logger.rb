@@ -61,7 +61,12 @@ module Cosmo
     class << self
       extend Forwardable
 
-      delegate %i[info error debug warn fatal trace] => :instance
+      delegate %i[info error debug warn fatal] => :instance
+    end
+
+    # Dropped when the logger has no TRACE level (a plain +::Logger+), rather than flooding its DEBUG.
+    def self.trace(...)
+      instance.trace(...) if instance.respond_to?(:trace)
     end
 
     def self.with(...)
@@ -84,8 +89,17 @@ module Cosmo
     end
     private_class_method :coerce_level
 
+    # @param logger [::Logger] any stdlib-compatible logger. Its formatter is left alone, so context such as
+    #   +jid+ and +elapsed+ is only printed when it uses {SimpleFormatter}.
     def self.instance=(logger)
       @instance = logger
+    end
+
+    # +COSMO_LOG_LEVEL+, when set, wins over +level+.
+    #
+    # @param level [Symbol, String, Integer] +:trace+, +:debug+, +:info+, +:warn+, +:error+, or +:fatal+
+    def self.level=(level)
+      instance.level = coerce_level(ENV.fetch("COSMO_LOG_LEVEL", level))
     end
   end
 end

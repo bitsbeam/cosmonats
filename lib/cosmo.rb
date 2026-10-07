@@ -26,6 +26,8 @@ module Cosmo
   # Programmatic setup, typically from an initializer:
   #
   #   Cosmo.configure do |config|
+  #     config.logger = Rails.logger
+  #     config.log_level = :debug
   #     config.server_middleware { |c| c.add MyMiddleware }
   #   end
   #

@@ -39,5 +39,11 @@ module Cosmo
     def load: (?::String? path) -> void
 
     def server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
+
+    def logger: () -> untyped
+
+    def logger=: (untyped logger) -> void
+
+    def log_level=: (Symbol | ::String | Integer level) -> void
   end
 end

@@ -175,6 +175,65 @@ RSpec.describe Cosmo::Config do
     end
   end
 
+  describe "#logger and #log_level" do
+    let(:output) { StringIO.new }
+
+    around do |example|
+      original = Cosmo::Logger.instance
+      example.run
+    ensure
+      Cosmo::Logger.instance = original
+    end
+
+    it "sends Cosmo's logging to the configured logger" do
+      logger = Logger.new(output)
+      Cosmo.configure { |config| config.logger = logger }
+
+      Cosmo::Logger.info "hello"
+
+      expect(described_class.instance.logger).to be(logger)
+      expect(output.string).to include("hello")
+    end
+
+    it "drops trace lines when the configured logger has no trace level" do
+      Cosmo.configure do |config|
+        config.logger = Logger.new(output)
+        config.log_level = :debug
+      end
+
+      expect { Cosmo::Logger.trace "polling" }.not_to raise_error
+      expect(output.string).to be_empty
+    end
+
+    it "accepts the trace level for Cosmo's own logger" do
+      Cosmo.configure do |config|
+        config.logger = Cosmo::Logger::Instance.new(output)
+        config.log_level = :trace
+      end
+
+      Cosmo::Logger.trace "polling"
+
+      expect(output.string).to include("TRACE", "polling")
+    end
+
+    it "lets COSMO_LOG_LEVEL win over the configured level" do
+      previous = ENV.fetch("COSMO_LOG_LEVEL", nil)
+      ENV["COSMO_LOG_LEVEL"] = "warn"
+      Cosmo.configure do |config|
+        config.logger = Cosmo::Logger::Instance.new(output)
+        config.log_level = :debug
+      end
+
+      Cosmo::Logger.info "ignored"
+      Cosmo::Logger.warn "kept"
+
+      expect(output.string).not_to include("ignored")
+      expect(output.string).to include("kept")
+    ensure
+      ENV["COSMO_LOG_LEVEL"] = previous
+    end
+  end
+
   describe "#server_middleware" do
     let(:custom) { Class.new }
 

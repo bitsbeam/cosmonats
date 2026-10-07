@@ -45,5 +45,9 @@ module Cosmo
     def self.without: (*Symbol) -> nil
 
     def self.instance: () -> untyped
+
+    def self.instance=: (untyped logger) -> void
+
+    def self.level=: (Symbol | ::String | Integer level) -> void
   end
 end

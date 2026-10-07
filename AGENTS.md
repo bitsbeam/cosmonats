@@ -25,6 +25,8 @@ CLI → Engine → ThreadPool
   must be explicit and complete. Class-level `[]`, `fetch`, `dig`, `to_h`, `set`, `load`, `server_middleware` are
   delegated to the singleton; call `Config.set(:key, value)` for programmatic overrides. `Cosmo.configure { |config| }`
   yields the same singleton. `server_middleware` is an instance variable, not a key, so `load` keeps it.
+  `config.logger=` / `config.log_level=` wrap `Logger.instance=` / `Logger.level=`; `Logger.trace` is a no-op for
+  loggers without `trace`, and `Logger::Context` tags are only printed by `Logger::SimpleFormatter`.
 - **`Cosmo::Engine`** (`lib/cosmo/engine.rb`) — singleton; starts `Job::Processor` and/or `Stream::Processor` sharing
   one `Utils::ThreadPool`. Traps `INT`/`TERM` (graceful shutdown), `TSTP`/`CONT` (quiet / resume fetching), and `USR1`
   (quiet, then exit once in-flight work drains), and `TTIN` (log every thread's backtrace).

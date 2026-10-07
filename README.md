@@ -453,7 +453,14 @@ production:
 ```ruby
 Cosmo::Config.set(:concurrency, 20)
 Cosmo::Config.set(:setup, :streams, :custom, { storage: "file", subjects: ["custom.>"] })
+
+Cosmo.configure do |config|
+  config.logger = Rails.logger # any ::Logger; defaults to stdout
+  config.log_level = :debug    # COSMO_LOG_LEVEL, when set, wins
+end
 ```
+Cosmo leaves a custom logger's formatter alone, so its lines lack Cosmo's `jid`/`elapsed` context unless you set
+`logger.formatter = Cosmo::Logger::SimpleFormatter.new`. Trace output is dropped for loggers without a `trace` level.
 
 **Environment variables:**
 

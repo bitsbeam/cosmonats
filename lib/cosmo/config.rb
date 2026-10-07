@@ -94,6 +94,26 @@ module Cosmo
       replace(self.class.parse_file(path))
     end
 
+    # @return [::Logger] the logger Cosmo writes to, see {Logger.instance}
+    def logger
+      Logger.instance
+    end
+
+    # Replaces Cosmo's stdout logger, e.g. with +Rails.logger+. Give it +Cosmo::Logger::SimpleFormatter.new+ to keep
+    # Cosmo's +jid+/+elapsed+ context in each line.
+    #
+    # @param logger [::Logger]
+    def logger=(logger)
+      Logger.instance = logger
+    end
+
+    # Ignored when +COSMO_LOG_LEVEL+ is set, which always wins.
+    #
+    # @param level [Symbol, String, Integer] +:trace+, +:debug+, +:info+, +:warn+, +:error+, or +:fatal+
+    def log_level=(level)
+      Logger.level = level
+    end
+
     # The chain every job execution runs through, starting with the built-in {Middleware::Busy} and
     # {Middleware::Totals}. It lives outside the loaded YAML, so {#load} keeps it. Register middleware
     # at boot, before workers start:
