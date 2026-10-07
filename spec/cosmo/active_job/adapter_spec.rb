@@ -163,31 +163,40 @@ RSpec.describe Cosmo::ActiveJobAdapter do
 
     let(:job) { TestActiveJob.new }
 
-    describe "#enqueue" do
-      it "publishes a Cosmo job with the correct stream and no :at" do
-        expect(Cosmo::Publisher).to receive(:publish_job) do |data|
-          args    = data.to_args
-          payload = Cosmo::Utils::Json.parse(args[1])
-          expect(payload[:class]).to eq("Cosmo::ActiveJobAdapter::Executor")
-          expect(payload[:args].first).to include(job_id: job.job_id)
-          expect(args[2][:stream]).to eq(:default)
-        end.and_return("jid-1")
+    before do
+      Cosmo::Config.load("spec/support/cosmo.yml")
+      create_streams(Cosmo::Config.dig(:setup, :jobs))
+    end
 
-        adapter.enqueue(job)
+    def published(stream)
+      message = client.get_message(stream.to_s, seq: 1)
+      [Cosmo::Utils::Json.parse(message.data), message.headers]
+    end
+
+    describe "#enqueue" do
+      it "publishes an Executor job carrying the serialized ActiveJob to the queue's stream" do
+        jid = adapter.enqueue(job)
+
+        payload, = published(:default)
+        expect(payload).to include(jid: jid, class: "Cosmo::ActiveJobAdapter::Executor")
+        expect(payload[:args].first).to include(job_id: job.job_id)
+      end
+
+      it "does not join a Cosmo batch that is open around it" do
+        Cosmo::Batch.new.jobs { adapter.enqueue(job) }
+
+        payload, = published(:default)
+        expect(payload).not_to have_key(:batch_id)
       end
 
       context "when the job includes Options with cosmo_options" do
         let(:job) { CriticalJob.new }
 
         it "applies retry and dead from cosmo_options" do
-          expect(Cosmo::Publisher).to receive(:publish_job) do |data|
-            payload = Cosmo::Utils::Json.parse(data.to_args[1])
-            expect(payload[:retry]).to eq(5)
-            expect(payload[:dead]).to eq(false)
-            expect(data.to_args[2][:stream]).to eq(:critical)
-          end.and_return("jid-4")
-
           adapter.enqueue(job)
+
+          payload, = published(:critical)
+          expect(payload).to include(retry: 5, dead: false)
         end
       end
 
@@ -195,46 +204,39 @@ RSpec.describe Cosmo::ActiveJobAdapter do
         let(:job) { NoRetryJob.new }
 
         it "publishes retry: 0 in the payload" do
-          expect(Cosmo::Publisher).to receive(:publish_job) do |data|
-            payload = Cosmo::Utils::Json.parse(data.to_args[1])
-            expect(payload[:retry]).to eq(0)
-          end.and_return("jid-no-retry")
-
           adapter.enqueue(job)
+
+          payload, = published(:default)
+          expect(payload[:retry]).to eq(0)
         end
       end
 
       context "when cosmo_options includes stream:" do
         before do
-          CriticalJob.cosmo_options stream: :jobs_critical
+          CriticalJob.cosmo_options stream: :high
         end
 
         after do
-          # Reset to original
           CriticalJob.instance_variable_set(:@cosmo_options, { retry: 5, dead: false })
         end
 
         it "uses the stream from cosmo_options instead of queue_name" do
-          expect(Cosmo::Publisher).to receive(:publish_job) do |data|
-            expect(data.to_args[2][:stream]).to eq(:jobs_critical)
-          end.and_return("jid-5")
-
           adapter.enqueue(CriticalJob.new)
+
+          expect(stream_size(:high)).to eq(1)
+          expect(stream_size(:critical)).to eq(0)
         end
       end
     end
 
     describe "#enqueue_at" do
       it "publishes a scheduled Cosmo job" do
-        timestamp = Time.now.to_f + 60
-
-        expect(Cosmo::Publisher).to receive(:publish_job) do |data|
-          args = data.to_args
-          expect(args[2][:stream]).to eq(:scheduled)
-          expect(args[2][:header]).to include("X-Execute-At")
-        end.and_return("jid-2")
+        timestamp = Time.now.to_i + 60
 
         adapter.enqueue_at(job, timestamp)
+
+        _, headers = published(:scheduled)
+        expect(headers).to include("X-Execute-At" => timestamp.to_s, "X-Stream" => "default")
       end
     end
   end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "cosmo/job/data"
+require "cosmo/job/enqueuer"
 require "cosmo/job/failure"
 require "cosmo/job/stream_filter"
 require "cosmo/job/limit"
@@ -96,30 +97,14 @@ module Cosmo
       end
 
       def perform(*args, async: true, **options)
-        batch = Batch.current if async
-        options[:batch_id] = batch.bid if batch
-        data = Data.new(name, args, default_options.merge(options))
-        unless async
-          payload = Utils::Json.parse(data.to_args[1])
-          raise ArgumentError, "Cannot parse payload" unless payload
+        options = default_options.merge(options)
+        return Enqueuer.enqueue(name, args, options, batch: Batch.current) if async
 
-          new.perform(*payload[:args])
-          return
-        end
+        payload = Utils::Json.parse(Data.new(name, args, options).to_json)
+        raise ArgumentError, "Cannot parse payload" unless payload
 
-        publish(data, batch)
-      end
-
-      # The batch is reserved a pending slot before we know the publish will
-      # succeed (must happen in that order -- see Batch#jobs). Roll it back
-      # if it never actually made it onto the stream, so the batch doesn't
-      # hang waiting for a completion that will never arrive.
-      def publish(data, batch)
-        batch&.register_job!
-        Publisher.publish_job(data)
-      rescue StandardError
-        batch&.rollback_job!
-        raise
+        new.perform(*payload[:args])
+        nil
       end
 
       def perform_async(*args)

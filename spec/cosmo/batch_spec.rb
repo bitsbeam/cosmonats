@@ -132,12 +132,14 @@ RSpec.describe Cosmo::Batch do
   end
 
   it "rolls back the pending count when a job never actually publishes" do
-    call_count = 0
-    allow(Cosmo::Publisher).to receive(:publish_job).and_wrap_original do |original, data|
-      call_count += 1
-      raise Cosmo::StreamNotFoundError, "no such stream" if call_count == 1
+    failed = false
+    allow(Cosmo::Client.instance).to receive(:publish).and_wrap_original do |original, subject, *args, **options|
+      if subject.start_with?("jobs.") && !failed
+        failed = true
+        raise NATS::JetStream::Error::NoStreamResponse
+      end
 
-      original.call(data)
+      original.call(subject, *args, **options)
     end
 
     batch = described_class.new

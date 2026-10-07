@@ -4,18 +4,10 @@ module Cosmo
 
     def self.instance: () -> Publisher
 
-    def self.publish: (::String subject, untyped data, ?serializer: Module?, **untyped options) -> bool
-
-    def self.publish_job: (Job::Data data) -> ::String
-
-    def self.publish_batch: (::String subject, Array[untyped] batch, **untyped options) -> void
+    def self.publish: (::String subject, untyped data, ?serializer: Module?, **untyped options) -> untyped
 
     def initialize: () -> void
 
     def publish: (::String subject, untyped data, ?serializer: Module?, **untyped options) -> untyped
-
-    def publish_job: (Job::Data data) -> ::String
-
-    def publish_batch: (::String subject, Array[untyped] batch, **untyped options) -> void
   end
 end

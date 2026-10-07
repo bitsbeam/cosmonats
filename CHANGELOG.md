@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The Web UI's Failed total counts every failed execution, retries included, instead of only jobs that gave up
+- Jobs are enqueued through `Cosmo::Job::Enqueuer.enqueue`; `Publisher.publish_job`, `Publisher.publish_batch`, and
+  `Job::Data#to_args` are removed, and `Job::Data#subject` returns the subject as a string
 - Sentry is the `Cosmo::Middleware::Sentry` middleware: `require "cosmo/middleware/sentry"` and add it to the chain;
   `cosmo/sentry/auto` and `Cosmo::Sentry::JobProcessorMiddleware` are removed
 

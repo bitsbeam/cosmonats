@@ -17,15 +17,17 @@ module Cosmo
 
       def stream: (?target: bool) -> Symbol
 
-      def subject: (?target: bool) -> Array[::String]
+      def subject: () -> ::String
+
+      def headers: () -> Hash[::String, untyped]
 
       def as_json: () -> { jid: ::String, class: ::String, args: Array[untyped], retry: Integer, dead: bool }
 
       def to_json: (*untyped _args) -> ::String?
 
-      def to_args: () -> [::String, ::String, Hash[Symbol, untyped]]
-
       private
+
+      def subject_for: (Symbol | ::String stream) -> ::String
 
       def validate!: () -> void
 

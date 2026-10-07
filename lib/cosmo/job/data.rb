@@ -36,8 +36,19 @@ module Cosmo
         @at ? :scheduled : @options[:stream]
       end
 
-      def subject(target: false)
-        ["jobs", stream(target:).to_s, Utils::String.underscore(@class_name)]
+      # @return [String] the subject the job is published to: the custom +subject:+ option, or the one derived
+      #   from its stream and class
+      def subject
+        @subject || subject_for(stream)
+      end
+
+      # @return [Hash{String => String, Integer}] dedup id, plus where to dispatch a delayed job once it is due
+      def headers
+        headers = { "Nats-Msg-Id" => jid }
+        return headers unless @at
+
+        target = stream(target: true)
+        headers.merge("X-Execute-At" => @at.to_i, "X-Stream" => target, "X-Subject" => subject_for(target))
       end
 
       def as_json
@@ -49,17 +60,11 @@ module Cosmo
         Utils::Json.dump(as_json)
       end
 
-      def to_args
-        headers = { "Nats-Msg-Id" => jid }
-        if @at
-          headers.merge!("X-Execute-At" => @at.to_i,
-                         "X-Stream" => stream(target: true),
-                         "X-Subject" => subject(target: true).join("."))
-        end
-        [@subject || subject.join("."), to_json, { stream: stream, header: headers }]
-      end
-
       private
+
+      def subject_for(stream)
+        "jobs.#{stream}.#{Utils::String.underscore(@class_name)}"
+      end
 
       def validate!
         raise ArgumentError, "stream is not provided" unless @options[:stream]

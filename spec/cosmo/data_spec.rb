@@ -12,8 +12,31 @@ RSpec.describe Cosmo::Job::Data do
     expect(data.stream).to eq("default")
   end
 
-  it "#subject" do
-    expect(data.subject).to eq(%w[jobs default my_job])
+  describe "#subject" do
+    it "derives the subject from the stream and class" do
+      expect(data.subject).to eq("jobs.default.my_job")
+    end
+
+    it "prefers the subject option" do
+      expect(described_class.new("MyJob", "args", stream: "default", subject: "custom.subject").subject).to eq("custom.subject")
+    end
+
+    it "targets the scheduled stream for a delayed job" do
+      expect(described_class.new("MyJob", "args", stream: "default", in: 60).subject).to eq("jobs.scheduled.my_job")
+    end
+  end
+
+  describe "#headers" do
+    it "carries the jid as the dedup id" do
+      expect(data.headers).to eq("Nats-Msg-Id" => data.jid)
+    end
+
+    it "tells the scheduler where to dispatch a delayed job" do
+      data = described_class.new("MyJob", "args", stream: "default", at: 1_700_000_000)
+
+      expect(data.headers).to eq("Nats-Msg-Id" => data.jid, "X-Execute-At" => 1_700_000_000,
+                                 "X-Stream" => "default", "X-Subject" => "jobs.default.my_job")
+    end
   end
 
   describe "#as_json" do
@@ -42,13 +65,5 @@ RSpec.describe Cosmo::Job::Data do
     allow(data).to receive(:jid).and_return("jid")
 
     expect(data.to_json).to eq(%({"jid":"jid","class":"MyJob","args":"args","retry":3,"dead":true}))
-  end
-
-  it "#to_args" do
-    allow(data).to receive(:jid).and_return("jid")
-
-    expect(data.to_args).to eq(["jobs.default.my_job",
-                                %({"jid":"jid","class":"MyJob","args":"args","retry":3,"dead":true}),
-                                { header: { "Nats-Msg-Id" => "jid" }, stream: "default" }])
   end
 end

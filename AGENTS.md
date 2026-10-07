@@ -28,8 +28,11 @@ CLI → Engine → ThreadPool
 - **`Cosmo::Engine`** (`lib/cosmo/engine.rb`) — singleton; starts `Job::Processor` and/or `Stream::Processor` sharing
   one `Utils::ThreadPool`. Traps `INT`/`TERM` (graceful shutdown), `TSTP`/`CONT` (quiet / resume fetching), and `USR1`
   (quiet, then exit once in-flight work drains), and `TTIN` (log every thread's backtrace).
-- **`Cosmo::Publisher`** (`lib/cosmo/publisher.rb`) — singleton; serializes and publishes to NATS. Job publishing goes
-  via `publish_job(data)`, stream publishing via `publish(subject, data, ...)`.
+- **`Cosmo::Publisher`** (`lib/cosmo/publisher.rb`) — singleton; serializes and publishes stream messages via
+  `publish(subject, data, ...)`.
+- **`Cosmo::Job::Enqueuer`** (`lib/cosmo/job/enqueuer.rb`) — `enqueue(class_name, args, options, batch:)`, the one
+  path a job takes onto its stream, for `perform_async`/`perform_in`/`perform_at` and the ActiveJob adapter. Only
+  `Cosmo::Job` passes `batch: Batch.current`; ActiveJob jobs never join a Cosmo batch.
 - **`Cosmo::Web`** (`lib/cosmo/web.rb`) — Rack app for the monitoring UI (HTMX), served via `config.ru` or mounted
   (routes match `request.path_info`, which is mount-relative, and `Renderer#url_for` prepends `script_name`). It
   ships **no authentication** — wrap it with your own (Devise `authenticate` / route constraints when

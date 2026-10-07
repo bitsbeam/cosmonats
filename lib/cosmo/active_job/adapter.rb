@@ -32,8 +32,7 @@ module Cosmo
         options    = { stream: stream }.merge(cosmo_opts)
         options[:at] = timestamp if timestamp
 
-        data = Job::Data.new(Executor.name, [job.serialize], options)
-        Publisher.publish_job(data)
+        Job::Enqueuer.enqueue(Executor.name, [job.serialize], options)
       end
 
       # Returns Cosmo-specific options declared on the job class via
