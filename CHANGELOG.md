@@ -5,32 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-10-08
+
+Upgrading needs a few manual NATS steps: see [docs/upgrading.md](docs/upgrading.md).
 
 ### Added
 
 - `Cosmo.configure` with `config.server_middleware`: a middleware chain around every job execution
+- `config.client_middleware`: a middleware chain around every job enqueue, to change the payload or stop the publish
+- `config.error_handlers`: callables given every error Cosmo rescues, jobs and stream batches included
 - `config.logger = ...` and `config.log_level = ...` in `Cosmo.configure`; a logger without `trace` no longer raises
 - Built-in config defaults: Cosmo runs without `config/cosmo.yml`, and a user file is deep-merged over the defaults;
   `cosmo --init` writes them into the project
 - `config.replicas`, `config.dead` (retention, or off), `config.scheduled.enabled`, and `config.batches.expiry` in
   `Cosmo.configure` for Cosmo's own service streams
 - `Cosmo::Job::Requeue`: a middleware raises it to redeliver a job later instead of failing it
-- `config.error_handlers`: callables given every error Cosmo rescues, jobs and stream batches included
-- `config.client_middleware`: a middleware chain around every job enqueue, to change the payload or stop the publish
 - Metrics tab in the web UI: per job class runs, failures, average execution and wait time, and a per-day chart;
   `config.metrics.enabled` and `config.metrics.retention` in `Cosmo.configure`
+- The web UI's batches table shows each batch's progress and pending jobs
+- The web UI's processes table groups workers by jobs, streams, or both
 
 ### Changed
 
-- Stream processor errors are logged at error level instead of debug
-- **Breaking:** `Cosmo::Middleware::Sentry` only traces; register `Cosmo::Middleware::Sentry::ERROR_HANDLER` in
-  `config.error_handlers` to keep capturing exceptions
-- A job class's `limit:` is enforced by `Cosmo::Middleware::Limit`, the first entry of the server middleware chain,
-  instead of the job processor
 - **Breaking:** the `scheduled` and `dead` streams are Cosmo's, created by `cosmo --setup`: listing them under
   `setup.jobs`/`consumers.jobs` raises `ConfigError`, as does `batch_expiry` (now `config.batches.expiry`). Listing
   your own `setup.jobs` replaces the built-in `default` stream
+- **Breaking:** the `dead` stream uses `workqueue` retention instead of `limits`. NATS can't change retention in place,
+  so delete an existing one (`nats stream rm dead`, dropping its jobs) before `cosmo --setup`
 - **Breaking:** Cosmo's internal streams and KV buckets are named `_cosmo<domain>`: `_cosmostats` is `_cosmototals`, and
   the `cosmo_jobs_batches`, `cosmo_jobs_busy`, `cosmo_processes`, and `cosmo_jobs_limits` buckets are `_cosmobatches`,
   `_cosmobusy`, `_cosmoprocesses`, and `_cosmolimits`; nothing is migrated automatically
@@ -38,14 +39,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `config.batches.expiry`; batches still open during the upgrade lose their progress counters
 - **Breaking:** `Config.set` and `Config.to_h` are removed: streams and settings go in `cosmo.yml`, code-level setup in
   `Cosmo.configure`, and command-line flags now win over both
-- **Breaking:** the `dead` stream uses `workqueue` retention instead of `limits`. NATS can't change retention in place,
-  so delete an existing one (`nats stream rm dead`, dropping its jobs) before `cosmo --setup`
+- **Breaking:** Sentry is the `Cosmo::Middleware::Sentry` middleware, which only traces: `require "cosmo/middleware/sentry"`,
+  add it to the server middleware, and register `Cosmo::Middleware::Sentry::ERROR_HANDLER` in `config.error_handlers` to
+  capture exceptions; `cosmo/sentry/auto` and `Cosmo::Sentry::JobProcessorMiddleware` are removed
+- **Breaking:** jobs are enqueued through `Cosmo::Job::Enqueuer.enqueue`; `Publisher.publish_job`, `Publisher.publish_batch`,
+  and `Job::Data#to_args` are removed, and `Job::Data#subject` returns the subject as a string
+- The web UI's Failed total counts every failed execution, retries included, instead of only jobs that gave up
+- A job class's `limit:` is enforced by `Cosmo::Middleware::Limit`, the first entry of the server middleware chain,
+  instead of the job processor
+- Stream processor errors are logged at error level instead of debug
 
-- The Web UI's Failed total counts every failed execution, retries included, instead of only jobs that gave up
-- Jobs are enqueued through `Cosmo::Job::Enqueuer.enqueue`; `Publisher.publish_job`, `Publisher.publish_batch`, and
-  `Job::Data#to_args` are removed, and `Job::Data#subject` returns the subject as a string
-- Sentry is the `Cosmo::Middleware::Sentry` middleware: `require "cosmo/middleware/sentry"` and add it to the chain;
-  `cosmo/sentry/auto` and `Cosmo::Sentry::JobProcessorMiddleware` are removed
+### Fixed
+
+- Stream consumers sharing one NATS stream no longer share one empty-fetch backoff, which made an idle consumer hold
+  back the busy ones; backoff is kept per consumer
+- The jobs page passes `page` and `limit` on to the processes table
 
 ## [0.7.0] - 2026-10-06
 
@@ -289,6 +297,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release: background jobs and stream processing for Ruby, backed by NATS JetStream.
 
+[0.8.0]: https://github.com/bitsbeam/cosmonats/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/bitsbeam/cosmonats/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bitsbeam/cosmonats/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/bitsbeam/cosmonats/compare/v0.5.0...v0.5.1
