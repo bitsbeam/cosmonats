@@ -42,6 +42,8 @@ module Cosmo
 
     def self.batches: () -> Batches
 
+    def self.metrics: () -> Metrics
+
     def self.server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
 
     def self.client_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
@@ -76,6 +78,10 @@ module Cosmo
     def dead: () -> Dead
 
     def batches: () -> Batches
+
+    @metrics: Metrics
+
+    def metrics: () -> Metrics
 
     def logger: () -> untyped
 

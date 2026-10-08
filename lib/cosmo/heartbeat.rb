@@ -26,6 +26,7 @@ module Cosmo
         loop do
           sleep(INTERVAL)
           beat
+          flush
         end
       end
       self
@@ -37,6 +38,7 @@ module Cosmo
     def stop
       @thread&.kill&.join
       @thread = nil
+      flush
       processes.unregister(identity)
     rescue StandardError => e
       Logger.debug "Heartbeat unregister error: #{e.class} #{e.message}"
@@ -49,6 +51,15 @@ module Cosmo
       processes.register(identity, info)
     rescue StandardError => e
       Logger.debug "Heartbeat error: #{e.class} #{e.message}"
+    end
+
+    # Writes the job metrics recorded since the last flush.
+    #
+    # @return [void]
+    def flush
+      API::Stats::Metrics.instance.flush if Config.metrics.enabled
+    rescue StandardError => e
+      Logger.debug "Metrics flush error: #{e.class} #{e.message}"
     end
 
     # @return [String]

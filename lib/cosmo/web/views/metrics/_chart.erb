@@ -1,0 +1,36 @@
+<div class="metrics-chart">
+  <div class="metrics-chart-header">
+    <span><code><%= h(@job) %></code> <span class="text-muted">last <%= @days %> days</span></span>
+    <span class="metrics-legend">
+      <span class="metrics-legend-runs">runs per day</span>
+      <span class="metrics-legend-exec">avg execution (ms)</span>
+    </span>
+  </div>
+  <% if @chart.empty? -%>
+    <div class="alert alert-info">No runs of <code><%= h(@job) %></code> in this period.</div>
+  <% else -%>
+    <svg viewBox="0 0 <%= Cosmo::Web::Chart::WIDTH %> <%= Cosmo::Web::Chart::HEIGHT %>" role="img"
+         aria-label="Runs per day and average execution time of <%= h(@job) %>">
+      <% @chart.ticks.each do |tick| -%>
+        <line class="chart-grid" x1="<%= Cosmo::Web::Chart::LEFT %>" x2="<%= Cosmo::Web::Chart::RIGHT %>"
+              y1="<%= tick[:y] %>" y2="<%= tick[:y] %>"/>
+        <text class="chart-axis" x="<%= Cosmo::Web::Chart::LEFT - 6 %>" y="<%= tick[:y] + 4 %>"
+              text-anchor="end"><%= format_numbers(tick[:count]) %></text>
+        <text class="chart-axis chart-axis-exec" x="<%= Cosmo::Web::Chart::RIGHT + 6 %>" y="<%= tick[:y] + 4 %>"
+              text-anchor="start"><%= format_numbers(tick[:exec_ms]) %></text>
+      <% end -%>
+      <% @chart.bars.each do |bar| -%>
+        <rect class="chart-bar" x="<%= bar[:x] %>" y="<%= bar[:y] %>" width="<%= bar[:width] %>"
+              height="<%= bar[:height] %>"><title><%= h(bar[:title]) %></title></rect>
+      <% end -%>
+      <polyline class="chart-line" points="<%= @chart.line %>"/>
+      <% @chart.points.each do |point| -%>
+        <circle class="chart-point" cx="<%= point[:x] %>" cy="<%= point[:y] %>" r="4"><title><%= h(point[:title]) %></title></circle>
+      <% end -%>
+      <% @chart.labels.each do |label| -%>
+        <text class="chart-axis" x="<%= label[:x] %>" y="<%= Cosmo::Web::Chart::BOTTOM + 18 %>"
+              text-anchor="middle"><%= label[:text] %></text>
+      <% end -%>
+    </svg>
+  <% end -%>
+</div>

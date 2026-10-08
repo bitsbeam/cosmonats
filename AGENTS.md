@@ -70,11 +70,17 @@ CLI → Engine → ThreadPool
 - **Server middleware** (`Config#server_middleware`, `lib/cosmo/middleware/`) — a `Middleware::Chain`, registered via
   `Cosmo.configure { |config| config.server_middleware { |chain| ... } }`, that `Job::Processor#process` invokes as
   `call(job, data, message)` around `perform_job`, inside
-  the retry/DLQ rescue. It starts as `[Middleware::Limit, Middleware::Busy, Middleware::Totals]`: Limit enforces a
+  the retry/DLQ rescue. It starts as `[Middleware::Limit, Middleware::Busy, Middleware::Totals, Middleware::Metrics]`: Limit enforces a
   job class's `limit:` (concurrency slots via `Job::Limit`, the duration timeout) and raises `Job::Requeue` while slots
   are taken, which the processor naks with its delay instead of failing the job; Totals counts every execution, retries
   included. Logging and batch notification stay hard-wired in the processor. `perform_sync` and stream processors
   don't run it.
+- **Metrics** (`Middleware::Metrics`, `API::Stats::Metrics`, `config.metrics`) — while enabled, the middleware buffers
+  per (UTC day, job class) runs, failures, exec time (successes only) and first-delivery wait in memory;
+  `Heartbeat#flush` writes them every 10s (and on stop) as `Nats-Incr` counters to the internal `_cosmometrics` stream
+  (`max_age` = `config.metrics.retention`, created by `Services.setup!`). Subjects are
+  `_cosmometrics.jobs.<YYYYMMDD>.<Class-Name>.<field>` (`::` → `-`, reversible); reads are one batched direct get
+  (`Client#last_messages`, `multi_last`). The web UI's Metrics tab (`Web::Chart` draws the SVG) shows only while enabled.
 - **Client middleware** (`Config#client_middleware`) — an initially empty `Middleware::Chain` that
   `Job::Enqueuer.enqueue` invokes as `call(job_class_name, payload, stream)` around the publish (so for
   `perform_*` and the ActiveJob adapter, never `perform_sync`). `payload` is the Hash that gets published; not

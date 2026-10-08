@@ -1,0 +1,41 @@
+module Cosmo
+  module API
+    module Stats
+      class Metrics < Counter
+        STREAM_NAME: ::String
+        DAY: Integer
+
+        self.@instance: Metrics
+
+        @lock: Thread::Mutex
+        @buffer: Hash[[::String, ::String], Hash[Symbol, Numeric]]
+
+        def self.instance: () -> Metrics
+
+        def self.stream_config: () -> Hash[Symbol, untyped]
+
+        def initialize: () -> void
+
+        def record: (::String job_class, ?exec_ms: Numeric?, ?wait_ms: Numeric?, ?failed: bool) -> void
+
+        def flush: () -> void
+
+        def summary: (?days: Integer) -> Array[Hash[Symbol, untyped]]
+
+        def daily: (::String job_class, ?days: Integer) -> Array[Hash[Symbol, untyped]]
+
+        private
+
+        def buffer: () -> Hash[[::String, ::String], Hash[Symbol, Numeric]]
+
+        def read: (Integer days) -> Array[[[::String, ::String, Symbol], Integer]]
+
+        def dates: (Integer days) -> Array[::String]
+
+        def row: (Hash[Symbol, Numeric] sums) -> Hash[Symbol, untyped]
+
+        def average: (Numeric total, Numeric count) -> Float?
+      end
+    end
+  end
+end

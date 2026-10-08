@@ -42,6 +42,16 @@ module Cosmo
           value.to_s
         end
 
+        # @param millis [Numeric, nil]
+        # @return [String] e.g. "340 ms", "1.25 s", "2m 3s", or "—" without a value
+        def duration(millis)
+          return "—" unless millis
+          return "#{millis.round} ms" if millis < 1_000
+          return "#{(millis / 1_000.0).round(2)} s" if millis < 60_000
+
+          "#{(millis / 60_000).floor}m #{((millis % 60_000) / 1_000).round}s"
+        end
+
         def elapsed(value)
           elapsed = Time.now.to_i - value.to_i
 

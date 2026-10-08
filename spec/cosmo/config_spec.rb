@@ -230,6 +230,7 @@ RSpec.describe Cosmo::Config do
       expect(config.scheduled.enabled).to be(true)
       expect(config.dead.to_h).to eq(enabled: true, max_age: 604_800, max_msgs: 10_000, max_bytes: -1)
       expect(config.batches.expiry).to eq(259_200)
+      expect(config.metrics.to_h).to eq(enabled: true, retention: "30d")
     end
 
     it "keeps settings from Cosmo.configure when a config file is loaded afterwards" do
@@ -314,7 +315,7 @@ RSpec.describe Cosmo::Config do
     let(:custom) { Class.new }
 
     it "starts with the built-in middleware" do
-      expect(described_class.server_middleware.map(&:klass)).to eq([Cosmo::Middleware::Limit, Cosmo::Middleware::Busy, Cosmo::Middleware::Totals])
+      expect(described_class.server_middleware.map(&:klass)).to eq([Cosmo::Middleware::Limit, Cosmo::Middleware::Busy, Cosmo::Middleware::Totals, Cosmo::Middleware::Metrics])
     end
 
     it "keeps middleware registered through Cosmo.configure when a config file is loaded afterwards" do
@@ -324,7 +325,8 @@ RSpec.describe Cosmo::Config do
 
       described_class.load("spec/support/cosmo.yml")
 
-      expect(described_class.server_middleware.map(&:klass)).to eq([Cosmo::Middleware::Limit, Cosmo::Middleware::Busy, Cosmo::Middleware::Totals, custom])
+      expect(described_class.server_middleware.map(&:klass)).to eq([Cosmo::Middleware::Limit, Cosmo::Middleware::Busy, Cosmo::Middleware::Totals,
+                                                                    Cosmo::Middleware::Metrics, custom])
     end
   end
 end

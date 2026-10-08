@@ -11,6 +11,7 @@ require "cosmo/web/controllers/streams"
 require "cosmo/web/controllers/actions"
 require "cosmo/web/controllers/crons"
 require "cosmo/web/controllers/batches"
+require "cosmo/web/controllers/metrics"
 
 module Cosmo
   class Web
@@ -51,6 +52,8 @@ module Cosmo
                  in [:get,    "/crons/_table"]          then [Controllers::Crons,   :_table]
                  in [:delete, "/crons/delete"]          then [Controllers::Crons,   :delete]
                  in [:post,   "/crons/run"]             then [Controllers::Crons,   :run_now]
+                 in [:get,    "/metrics"]               then [Controllers::Metrics, :index]
+                 in [:get,    "/metrics/_panel"]        then [Controllers::Metrics, :_panel]
                  in [:get,    "/batches"]               then [Controllers::Batches, :index]
                  in [:get,    "/batches/_table"]        then [Controllers::Batches, :_table]
                  in [:get,    "/actions"]               then [Controllers::Actions, :index]

@@ -1,0 +1,41 @@
+<% selectable = @days > 1 -%>
+<% if selectable -%>
+  <p class="metrics-hint">Click a job to chart it.</p>
+<% end -%>
+<div class="table-container">
+  <table class="metrics-table">
+    <thead>
+      <tr>
+        <th>Job</th>
+        <th>Runs</th>
+        <th>Failed</th>
+        <th>Avg execution</th>
+        <th>Avg wait</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @rows.each do |row| -%>
+        <% selected = selectable && row[:job] == @job -%>
+        <tr<% if selectable -%>
+            class="selectable<%= ' selected' if selected %>"
+            hx-get="<%= url_for('/metrics/_panel', { days: @days, job: u(row[:job]) }) %>"
+            hx-target="#metrics-panel"
+            hx-swap="outerHTML"
+            <% if selected -%>aria-selected="true"<% end -%>
+          <% end -%>>
+          <td><code><%= h(row[:job]) %></code></td>
+          <td><%= format_numbers(row[:count]) %></td>
+          <td>
+            <% if row[:failed].positive? -%>
+              <span class="badge badge-danger"><%= format_numbers(row[:failed]) %></span>
+            <% else -%>
+              <span class="text-muted">0</span>
+            <% end -%>
+          </td>
+          <td><%= duration(row[:exec_ms]) %></td>
+          <td><%= duration(row[:wait_ms]) %></td>
+        </tr>
+      <% end -%>
+    </tbody>
+  </table>
+</div>

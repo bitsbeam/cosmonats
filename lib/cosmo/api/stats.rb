@@ -3,6 +3,7 @@
 require "cosmo/api/stats/totals"
 require "cosmo/api/stats/busy"
 require "cosmo/api/stats/processes"
+require "cosmo/api/stats/metrics"
 
 module Cosmo
   module API

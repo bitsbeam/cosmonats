@@ -12,5 +12,9 @@ module Cosmo
 
     # +config.batches+ in Cosmo.configure: how long a batch's tracking data lives (seconds or a duration such as "3d").
     Batches = Struct.new(:expiry, keyword_init: true)
+
+    # +config.metrics+ in Cosmo.configure: per-day job metrics behind the web UI's Metrics tab, kept for +retention+
+    # (seconds or a duration such as "30d"). Turned off, nothing is recorded and the tab is hidden.
+    Metrics = Struct.new(:enabled, :retention, keyword_init: true)
   end
 end

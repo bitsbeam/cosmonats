@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Cosmo::Job::Requeue`: a middleware raises it to redeliver a job later instead of failing it
 - `config.error_handlers`: callables given every error Cosmo rescues, jobs and stream batches included
 - `config.client_middleware`: a middleware chain around every job enqueue, to change the payload or stop the publish
+- Metrics tab in the web UI: per job class runs, failures, average execution and wait time, and a per-day chart;
+  `config.metrics.enabled` and `config.metrics.retention` in `Cosmo.configure`
 
 ### Changed
 

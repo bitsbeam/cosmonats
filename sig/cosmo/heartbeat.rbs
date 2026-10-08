@@ -17,6 +17,8 @@ module Cosmo
 
     def beat: () -> void
 
+    def flush: () -> void
+
     def identity: () -> ::String
 
     def info: () -> Hash[Symbol, untyped]

@@ -406,6 +406,8 @@ Cosmo.configure do |config|
   config.dead.enabled = false        # drop jobs that give up instead of parking them
   config.scheduled.enabled = false   # no scheduled stream or scheduler: perform_in/perform_at and crons raise
   config.batches.expiry = "1d"       # how long batch tracking data lives (default 3d)
+  config.metrics.retention = "90d"   # how long the Metrics tab's per-day numbers are kept (default 30d)
+  config.metrics.enabled = false     # record nothing and hide the Metrics tab
 end
 ```
 Turning `scheduled` or `dead` off also hides their pages in the web UI. Stats can't be turned off — the web UI
@@ -654,8 +656,8 @@ end
 ```
 Register middleware at boot, before workers start (e.g. in a Rails initializer; loading `cosmo.yml` afterwards keeps
 it). The chain starts with Cosmo's required middleware: `Cosmo::Middleware::Limit` (a job class's `limit:`
-option), `Cosmo::Middleware::Busy` (the Web UI's Busy page), and `Cosmo::Middleware::Totals` (processed/failed counts,
-one per execution). `add` appends innermost, after them; `prepend`, `insert_before`, `insert_after`, and `remove`
+option), `Cosmo::Middleware::Busy` (the Web UI's Busy page), `Cosmo::Middleware::Totals` (processed/failed counts,
+one per execution), and `Cosmo::Middleware::Metrics` (the Metrics tab). `add` appends innermost, after them; `prepend`, `insert_before`, `insert_after`, and `remove`
 reorder the chain, so moving or removing the built-ins is at your own risk.
 A middleware that raises sends the job through the usual retry/DLQ path, and one that doesn't yield skips the job
 and acks it. To put a job back for later instead, raise `Cosmo::Job::Requeue.new(delay_in_seconds)`: the job is
@@ -903,6 +905,10 @@ sudo systemctl enable cosmo && sudo systemctl start cosmo
 - **Streams** — per-stream state (messages, bytes, consumers) with pause/resume
 - **Crons** — every schedule deployed in NATS, with run-now and delete
 - **Batches** — open and finished batches with pending/succeeded/failed counts
+- **Metrics** — per job class over today, 7, or 30 days: runs, failures, average execution time (successful runs), and
+  average wait from enqueue to first delivery, plus a per-day chart of runs and average execution time. Recorded by
+  `Cosmo::Middleware::Metrics`, flushed by every worker's heartbeat into the internal `_cosmometrics` counters stream;
+  turn it off with `config.metrics.enabled = false`
 - Summary counters (processed / failed / busy / enqueued / retries / scheduled / dead) backed by a NATS KV counter, no separate metrics store needed
 
 **Structured logs:**

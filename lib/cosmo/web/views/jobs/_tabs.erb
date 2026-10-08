@@ -7,4 +7,8 @@
   <a href="<%= url_for('/crons') %>"
      class="<%= 'active' if path_prefix?('/crons') %>">&#x23F0; Crons</a>
 <% end -%>
+<% if Cosmo::Config.metrics.enabled -%>
+  <a href="<%= url_for('/metrics') %>"
+     class="<%= 'active' if path_prefix?('/metrics') %>">&#x1F4CA; Metrics</a>
+<% end -%>
 </nav>

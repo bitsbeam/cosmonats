@@ -14,7 +14,7 @@ module Cosmo
     class << self
       extend Forwardable
 
-      delegate %i[[] fetch dig load server_middleware client_middleware error_handlers replicas scheduled dead batches] => :instance
+      delegate %i[[] fetch dig load server_middleware client_middleware error_handlers replicas scheduled dead batches metrics] => :instance
     end
 
     def self.to_ns(seconds)
@@ -142,6 +142,11 @@ module Cosmo
       @batches ||= Batches.new(expiry: 3 * 86_400)
     end
 
+    # @return [Metrics]
+    def metrics
+      @metrics ||= Metrics.new(enabled: true, retention: "30d")
+    end
+
     # Callables given every error Cosmo rescues: failed jobs and stream batches, fetch and scheduler errors, rejected
     # messages. Each is called with +(error, context)+, +context+ being a Hash with a +:source+ (+:job+, +:stream+,
     # +:fetch+, +:scheduler+, +:reject+, +:retry_in+, +:limit+) and what is known there, e.g. a job's payload.
@@ -175,8 +180,8 @@ module Cosmo
       Logger.level = level
     end
 
-    # The chain every job execution runs through, starting with the built-in {Middleware::Limit}, {Middleware::Busy}, and
-    # {Middleware::Totals}. It lives outside the loaded YAML, so {#load} keeps it. Register middleware
+    # The chain every job execution runs through, starting with the built-in {Middleware::Limit}, {Middleware::Busy},
+    # {Middleware::Totals}, and {Middleware::Metrics}. It lives outside the loaded YAML, so {#load} keeps it. Register middleware
     # at boot, before workers start:
     #
     #   Cosmo.configure do |config|
@@ -192,6 +197,7 @@ module Cosmo
         chain.add Middleware::Limit
         chain.add Middleware::Busy
         chain.add Middleware::Totals
+        chain.add Middleware::Metrics
       end
       yield @server_middleware if block_given?
       @server_middleware

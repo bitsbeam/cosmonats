@@ -783,6 +783,50 @@ RSpec.describe Cosmo::Job::Processor do
     end
   end
 
+  context "with metrics" do
+    let(:metrics) { Cosmo::API::Stats::Metrics.instance }
+
+    before do
+      stub_const("GreeterJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(name) = Results.instance << name
+      end)
+      stub_const("FailingJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 1, dead: true
+
+        def perform(...) = raise "intentional failure"
+      end)
+    end
+
+    it "records runs, failures, and the first delivery's wait per job class" do
+      allow(processor).to receive(:default_retry_delay).and_return(0.1)
+
+      GreeterJob.perform_async("Alice")
+      FailingJob.perform_async("Bob")
+      wait_until(timeout: 10) { results.include?("Alice") && stream_size("dead") >= 1 }
+      metrics.flush
+
+      summary = metrics.summary.to_h { [_1[:job], _1] }
+      expect(summary["GreeterJob"]).to include(count: 1, failed: 0, exec_ms: a_kind_of(Float), wait_ms: a_kind_of(Float))
+      expect(summary["FailingJob"]).to include(count: 0, failed: 2, exec_ms: nil)
+    end
+
+    it "records nothing while metrics are turned off" do
+      Cosmo.configure { |config| config.metrics.enabled = false }
+
+      GreeterJob.perform_async("Alice")
+      wait_until(timeout: 5) { results.include?("Alice") }
+      metrics.flush
+
+      expect(metrics.summary).to be_empty
+    end
+  end
+
   context "with Sentry integration" do
     let(:transport) { Sentry.get_current_client.transport }
 

@@ -1,0 +1,17 @@
+<section>
+  <header><%= render('jobs/_tabs') %></header>
+
+  <div class="nav">
+    <% @ranges.each do |range, name| -%>
+      <a href="<%= url_for('/metrics', { days: range }) %>"
+         class="btn <%= 'btn-primary' if @days == range %>"><%= h(name) %></a>
+    <% end -%>
+  </div>
+
+  <div id="metrics-panel"
+       hx-get="<%= url_for('/metrics/_panel', { days: @days }) %>"
+       hx-trigger="load"
+       hx-swap="outerHTML">
+    <div class="alert alert-info">Loading metrics&hellip;</div>
+  </div>
+</section>

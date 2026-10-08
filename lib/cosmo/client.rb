@@ -144,6 +144,31 @@ module Cosmo
       js.get_msg(stream_name, **options)
     end
 
+    # The last message on every subject matching +filters+, in one batched direct get (NATS ≥ 2.11). Needs
+    # +allow_direct+ on the stream.
+    #
+    # @param stream_name [String]
+    # @param filters [Array<String>] subject filters, wildcards allowed
+    # @return [Hash{String => String}] message data by subject
+    def last_messages(stream_name, filters) # rubocop:disable Metrics/AbcSize
+      inbox = nc.new_inbox
+      sub = nc.subscribe(inbox)
+      nc.publish("$JS.API.DIRECT.GET.#{stream_name}", Utils::Json.dump({ multi_last: filters, batch: 10_000 }), inbox)
+      messages = {}
+      loop do
+        msg = sub.next_msg(timeout: self.class.js_timeout)
+        subject = msg.header&.dig("Nats-Subject")
+        break unless subject
+
+        messages[subject] = msg.data
+      end
+      messages
+    rescue NATS::Timeout
+      messages
+    ensure
+      sub&.unsubscribe
+    end
+
     def delete_message(name, seq)
       response = nc.request("$JS.API.STREAM.MSG.DELETE.#{name}", JSON.dump({ seq: seq }))
       Utils::Json.parse(response.data, symbolize_names: false)

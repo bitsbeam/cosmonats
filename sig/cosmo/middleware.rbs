@@ -14,6 +14,16 @@ module Cosmo
       def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
     end
 
+    class Metrics
+      def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
+
+      private
+
+      def job_name: (untyped job, Hash[Symbol, untyped] data) -> ::String
+
+      def clock: () -> Float
+    end
+
     class Totals
       def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
 

@@ -17,7 +17,7 @@ module Cosmo
       #
       # @return [void]
       def self.setup!
-        Client.instance.setup_stream(STREAM_NAME, stream_config)
+        Client.instance.setup_stream(self::STREAM_NAME, stream_config)
       end
 
       # @return [Hash] {STREAM_CONFIG} with the configured replicas
@@ -40,12 +40,12 @@ module Cosmo
       alias decr decrement
 
       def reset(key)
-        client.purge(STREAM_NAME, subject(key))
+        client.purge(self.class::STREAM_NAME, subject(key))
       end
       alias purge reset
 
       def get(key)
-        raw = client.get_message(STREAM_NAME, direct: true, subject: subject(key))
+        raw = client.get_message(self.class::STREAM_NAME, direct: true, subject: subject(key))
         Utils::Json.parse(raw.data, default: { "val" => 0 })[:val].to_i
       rescue NATS::JetStream::Error::NotFound, NATS::JetStream::Error::ServiceUnavailable, NATS::IO::Timeout
         0
@@ -72,13 +72,13 @@ module Cosmo
           raise if rescued
 
           rescued = true
-          client.create_stream(STREAM_NAME, self.class.stream_config)
+          client.create_stream(self.class::STREAM_NAME, self.class.stream_config)
           retry
         end
       end
 
       def subject(key)
-        "#{STREAM_NAME}.#{@namespace}.#{key}"
+        "#{self.class::STREAM_NAME}.#{@namespace}.#{key}"
       end
 
       def client

@@ -20,5 +20,12 @@ module Cosmo
 
       def self.new: (expiry: Numeric | ::String) -> Batches
     end
+
+    class Metrics
+      attr_accessor enabled: bool
+      attr_accessor retention: Numeric | ::String
+
+      def self.new: (enabled: bool, retention: Numeric | ::String) -> Metrics
+    end
   end
 end
