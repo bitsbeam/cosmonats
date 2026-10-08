@@ -184,15 +184,21 @@ RSpec.describe Cosmo::CLI do
 
     it "loads config when file exists" do
       allow(File).to receive(:exist?).with(config_file).and_return(true)
-      expect(Cosmo::Config).to receive(:load).with(config_file)
+      expect(Cosmo::Config).to receive(:load).with(config_file, overrides: {})
       cli.send(:load_config, { config_file: config_file })
     end
 
     it "tries default path when no path provided" do
       default_path = File.expand_path(Cosmo::Config::DEFAULT_PATH)
       allow(File).to receive(:exist?).with(default_path).and_return(false)
-      expect(Cosmo::Config).to receive(:load).with(nil)
+      expect(Cosmo::Config).to receive(:load).with(nil, overrides: {})
       cli.send(:load_config, {})
+    end
+
+    it "passes the command-line flags as overrides of the config file" do
+      allow(File).to receive(:exist?).and_return(false)
+      expect(Cosmo::Config).to receive(:load).with(nil, overrides: { concurrency: 5, timeout: 60, http: { port: 9090 } })
+      cli.send(:load_config, { concurrency: 5, timeout: 60, http_port: 9090 })
     end
   end
 

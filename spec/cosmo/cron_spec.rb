@@ -1,12 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe Cosmo::API::Cron::Entry do
-  around do |example|
-    original_cron = Cosmo::Config.dig(:setup, :cron)
-    example.run
-    Cosmo::Config.set(:setup, :cron, original_cron)
-  end
-
   subject(:entry) do
     described_class.new(class_name: "TestCronJob", stream: "default", expression: "@daily",
                         args: ["arg1"], timezone: "Europe/Amsterdam", name: "daily")

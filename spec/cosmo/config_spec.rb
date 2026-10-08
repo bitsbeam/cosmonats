@@ -107,7 +107,7 @@ RSpec.describe Cosmo::Config do
   describe "#[]" do
     it "retrieves a value by key" do
       instance = described_class.new
-      instance.set(:concurrency, 5)
+      instance.load(nil, overrides: { concurrency: 5 })
       expect(instance[:concurrency]).to eq(5)
     end
   end
@@ -115,7 +115,7 @@ RSpec.describe Cosmo::Config do
   describe "#fetch" do
     it "returns config value when key exists" do
       instance = described_class.new
-      instance.set(:concurrency, 5)
+      instance.load(nil, overrides: { concurrency: 5 })
       expect(instance.fetch(:concurrency)).to eq(5)
     end
 
@@ -134,31 +134,13 @@ RSpec.describe Cosmo::Config do
   describe "#dig" do
     it "digs into config hash" do
       instance = described_class.new
-      instance.set(:setup, :streams, :test, :subjects, ["test.>"])
+      instance.load(nil, overrides: { setup: { streams: { test: { subjects: ["test.>"] } } } })
       expect(instance.dig(:setup, :streams, :test, :subjects)).to eq(["test.>"])
     end
 
     it "returns nil when path does not exist" do
       instance = described_class.new
       expect(instance.dig(:nonexistent, :path)).to be_nil
-    end
-  end
-
-  describe "#to_h" do
-    it "returns config as a Hash" do
-      instance = described_class.new
-      instance.set(:concurrency, 5)
-      result = instance.to_h
-      expect(result).to be_a(Hash)
-      expect(result[:concurrency]).to eq(5)
-    end
-  end
-
-  describe "#set" do
-    it "sets nested configuration values" do
-      instance = described_class.new
-      instance.set(:setup, :streams, :test, :subjects, ["test.>"])
-      expect(instance.dig(:setup, :streams, :test, :subjects)).to eq(["test.>"])
     end
   end
 
@@ -216,6 +198,16 @@ RSpec.describe Cosmo::Config do
       expect(instance.dig(:setup, :jobs).keys).to eq([:critical])
       expect(instance.dig(:consumers, :jobs).keys).to eq([:critical])
       expect(instance.dig(:setup, :jobs, :critical, :subjects)).to eq(["jobs.critical.>"])
+    end
+
+    it "lets overrides such as command-line flags win over the file" do
+      Tempfile.create(["cosmo", ".yml"]) do |file|
+        file.write("concurrency: 10\nhttp:\n  port: 9090\n  host: 0.0.0.0\n")
+        file.flush
+        instance.load(file.path, overrides: { concurrency: 3, http: { port: 8080 } })
+      end
+
+      expect(instance).to include(concurrency: 3, http: { port: 8080, host: "0.0.0.0" })
     end
 
     it "rejects the service streams" do

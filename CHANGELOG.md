@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** the `scheduled` and `dead` streams are Cosmo's, created by `cosmo --setup`: listing them under
   `setup.jobs`/`consumers.jobs` raises `ConfigError`, as does `batch_expiry` (now `config.batches.expiry`). Listing
   your own `setup.jobs` replaces the built-in `default` stream
+- **Breaking:** `Config.set` and `Config.to_h` are removed: streams and settings go in `cosmo.yml`, code-level setup in
+  `Cosmo.configure`, and command-line flags now win over both
 - **Breaking:** the `dead` stream uses `workqueue` retention instead of `limits`. NATS can't change retention in place,
   so delete an existing one (`nats stream rm dead`, dropping its jobs) before `cosmo --setup`
 

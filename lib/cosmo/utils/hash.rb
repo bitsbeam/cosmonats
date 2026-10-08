@@ -36,16 +36,6 @@ module Cosmo
         end
       end
 
-      # deep set
-      def set(hash, *keys, value)
-        last_key = keys.pop
-        target = keys.reduce(hash) do |base, key|
-          base[key] ||= {}
-          base[key]
-        end
-        target[last_key] = value
-      end
-
       # Nested hashes merge recursively, +other+ winning; any other value in +other+ replaces the one in +base+.
       #
       # @param base [::Hash]

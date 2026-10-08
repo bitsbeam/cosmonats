@@ -255,16 +255,16 @@ RSpec.describe Cosmo::Stream::Processor do
       before do
         create_stream("test_static")
         Cosmo::Config.instance_variable_set(:@instance, nil)
-        Cosmo::Config.instance.set(:consumers, :streams, [
-                                     {
-                                       stream: "test_static",
-                                       consumer_name: "consumer-static-test",
-                                       class: "StaticProcessor",
-                                       batch_size: 10,
-                                       fetch_timeout: 1.0,
-                                       consumer: { subjects: ["test_static.>"] }
-                                     }
-                                   ])
+        Cosmo::Config.instance[:consumers] = { streams: [
+          {
+            stream: "test_static",
+            consumer_name: "consumer-static-test",
+            class: "StaticProcessor",
+            batch_size: 10,
+            fetch_timeout: 1.0,
+            consumer: { subjects: ["test_static.>"] }
+          }
+        ] }
         processor.run
       end
       after do
@@ -285,10 +285,10 @@ RSpec.describe Cosmo::Stream::Processor do
 
       it "skips configuration entries whose class name cannot be resolved" do
         Cosmo::Config.instance_variable_set(:@instance, nil)
-        Cosmo::Config.instance.set(:consumers, :streams, [
-                                     { stream: "test_static", class: "DoesNotExistXYZ",
-                                       consumer: { subjects: ["test_static.>"] } }
-                                   ])
+        Cosmo::Config.instance[:consumers] = { streams: [
+          { stream: "test_static", class: "DoesNotExistXYZ",
+            consumer: { subjects: ["test_static.>"] } }
+        ] }
 
         processor = described_class.new(Cosmo::Utils::ThreadPool.new(1), Concurrent::AtomicBoolean.new, {}, quiet: quiet)
         expect { processor.run }.not_to raise_error

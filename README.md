@@ -411,11 +411,9 @@ end
 Turning `scheduled` or `dead` off also hides their pages in the web UI. Stats can't be turned off — the web UI
 depends on them.
 
-**Programmatic:**
+**Programmatic:** `cosmo.yml` holds streams, consumers, and process settings; `Cosmo.configure` holds what YAML can't
+express (loggers, middleware) and Cosmo's service settings. Command-line flags (`-c`, `-t`, `-p`) win over the file.
 ```ruby
-Cosmo::Config.set(:concurrency, 20)
-Cosmo::Config.set(:setup, :streams, :custom, { storage: "file", subjects: ["custom.>"] })
-
 Cosmo.configure do |config|
   config.logger = Rails.logger # any ::Logger; defaults to stdout
   config.log_level = :debug    # COSMO_LOG_LEVEL, when set, wins

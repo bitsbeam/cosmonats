@@ -7,8 +7,6 @@ module Cosmo
 
       def self.dup: [T] (T hash) -> T
 
-      def self.set: (::Hash[untyped, untyped] hash, *untyped keys, value: untyped) -> untyped
-
       def symbolize_keys!: (untyped obj) -> (::Hash[Symbol, untyped] | Array[untyped] | untyped)
 
       def stringify_keys: (untyped obj) -> (::Hash[String, untyped] | Array[untyped] | untyped)
@@ -17,7 +15,6 @@ module Cosmo
 
       def dup: [T] (T hash) -> T
 
-      def set: (::Hash[untyped, untyped] hash, *untyped keys, value: untyped) -> untyped
     end
   end
 end

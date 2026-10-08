@@ -59,32 +59,22 @@ RSpec.describe Cosmo::Utils::Hash do
     end
   end
 
-  describe ".set" do
-    it "sets value at single key" do
-      hash = {}
-      described_class.set(hash, :a, 1)
-      expect(hash[:a]).to eq(1)
+  describe ".deep_merge" do
+    it "merges nested hashes, the second one winning" do
+      base = { a: { b: 1, c: 2 }, d: 3 }
+
+      expect(described_class.deep_merge(base, { a: { b: 9 } })).to eq(a: { b: 9, c: 2 }, d: 3)
     end
 
-    it "sets value at nested keys" do
-      hash = {}
-      described_class.set(hash, :a, :b, :c, 2)
-
-      expect(hash[:a]).to be_a(Hash)
-      expect(hash[:a][:b]).to be_a(Hash)
-      expect(hash[:a][:b][:c]).to eq(2)
+    it "replaces anything that is not a hash on both sides" do
+      expect(described_class.deep_merge({ a: [1, 2], b: { c: 1 } }, { a: [3], b: 4 })).to eq(a: [3], b: 4)
     end
 
-    it "overwrites existing values" do
-      hash = { a: { b: 1 } }
-      described_class.set(hash, :a, :b, 2)
-      expect(hash[:a][:b]).to eq(2)
-    end
+    it "leaves both arguments untouched" do
+      base = { a: { b: 1 } }
+      described_class.deep_merge(base, { a: { b: 2 } })
 
-    it "preserves sibling keys" do
-      hash = { a: { b: 1, c: 2 } }
-      described_class.set(hash, :a, :b, value: 3)
-      expect(hash[:a][:c]).to eq(2)
+      expect(base).to eq(a: { b: 1 })
     end
   end
 end

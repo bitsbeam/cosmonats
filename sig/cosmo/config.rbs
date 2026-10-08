@@ -32,11 +32,7 @@ module Cosmo
 
     def self.dig: (*Symbol keys) -> untyped
 
-    def self.to_h: () -> Hash[Symbol, untyped]
-
-    def self.set: (*untyped) -> untyped
-
-    def self.load: (?::String? path) -> void
+    def self.load: (?::String? path, ?overrides: Hash[Symbol, untyped]?) -> void
 
     def self.replicas: () -> Integer
 
@@ -50,9 +46,7 @@ module Cosmo
 
     @server_middleware: Middleware::Chain
 
-    def set: (*untyped) -> untyped
-
-    def load: (?::String? path) -> void
+    def load: (?::String? path, ?overrides: Hash[Symbol, untyped]?) -> void
 
     def server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
 

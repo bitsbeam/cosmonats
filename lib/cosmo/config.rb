@@ -14,7 +14,7 @@ module Cosmo
     class << self
       extend Forwardable
 
-      delegate %i[[] fetch dig to_h set load server_middleware replicas scheduled dead batches] => :instance
+      delegate %i[[] fetch dig load server_middleware replicas scheduled dead batches] => :instance
     end
 
     def self.to_ns(seconds)
@@ -110,15 +110,14 @@ module Cosmo
       @internal ||= {}
     end
 
-    def set(...)
-      Utils::Hash.set(self, ...)
-    end
-
-    # Replaces the contents with {.build} of the file at +path+, or with the built-in defaults when there is none.
+    # Replaces the contents with {.build} of the file at +path+ (or of no file), with +overrides+ merged over it, so
+    # command-line flags win over the file.
     #
     # @param path [String, nil]
-    def load(path = nil)
-      replace(self.class.build(path ? self.class.read(path) : {}))
+    # @param overrides [Hash, nil] e.g. +{ concurrency: 5 }+
+    def load(path = nil, overrides: nil)
+      user = path ? self.class.read(path) : {}
+      replace(self.class.build(Utils::Hash.deep_merge(user, Hash(overrides))))
     end
 
     attr_writer :replicas

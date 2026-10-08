@@ -59,10 +59,9 @@ module Cosmo
         path = default_path if File.exist?(default_path)
       end
 
-      Config.load(path)
-      Config.set(:concurrency, flags[:concurrency]) if flags[:concurrency]
-      Config.set(:timeout, flags[:timeout]) if flags[:timeout]
-      Config.set(:http, :port, flags[:http_port]) if flags[:http_port]
+      overrides = { concurrency: flags[:concurrency], timeout: flags[:timeout] }.compact
+      overrides[:http] = { port: flags[:http_port] } if flags[:http_port]
+      Config.load(path, overrides:)
     end
 
     def run_init

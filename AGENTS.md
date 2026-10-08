@@ -21,13 +21,13 @@ CLI → Engine → ThreadPool
 - **`Cosmo::Client`** (`lib/cosmo/client.rb`) — singleton NATS connection. `client.nc` = raw NATS, `client.js` =
   JetStream. URL from `NATS_URL` env (default `nats://localhost:4222`).
 - **`Cosmo::Config`** (`lib/cosmo/config.rb`) — a `Hash` subclass holding the effective YAML config.
-  `Config.load(path)` replaces the contents with `Config.build`: the shipped `lib/cosmo/config/cosmo.yml` with the
-  user's file deep-merged over it (no file → the defaults alone). The one exception: a user `setup.jobs` replaces the
-  built-in `default` job stream and consumer instead of merging. YAML holds user-defined things only — `scheduled`/`dead`
-  under `setup.jobs`/`consumers.jobs`, or `batch_expiry`, raise `ConfigError`. Class-level `[]`, `fetch`, `dig`,
-  `to_h`, `set`, `load`, `server_middleware`, `replicas`, `scheduled`, `dead`, `batches` are delegated to the
-  singleton; call `Config.set(:key, value)` for programmatic overrides. `Cosmo.configure { |config| }` yields the same
-  singleton. `server_middleware` and the service settings are instance variables, not keys, so `load` keeps them.
+  `Config.load(path, overrides:)` replaces the contents with `Config.build`: the shipped `lib/cosmo/config/cosmo.yml`
+  with the user's file deep-merged over it (no file → the defaults alone), then `overrides` — the CLI's `-c`/`-t`/`-p`,
+  so flags always win. The one exception: a user `setup.jobs` replaces the built-in `default` job stream and consumer
+  instead of merging. YAML holds user-defined things only — `scheduled`/`dead` under `setup.jobs`/`consumers.jobs`, or
+  `batch_expiry`, raise `ConfigError`. `load` is the only writer of YAML keys (there is no `Config.set`). Class-level
+  `[]`, `fetch`, `dig`, `load`, `server_middleware`, `replicas`, `scheduled`, `dead`, `batches` are delegated to the
+  singleton. `Cosmo.configure { |config| }` yields the same singleton. `server_middleware` and the service settings are instance variables, not keys, so `load` keeps them.
   `config.logger=` / `config.log_level=` wrap `Logger.instance=` / `Logger.level=`; `Logger.trace` is a no-op for
   loggers without `trace`, and `Logger::Context` tags are only printed by `Logger::SimpleFormatter`.
 - **`Cosmo::Engine`** (`lib/cosmo/engine.rb`) — singleton; starts `Job::Processor` and/or `Stream::Processor` sharing
