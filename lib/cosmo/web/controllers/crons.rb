@@ -7,17 +7,23 @@ module Cosmo
     module Controllers
       class Crons < Application
         def index
+          return not_found unless Config.scheduled.enabled
+
           content_for :title, "Crons"
           ok render("crons/index", layout: true)
         end
 
         def _table
+          return not_found unless Config.scheduled.enabled
+
           ok render("crons/_table", { schedules: cron.all })
         end
 
         # Dispatch the job immediately, bypassing the schedule timer.
         # Expects params["subject"] = the schedule subject stored in NATS.
         def run_now
+          return not_found unless Config.scheduled.enabled
+
           subject = Rack::Utils.unescape(params["subject"].to_s)
           cron.run_now!(subject)
           ok
@@ -25,6 +31,8 @@ module Cosmo
 
         # Purge the schedule from NATS so it stops firing.
         def delete
+          return not_found unless Config.scheduled.enabled
+
           subject = Rack::Utils.unescape(params["subject"].to_s)
           cron.delete!(subject)
           _table

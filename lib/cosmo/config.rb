@@ -2,31 +2,68 @@
 
 require "yaml"
 require "forwardable"
+require "cosmo/config/settings"
 
 module Cosmo
   class Config < ::Hash
     NANO = 1_000_000_000
     DEFAULT_PATH = "config/cosmo.yml"
+    DEFAULTS_FILE = File.expand_path(DEFAULT_PATH, __dir__)
+    SERVICE_STREAMS = %i[scheduled dead].freeze
 
     class << self
       extend Forwardable
 
-      delegate %i[[] fetch dig to_h set load server_middleware] => :instance
+      delegate %i[[] fetch dig to_h set load server_middleware replicas scheduled dead batches] => :instance
     end
 
     def self.to_ns(seconds)
       (seconds.to_f * NANO).to_i
     end
 
+    def self.read(path)
+      Utils::Hash.symbolize_keys!(YAML.load_file(path, aliases: true) || {})
+    end
+
     def self.parse_file(path)
-      YAML.load_file(path, aliases: true).tap { normalize!(_1) }
+      read(path).tap { normalize!(_1) }
+    end
+
+    # The built-in {DEFAULTS_FILE} with +user+ deep-merged over it. Job streams are the one list that is not merged:
+    # a user who lists any in +setup.jobs+ gets exactly those, and the built-in +default+ stream and consumer go away.
+    # Without +setup.jobs+, +consumers.jobs.default+ still tunes the built-in consumer.
+    #
+    # @param user [Hash] a parsed config file, not yet normalized
+    # @return [Hash] the normalized effective config
+    # @raise [ConfigError] when +user+ configures something Cosmo.configure owns
+    def self.build(user)
+      validate!(user)
+      defaults = read(DEFAULTS_FILE)
+      if user.dig(:setup, :jobs)
+        defaults[:setup].delete(:jobs)
+        defaults[:consumers].delete(:jobs)
+      end
+      Utils::Hash.deep_merge(defaults, user).tap { normalize!(_1) }
+    end
+
+    def self.validate!(config)
+      %i[setup consumers].each do |section|
+        jobs = config.dig(section, :jobs)
+        name = SERVICE_STREAMS.find { jobs.is_a?(::Hash) && jobs.key?(_1) }
+        next unless name
+
+        raise ConfigError, "`#{section}.jobs.#{name}` is a Cosmo service stream: remove it from cosmo.yml " \
+                           "and tune it with Cosmo.configure { |config| config.#{name} }"
+      end
+      return unless config.key?(:batch_expiry)
+
+      raise ConfigError, "`batch_expiry` moved out of cosmo.yml: Cosmo.configure { |config| config.batches.expiry = ... }"
     end
 
     def self.normalize!(config) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       Utils::Hash.symbolize_keys!(config)
 
       config[:timeout] = Utils::Duration.parse(config[:timeout]) if config[:timeout]
-      config[:batch_expiry] = Utils::Duration.parse(config[:batch_expiry]) if config[:batch_expiry]
 
       config[:consumers]&.each_key do |name|
         config[:consumers][name].each do |stream_name, c|
@@ -46,17 +83,6 @@ module Cosmo
           c[:max_age] = to_ns(Utils::Duration.parse(c[:max_age])) if c[:max_age]
           c[:duplicate_window] = to_ns(Utils::Duration.parse(c[:duplicate_window])) if c[:duplicate_window]
           c[:subjects] = c[:subjects].map { |s| format(s, name: name) } if c[:subjects]
-
-          # The scheduled stream carries every cron template, so it alone enables NATS message
-          # scheduling. A schedule can only target a subject its own stream covers, and NATS
-          # rejects `discard: new` on any stream with scheduling enabled - keeping both here
-          # leaves the streams that actually run jobs free to choose their own discard policy.
-          next unless type == :jobs && name.to_s == Job::StreamFilter::SCHEDULED.to_s
-
-          c[:allow_msg_schedules] = true
-          cron_subject = "#{API::Cron::Entry::SUBJECT_PREFIX}.>"
-          c[:subjects] = Array(c[:subjects])
-          c[:subjects] << cron_subject unless c[:subjects].include?(cron_subject)
         end
       end
     end
@@ -88,10 +114,33 @@ module Cosmo
       Utils::Hash.set(self, ...)
     end
 
+    # Replaces the contents with {.build} of the file at +path+, or with the built-in defaults when there is none.
+    #
+    # @param path [String, nil]
     def load(path = nil)
-      return unless path
+      replace(self.class.build(path ? self.class.read(path) : {}))
+    end
 
-      replace(self.class.parse_file(path))
+    attr_writer :replicas
+
+    # @return [Integer] replicas for every service stream and bucket, e.g. 3 on a NATS cluster
+    def replicas
+      @replicas || 1
+    end
+
+    # @return [Scheduled]
+    def scheduled
+      @scheduled ||= Scheduled.new(enabled: true)
+    end
+
+    # @return [Dead]
+    def dead
+      @dead ||= Dead.new(enabled: true, max_age: 7 * 86_400, max_msgs: 10_000, max_bytes: -1)
+    end
+
+    # @return [Batches]
+    def batches
+      @batches ||= Batches.new(expiry: 3 * 86_400)
     end
 
     # @return [::Logger] the logger Cosmo writes to, see {Logger.instance}

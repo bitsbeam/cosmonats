@@ -3,6 +3,8 @@
      class="<%= 'active' if path_prefix?('/jobs') %>">&#x1F4CB; Dashboard</a>
   <a href="<%= url_for('/batches') %>"
      class="<%= 'active' if path_prefix?('/batches') %>">&#x1F4E6; Batches</a>
+<% if Cosmo::Config.scheduled.enabled -%>
   <a href="<%= url_for('/crons') %>"
      class="<%= 'active' if path_prefix?('/crons') %>">&#x23F0; Crons</a>
+<% end -%>
 </nav>

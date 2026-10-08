@@ -13,6 +13,8 @@ module Cosmo
 
       def stringify_keys: (untyped obj) -> (::Hash[String, untyped] | Array[untyped] | untyped)
 
+      def deep_merge: (::Hash[untyped, untyped] base, ::Hash[untyped, untyped] other) -> ::Hash[untyped, untyped]
+
       def dup: [T] (T hash) -> T
 
       def set: (::Hash[untyped, untyped] hash, *untyped keys, value: untyped) -> untyped

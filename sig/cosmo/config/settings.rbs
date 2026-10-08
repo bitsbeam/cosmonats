@@ -1,0 +1,24 @@
+module Cosmo
+  class Config < ::Hash[Symbol, untyped]
+    class Scheduled
+      attr_accessor enabled: bool
+
+      def self.new: (enabled: bool) -> Scheduled
+    end
+
+    class Dead
+      attr_accessor enabled: bool
+      attr_accessor max_age: Numeric | ::String
+      attr_accessor max_msgs: Integer
+      attr_accessor max_bytes: Integer
+
+      def self.new: (enabled: bool, max_age: Numeric | ::String, max_msgs: Integer, max_bytes: Integer) -> Dead
+    end
+
+    class Batches
+      attr_accessor expiry: Numeric | ::String
+
+      def self.new: (expiry: Numeric | ::String) -> Batches
+    end
+  end
+end

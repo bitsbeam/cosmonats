@@ -28,6 +28,8 @@ module Cosmo
         end
 
         def scheduled
+          return not_found unless Config.scheduled.enabled
+
           return _scheduled if hx_request?
 
           content_for :title, "Scheduled Jobs"
@@ -35,6 +37,8 @@ module Cosmo
         end
 
         def dead
+          return not_found unless Config.dead.enabled
+
           return _dead if hx_request?
 
           content_for :title, "Dead Jobs"
@@ -42,6 +46,8 @@ module Cosmo
         end
 
         def retry
+          return not_found unless Config.dead.enabled
+
           seq = path.split("/").last.to_i
           stream = API::Stream.new("dead")
           stream.retry(seq)
@@ -49,6 +55,8 @@ module Cosmo
         end
 
         def delete
+          return not_found unless Config.dead.enabled
+
           seq = path.split("/").last.to_i
           stream = API::Stream.new("dead")
           stream.delete(seq)
@@ -63,12 +71,16 @@ module Cosmo
         end
 
         def _scheduled
+          return not_found unless Config.scheduled.enabled
+
           stream = API::Stream.new("scheduled")
           jobs = stream.messages(page: params["page"], limit: params["limit"])
           ok render("jobs/_scheduled", { jobs: jobs, total: stream.total })
         end
 
         def _dead
+          return not_found unless Config.dead.enabled
+
           stream = API::Stream.new("dead")
           jobs = stream.messages(page: params["page"], limit: params["limit"])
           ok render("jobs/_dead", { jobs: jobs, total: stream.total })

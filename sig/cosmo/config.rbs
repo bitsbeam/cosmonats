@@ -2,6 +2,8 @@ module Cosmo
   class Config < ::Hash[Symbol, untyped]
     NANO: Integer
     DEFAULT_PATH: ::String
+    DEFAULTS_FILE: ::String
+    SERVICE_STREAMS: Array[Symbol]
 
     self.@instance: Config
     self.@internal: Hash[Symbol, untyped]
@@ -12,7 +14,13 @@ module Cosmo
 
     def self.to_ns: (Numeric seconds) -> ::Integer
 
+    def self.read: (::String path) -> Hash[Symbol, untyped]
+
     def self.parse_file: (::String path) -> Hash[Symbol, untyped]
+
+    def self.build: (Hash[Symbol, untyped] user) -> Hash[Symbol, untyped]
+
+    def self.validate!: (Hash[Symbol, untyped] config) -> void
 
     def self.normalize!: (Hash[Symbol, untyped] config) -> void
 
@@ -30,6 +38,14 @@ module Cosmo
 
     def self.load: (?::String? path) -> void
 
+    def self.replicas: () -> Integer
+
+    def self.scheduled: () -> Scheduled
+
+    def self.dead: () -> Dead
+
+    def self.batches: () -> Batches
+
     def self.server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
 
     @server_middleware: Middleware::Chain
@@ -39,6 +55,21 @@ module Cosmo
     def load: (?::String? path) -> void
 
     def server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
+
+    @replicas: Integer?
+    @scheduled: Scheduled
+    @dead: Dead
+    @batches: Batches
+
+    attr_writer replicas: Integer
+
+    def replicas: () -> Integer
+
+    def scheduled: () -> Scheduled
+
+    def dead: () -> Dead
+
+    def batches: () -> Batches
 
     def logger: () -> untyped
 

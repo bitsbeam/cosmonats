@@ -12,8 +12,15 @@ module Cosmo
   class NotImplementedError < Error
   end
 
+  class ConfigError < Error
+  end
+
   class ConfigNotFoundError < Error
     def initialize: (::String config_file) -> void
+  end
+
+  class SchedulingDisabledError < Error
+    def initialize: () -> void
   end
 
   class StreamNotFoundError < Error

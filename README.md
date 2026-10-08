@@ -232,30 +232,16 @@ end
 
 ## 🚀 Quick Start
 
-### 1. Create `config/cosmo.yml`
+### 1. Configure (optional)
 
-```yaml
-concurrency: 5                     # Number of worker threads
+Nothing is required: without `config/cosmo.yml`, Cosmo runs one `default` job stream plus its own service streams.
+To change anything, write Cosmo's defaults into your project and edit them:
 
-consumers:                         # Declare consumer groups for streams, things that pull messages and process them
-  jobs:                            # Consumer configs for jobs (or streams)
-    default:                       # Stream name
-      ack_policy: explicit         # Acknowledgment required for each message can be explicit, none, or all
-      max_deliver: 30              # Max retry attempts before sending to a dead stream. Safety ceiling only, keep it above every job class's own retry
-      max_ack_pending: 10          # Max messages waiting for ack, if exceeded, the server will stop delivering new messages until some are acked
-      ack_wait: 15                 # Seconds to wait for ack before redelivering
-      subject: jobs.%{name}.>      # Subject pattern for this consumer, %{name} replaced with stream name, becomes `jobs.default.>`
-
-setup:                             # Initial stream creation only `cosmo -S`
-  jobs:                            # Stream configs for jobs (or streams)
-    default:                       # Stream name
-      storage: file                # Storage type (file or memory)
-      retention: workqueue         # Retention policy (limits, interest, workqueue). workqueue - deletes acked/nacked, limits - append only
-      subjects: ["jobs.%{name}.>"] # Subject pattern for this stream, %{name} replaced with stream name
-      allow_direct: true           # Allow direct messages to stream (required for web UI)
+```bash
+bundle exec cosmo --init # writes config/cosmo.yml
 ```
 
-### 2. Create streams in NATS (one-time), grabs config from setup section of `config/cosmo.yml`
+### 2. Create streams in NATS (one-time, idempotent)
 
 ```bash
 bundle exec cosmo -S
@@ -369,85 +355,61 @@ message.term                         # Permanent failure, no retry
 **NATS subjects** follow a dot-separated hierarchy (`events.clicks.homepage`).
 The `>` wildcard matches everything after that prefix. Think of subjects as topic names — flexible routing with no extra configuration.
 
-**Full `config/cosmo.yml` example:**
+**`config/cosmo.yml` is optional.** Cosmo ships its defaults in
+[`lib/cosmo/config/cosmo.yml`](lib/cosmo/config/cosmo.yml) (`cosmo --init` copies it into your project), and your
+file is deep-merged over them: keep only what you change. The one list that is not merged is your job streams —
+listing any under `setup.jobs` replaces the built-in `default` stream and its consumer:
 ```yaml
-timeout: 25                 # Shutdown timeout in seconds
-concurrency: &concurrency 1 # Number of worker threads
-max_retries: &max_retries 3 # Default max retries
-batch_expiry: 259200         # Seconds before a Batch's tracking data expires (default: 3 days)
+concurrency: 10
 
 stream_config: &stream_config
-  storage: file         # storage type (file or memory)
-  retention: workqueue  # retention policy (limits, interest, workqueue)
-  duplicate_window: 120 # time window for duplicate message detection in seconds
-  discard: old          # what to drop when the stream is full (new rejects publishes, old evicts the oldest)
-  allow_direct: true    # allow direct messages to stream, required for web UI
-  subjects:
-    - jobs.%{name}.>    # subject pattern for stream, %{name} will be replaced with stream name
+  storage: file
+  retention: workqueue
+  duplicate_window: 120 # seconds
+  discard: new
+  allow_direct: true    # required by the web UI
+  subjects: ["jobs.%{name}.>"]
 
 consumer_config: &consumer_config
-  ack_policy: explicit    # ack policy (explicit, none, all), each individual message must be acknowledged
-  max_deliver: 30         # maximum number of times a message will be delivered before it's considered failed. keep it above every job class's own retry; a job that still exceeds it is capped and dead-lettered early with a warning
-  max_ack_pending: 20     # maximum number of messages with pending ack for this consumer
-  ack_wait: 60            # time in seconds to wait for an ack before redelivering the message
-  subject: jobs.%{name}.> # subject pattern for consumer, %{name} will be replaced with stream name
-
-consumers:
-  jobs:
-    critical:
-      <<: *consumer_config
-      priority: 50
-    high:
-      <<: *consumer_config
-      priority: 30
-    default:
-      <<: *consumer_config
-      priority: 15
-    low:
-      <<: *consumer_config
-      priority: 5
-    scheduled:
-      <<: *consumer_config
-      max_deliver: 5
-      max_ack_pending: 100
-      ack_wait: 10
+  ack_policy: explicit
+  max_deliver: 30       # keep it above every job class's retry
+  max_ack_pending: 20
+  ack_wait: 60          # seconds
+  subject: jobs.%{name}.>
 
 setup:
   jobs:
-    critical:
-      <<: *stream_config
-      description: Very critical priority jobs
-    high:
-      <<: *stream_config
-      description: Higher priority jobs
-    default:
-      <<: *stream_config
-      description: Default priority jobs
-    low:
-      <<: *stream_config
-      description: Lower priority jobs
-    scheduled:
-      <<: *stream_config
-      discard: old            # required here: NATS refuses `discard: new` on the stream holding cron schedules
-      description: Scheduled jobs
-    dead:
-      <<: *stream_config
+    critical: { <<: *stream_config }
+    default: { <<: *stream_config }
+  streams:              # Cosmo::Stream processors are always yours to declare
+    events:
+      storage: file
       retention: limits
-      max_msgs: 10000
-      max_age: 604800 # 7d
-      description: Broken jobs (DLQ)
+      max_age: 86400
+      subjects: ["events.>"]
 
-development:
-  verbose: false
-  concurrency: *concurrency
-
-staging:
-  verbose: true
-  concurrency: 3
-
-production:
-  concurrency: 3
+consumers:
+  jobs:
+    critical: { <<: *consumer_config, priority: 50 }
+    default: { <<: *consumer_config, priority: 15 }
 ```
+`max_age`, `duplicate_window`, and `ack_wait` are in seconds. Without `setup.jobs`, `consumers.jobs.default` still
+tunes the built-in consumer (e.g. just `ack_wait: 300`).
+
+**Service streams** — the `scheduled` stream (delayed jobs, crons), the `dead` stream (dead letters), and the stats
+counters and KV buckets are Cosmo's own: they are not part of `cosmo.yml`, and `cosmo --setup` creates them next to
+yours. Tune them in `Cosmo.configure`:
+```ruby
+Cosmo.configure do |config|
+  config.replicas = 3                # every service stream and bucket, for a NATS cluster (default 1)
+  config.dead.max_age = "14d"        # dead-letter retention: max_age, max_msgs (10_000), max_bytes (-1); default 7d
+  config.dead.enabled = false        # drop jobs that give up instead of parking them
+  config.scheduled.enabled = false   # no scheduled stream or scheduler: perform_in/perform_at and crons raise
+  config.batches.expiry = "1d"       # how long batch tracking data lives (default 3d)
+end
+```
+Turning `scheduled` or `dead` off also hides their pages in the web UI. Stats can't be turned off — the web UI
+depends on them.
 
 **Programmatic:**
 ```ruby
@@ -580,7 +542,7 @@ end
   end
   ```
 - Batch tracking data (pending counts, callbacks, results) expires automatically after
-  `Config[:batch_expiry]` seconds (default: 3 days).
+  `config.batches.expiry` (default: 3 days), set in `Cosmo.configure`.
 - Open and finished batches — with pending/succeeded/failed counts — are listed live in the web UI's **Batches** tab.
 - Only `Cosmo::Job`-based jobs are tracked; the ActiveJob adapter doesn't currently participate in
   batches (see [`docs/active_job.md`](docs/active_job.md)).
@@ -766,6 +728,7 @@ The `scheduled` stream is a service stream: it is always dispatched, and naming 
 | `-t, --timeout NUM`     | Shutdown timeout (sec)                | `-t 60`               |
 | `-p, --http-port INT`   | Serve `/health` and `/ping` on a port | `-p 9090`             |
 | `-S, --setup`           | Setup streams & sync cron, then exit  | `--setup`             |
+| `--init`                | Write `config/cosmo.yml` with the defaults, then exit | `--init`  |
 | `-v, --version`         | Print version and exit                | `--version`           |
 | `-h, --help`            | Show help and exit                    | `--help`               |
 

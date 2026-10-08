@@ -3,7 +3,7 @@ module Cosmo
     module Enqueuer
       def self.enqueue: (::String class_name, Array[untyped] args, Hash[Symbol, untyped] options, ?batch: Batch?) -> ::String
 
-      def self?.publish: (Data data) -> untyped
+      def self.publish: (Data data) -> untyped
     end
   end
 end

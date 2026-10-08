@@ -13,9 +13,11 @@ module Cosmo
       #   (see Batch#jobs) and released again when the publish fails, so the batch never waits on a lost job
       # @return [String] the job's jid
       # @raise [StreamNotFoundError] when the target stream does not exist
+      # @raise [SchedulingDisabledError] for a delayed job while scheduling is turned off
       def enqueue(class_name, args, options, batch: nil)
         options = options.merge(batch_id: batch.bid) if batch
         data = Data.new(class_name, args, options)
+        raise SchedulingDisabledError if data.stream.to_s == Services::SCHEDULED && !Config.scheduled.enabled
 
         batch&.register_job!
         begin
@@ -32,7 +34,6 @@ module Cosmo
       rescue NATS::JetStream::Error::NoStreamResponse
         raise StreamNotFoundError, data.stream.to_s
       end
-      private_class_method :publish
     end
   end
 end

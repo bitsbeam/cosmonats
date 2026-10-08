@@ -32,14 +32,6 @@ consumers:
     low:
       <<: *consumer_config
       priority: 5
-    scheduled:
-      <<: *consumer_config
-      # >1: the scheduler naks a not-yet-due message (redelivered once it's due) and
-      # also naks on a transient dispatch error to retry it - both need a 2nd delivery.
-      # 1 here would silently strand the message on either path.
-      max_deliver: 5
-      max_ack_pending: 100
-      ack_wait: 10
 
 setup:
   jobs:
@@ -55,17 +47,6 @@ setup:
     low:
       <<: *stream_config
       description: Lower priority jobs
-    scheduled:
-      <<: *stream_config
-      discard: old
-      description: Scheduled jobs
-    dead:
-      <<: *stream_config
-      discard: old
-      retention: limits
-      max_msgs: 10000
-      max_age: 604800 # 7d
-      description: Broken jobs (DLQ)
   # Cron schedules — supported >= NATS 2.14
   # cron:
   #   daily_report:
@@ -79,13 +60,3 @@ setup:
   #     timezone: America/New_York
   #     args: [weekday]
 
-development:
-  verbose: false
-  concurrency: *concurrency
-
-staging:
-  verbose: true
-  concurrency: 3
-
-production:
-  concurrency: 3

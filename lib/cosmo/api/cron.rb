@@ -32,7 +32,10 @@ module Cosmo
 
       # Publish (or replace) a schedule message in NATS.
       # @return [Hash, nil] the persisted schedule as a hash, or nil on failure
+      # @raise [SchedulingDisabledError] when scheduling is turned off
       def upsert!(class_name: nil, stream: nil, schedule: nil, args: [], timezone: nil, name: nil)
+        raise SchedulingDisabledError unless Config.scheduled.enabled
+
         e = Entry.new(class_name: class_name, stream: stream, expression: schedule,
                       args: args, timezone: timezone, name: name)
         client.publish(e.schedule_subject, e.job_payload, stream: STREAM, header: e.schedule_headers)

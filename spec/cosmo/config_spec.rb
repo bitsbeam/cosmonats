@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "tempfile"
+
 RSpec.describe Cosmo::Config do
   let(:config_path) { File.expand_path("../../fixtures/test_config.yml", __dir__) }
   let(:test_config) do
@@ -161,17 +163,93 @@ RSpec.describe Cosmo::Config do
   end
 
   describe "#load" do
-    it "loads configuration from file" do
-      instance = described_class.new
-      allow(described_class).to receive(:parse_file).with(config_path).and_return(test_config)
-      instance.load(config_path)
-      expect(instance[:concurrency]).to eq(10)
+    let(:instance) { described_class.new }
+
+    def load_yaml(yaml)
+      Tempfile.create(["cosmo", ".yml"]) do |file|
+        file.write(yaml)
+        file.flush
+        instance.load(file.path)
+      end
     end
 
-    it "does nothing when path is nil" do
-      instance = described_class.new
-      expect(described_class).not_to receive(:parse_file)
+    it "loads the built-in defaults without a file" do
       instance.load(nil)
+
+      expect(instance).to include(timeout: 25, concurrency: 1, max_retries: 3)
+      expect(instance.dig(:setup, :jobs).keys).to eq([:default])
+      expect(instance.dig(:consumers, :jobs, :default)).to include(subject: "jobs.default.>", ack_wait: 60, priority: 15)
+    end
+
+    it "loads the shipped config exactly like no file" do
+      instance.load(described_class::DEFAULTS_FILE)
+
+      expect(instance).to eq(described_class.new.tap { _1.load(nil) })
+    end
+
+    it "merges the file over the defaults, keeping what it leaves out" do
+      load_yaml(<<~YAML)
+        concurrency: 10
+        consumers:
+          jobs:
+            default:
+              ack_wait: 300
+      YAML
+
+      expect(instance).to include(concurrency: 10, timeout: 25)
+      expect(instance.dig(:consumers, :jobs, :default)).to include(ack_wait: 300, max_deliver: 30, subject: "jobs.default.>")
+      expect(instance.dig(:setup, :jobs).keys).to eq([:default])
+    end
+
+    it "replaces the default job stream with the streams the file lists" do
+      load_yaml(<<~YAML)
+        setup:
+          jobs:
+            critical:
+              subjects: ["jobs.%{name}.>"]
+        consumers:
+          jobs:
+            critical:
+              subject: jobs.%{name}.>
+      YAML
+
+      expect(instance.dig(:setup, :jobs).keys).to eq([:critical])
+      expect(instance.dig(:consumers, :jobs).keys).to eq([:critical])
+      expect(instance.dig(:setup, :jobs, :critical, :subjects)).to eq(["jobs.critical.>"])
+    end
+
+    it "rejects the service streams" do
+      expect { load_yaml("setup:\n  jobs:\n    dead:\n      max_msgs: 1\n") }
+        .to raise_error(Cosmo::ConfigError, /`setup.jobs.dead` is a Cosmo service stream/)
+      expect { load_yaml("consumers:\n  jobs:\n    scheduled:\n      max_deliver: 5\n") }
+        .to raise_error(Cosmo::ConfigError, /`consumers.jobs.scheduled` is a Cosmo service stream/)
+    end
+
+    it "rejects batch_expiry, which moved to Cosmo.configure" do
+      expect { load_yaml("batch_expiry: 60\n") }.to raise_error(Cosmo::ConfigError, /config.batches.expiry/)
+    end
+  end
+
+  describe "service settings" do
+    it "defaults to enabled services with one replica" do
+      config = described_class.new
+
+      expect(config.replicas).to eq(1)
+      expect(config.scheduled.enabled).to be(true)
+      expect(config.dead.to_h).to eq(enabled: true, max_age: 604_800, max_msgs: 10_000, max_bytes: -1)
+      expect(config.batches.expiry).to eq(259_200)
+    end
+
+    it "keeps settings from Cosmo.configure when a config file is loaded afterwards" do
+      Cosmo.configure do |config|
+        config.replicas = 3
+        config.dead.max_age = "14d"
+      end
+
+      described_class.load(nil)
+
+      expect(described_class.replicas).to eq(3)
+      expect(described_class.dead.max_age).to eq("14d")
     end
   end
 

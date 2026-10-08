@@ -17,7 +17,12 @@ module Cosmo
       #
       # @return [void]
       def self.setup!
-        Client.instance.setup_stream(STREAM_NAME, STREAM_CONFIG)
+        Client.instance.setup_stream(STREAM_NAME, stream_config)
+      end
+
+      # @return [Hash] {STREAM_CONFIG} with the configured replicas
+      def self.stream_config
+        STREAM_CONFIG.merge(num_replicas: Config.replicas)
       end
 
       def initialize(namespace)
@@ -67,7 +72,7 @@ module Cosmo
           raise if rescued
 
           rescued = true
-          client.create_stream(STREAM_NAME, STREAM_CONFIG)
+          client.create_stream(STREAM_NAME, self.class.stream_config)
           retry
         end
       end

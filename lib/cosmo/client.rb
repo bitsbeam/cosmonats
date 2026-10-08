@@ -198,7 +198,7 @@ module Cosmo
 
     # NOTE: KV manager in nats-pure hardcodes the fields it copies into StreamConfig,
     # so `allow_msg_ttl` is never forwarded via create_key_value. Send the raw stream-create API request instead.
-    def create_kv_with_msg_ttl(name, **options)
+    def create_kv_with_msg_ttl(name, replicas: 1, **options)
       payload = Utils::Json.dump({
         name: "KV_#{name}",
         subjects: ["$KV.#{name}.>"],
@@ -206,7 +206,8 @@ module Cosmo
         allow_direct: true,
         allow_msg_ttl: true,
         allow_rollup_hdrs: true,
-        max_msgs_per_subject: 1
+        max_msgs_per_subject: 1,
+        num_replicas: replicas
       }.merge(options))
       resp = nc.request("$JS.API.STREAM.CREATE.KV_#{name}", payload)
       result = Utils::Json.parse(resp.data, symbolize_names: false)

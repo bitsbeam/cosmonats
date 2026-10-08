@@ -7,9 +7,11 @@ RSpec.describe Cosmo::Job::Processor do
   let(:quiet)       { Concurrent::AtomicBoolean.new }
   let(:processor)   { described_class.new(pool, running, {}, quiet: quiet) }
   let(:results)     { Results.instance }
+  let(:scheduled_enabled) { true }
 
   before do
     Cosmo::Config.load("spec/support/cosmo.yml")
+    Cosmo.configure { |config| config.scheduled.enabled = scheduled_enabled }
     # Keep the scheduler fetch timeout short so teardown
     # isn't blocked by the default 5-second NATS pull window.
     ENV["COSMO_JOBS_SCHEDULER_FETCH_TIMEOUT"] = "0.5"
@@ -271,6 +273,27 @@ RSpec.describe Cosmo::Job::Processor do
         expect(results).not_to include(:future_ran)
         expect(stream_size("scheduled")).to eq(1)
         expect(stream_size("default")).to eq(0)
+      end
+    end
+
+    context "with scheduling turned off" do
+      let(:scheduled_enabled) { false }
+
+      before do
+        stub_const("LaterJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(...) = nil
+        end)
+      end
+
+      it "runs no scheduler and refuses delayed jobs and crons" do
+        expect(processor.subscriptions).not_to include("scheduled")
+        expect { LaterJob.perform_in(60, "later") }.to raise_error(Cosmo::SchedulingDisabledError)
+        expect { Cosmo::API::Cron.instance.upsert!(class_name: "LaterJob", stream: "default", schedule: "@daily", name: "later") }
+          .to raise_error(Cosmo::SchedulingDisabledError)
       end
     end
 
@@ -608,6 +631,24 @@ RSpec.describe Cosmo::Job::Processor do
         end)
 
         TerminatedJob.perform_async("trigger")
+        wait_until(timeout: 5) { stream_size("default").zero? }
+
+        expect(stream_size("dead")).to eq(0)
+      end
+    end
+
+    context "with dead-lettering turned off" do
+      it "drops a job that gives up instead of parking it" do
+        Cosmo.configure { |config| config.dead.enabled = false }
+        stub_const("UnparkedJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0, dead: true
+
+          def perform(...) = raise "intentional failure"
+        end)
+
+        UnparkedJob.perform_async("trigger")
         wait_until(timeout: 5) { stream_size("default").zero? }
 
         expect(stream_size("dead")).to eq(0)

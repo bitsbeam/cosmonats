@@ -20,6 +20,8 @@ module Cosmo
 
     def load_config: (Hash[Symbol, untyped] flags) -> void
 
+    def run_init: () -> void
+
     def boot_application: () -> void
 
     def require_path: (::String? path) -> void

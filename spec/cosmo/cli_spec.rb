@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+
 RSpec.describe Cosmo::CLI do
   subject(:cli) { described_class.new }
 
@@ -88,11 +90,14 @@ RSpec.describe Cosmo::CLI do
 
       it "prints every stream type on its own line" do
         expect { cli.run }.to output(
-          "Stream is ready: default, low\nStream is ready: events\nCosmo streams set up successfully.\n"
+          "Stream is ready: default, low\nStream is ready: events\n" \
+          "Service streams are ready: scheduled, dead\nCosmo streams set up successfully.\n"
         ).to_stdout
       end
 
-      it "sets up the counters stream" do
+      it "sets up the service streams" do
+        expect(Cosmo::Client.instance).to receive(:setup_stream).with("scheduled", hash_including(allow_msg_schedules: true))
+        expect(Cosmo::Client.instance).to receive(:setup_stream).with("dead", hash_including(retention: "workqueue"))
         expect(Cosmo::API::Counter).to receive(:setup!)
         expect { cli.run }.to output(anything).to_stdout
       end
@@ -101,8 +106,43 @@ RSpec.describe Cosmo::CLI do
         let(:setup) { { cron: { daily: {} } } }
 
         it "prints no leading blank line" do
+          expect { cli.run }.to output(
+            "Service streams are ready: scheduled, dead\nCosmo streams set up successfully.\n"
+          ).to_stdout
+        end
+
+        it "prints no service streams when they are all turned off" do
+          Cosmo.configure do |config|
+            config.scheduled.enabled = false
+            config.dead.enabled = false
+          end
+
           expect { cli.run }.to output("Cosmo streams set up successfully.\n").to_stdout
         end
+      end
+    end
+
+    context "with the init flag" do
+      around { |example| Dir.mktmpdir { |dir| Dir.chdir(dir) { example.run } } }
+
+      before do
+        ARGV.replace(%w[--init])
+        allow(ARGV).to receive(:shift).and_call_original
+        allow(cli).to receive(:exit)
+      end
+
+      it "writes Cosmo's defaults to config/cosmo.yml" do
+        expect { cli.run }.to output("Created config/cosmo.yml with Cosmo's defaults\n").to_stdout
+        expect(File.read("config/cosmo.yml")).to eq(File.read(Cosmo::Config::DEFAULTS_FILE))
+      end
+
+      it "leaves an existing config/cosmo.yml alone" do
+        FileUtils.mkdir_p("config")
+        File.write("config/cosmo.yml", "concurrency: 5\n")
+
+        expect(cli).to receive(:abort).with("config/cosmo.yml already exists")
+        cli.run
+        expect(File.read("config/cosmo.yml")).to eq("concurrency: 5\n")
       end
     end
   end

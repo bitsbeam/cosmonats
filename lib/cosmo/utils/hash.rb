@@ -46,6 +46,15 @@ module Cosmo
         target[last_key] = value
       end
 
+      # Nested hashes merge recursively, +other+ winning; any other value in +other+ replaces the one in +base+.
+      #
+      # @param base [::Hash]
+      # @param other [::Hash]
+      # @return [::Hash] a new hash
+      def deep_merge(base, other)
+        base.merge(other) { |_, old, new| old.is_a?(::Hash) && new.is_a?(::Hash) ? deep_merge(old, new) : new }
+      end
+
       # deep dup
       def dup(hash)
         Marshal.load(Marshal.dump(hash))

@@ -1,0 +1,18 @@
+module Cosmo
+  module Services
+    SCHEDULED: ::String
+    DEAD: ::String
+    METADATA: Hash[::String, ::String]
+    RETENTION_CHANGE: Integer
+
+    def self.scheduled_stream: () -> Hash[Symbol, untyped]?
+
+    def self.scheduled_consumer: () -> Hash[Symbol, untyped]?
+
+    def self.dead_stream: () -> Hash[Symbol, untyped]?
+
+    def self.setup!: () -> Array[::String]
+
+    def self.setup_stream: (::String name, Hash[Symbol, untyped] config) -> void
+  end
+end

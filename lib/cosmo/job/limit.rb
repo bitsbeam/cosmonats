@@ -20,7 +20,7 @@ module Cosmo
       end
 
       def initialize
-        @kv = API::KV.new(BUCKET, allow_msg_ttl: true)
+        @kv = API::KV.new(BUCKET, allow_msg_ttl: true, replicas: Config.replicas)
       end
 
       # Try to acquire one of the numbered slots for +key+.

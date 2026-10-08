@@ -66,6 +66,6 @@ module Cosmo
 
     def ephemeral_subscribe: (::String | Array[::String] subject, Hash[Symbol, untyped] config) -> untyped
 
-    def create_kv_with_msg_ttl: (::String name, **untyped opts) -> untyped
+    def create_kv_with_msg_ttl: (::String name, ?replicas: Integer, **untyped opts) -> untyped
   end
 end

@@ -11,8 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `Cosmo.configure` with `config.server_middleware`: a middleware chain around every job execution
 - `config.logger = ...` and `config.log_level = ...` in `Cosmo.configure`; a logger without `trace` no longer raises
+- Built-in config defaults: Cosmo runs without `config/cosmo.yml`, and a user file is deep-merged over the defaults;
+  `cosmo --init` writes them into the project
+- `config.replicas`, `config.dead` (retention, or off), `config.scheduled.enabled`, and `config.batches.expiry` in
+  `Cosmo.configure` for Cosmo's own service streams
 
 ### Changed
+
+- **Breaking:** the `scheduled` and `dead` streams are Cosmo's, created by `cosmo --setup`: listing them under
+  `setup.jobs`/`consumers.jobs` raises `ConfigError`, as does `batch_expiry` (now `config.batches.expiry`). Listing
+  your own `setup.jobs` replaces the built-in `default` stream
+- **Breaking:** the `dead` stream uses `workqueue` retention instead of `limits`. NATS can't change retention in place,
+  so delete an existing one (`nats stream rm dead`, dropping its jobs) before `cosmo --setup`
 
 - The Web UI's Failed total counts every failed execution, retries included, instead of only jobs that gave up
 - Jobs are enqueued through `Cosmo::Job::Enqueuer.enqueue`; `Publisher.publish_job`, `Publisher.publish_batch`, and

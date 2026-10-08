@@ -1,0 +1,58 @@
+# Cosmo configuration. Every value below is what Cosmo uses when you leave it out,
+# so you can delete anything you don't want to change. Listing your own job streams under setup.jobs
+# replaces the `default` stream and its consumer below. Scheduled jobs, dead jobs, and stats are
+# managed by Cosmo itself: tune them in Cosmo.configure instead.
+
+timeout: 25    # Shutdown timeout in seconds
+concurrency: 1 # Number of worker threads
+max_retries: 3 # Retries for a job class that sets none
+
+#http:          # Serve GET /health and /ping
+#  port: 9090
+#  host: 0.0.0.0
+
+stream_config: &stream_config
+  storage: file         # file or memory
+  retention: workqueue  # workqueue deletes acked messages; limits keeps them until max_age/max_msgs
+  duplicate_window: 120 # seconds a Nats-Msg-Id is remembered, so a resent job is stored once
+  discard: new          # what to drop when the stream is full: new rejects publishes, old evicts the oldest
+  allow_direct: true    # required by the web UI
+  subjects:
+    - jobs.%{name}.>    # %{name} is the stream name
+
+consumer_config: &consumer_config
+  ack_policy: explicit    # every message is acked on its own
+  max_deliver: 30         # deliveries before a message is given up on; keep it above every job class's retry
+  max_ack_pending: 20     # unacked messages before the server stops delivering more
+  ack_wait: 60            # seconds before an unacked message is redelivered
+  subject: jobs.%{name}.> # %{name} is the stream name
+
+setup:
+  jobs:
+    default:
+      <<: *stream_config
+      description: Default jobs
+#    critical:
+#      <<: *stream_config
+#      description: Critical jobs
+#  streams:               # Streams for Cosmo::Stream processors
+#    events:
+#      storage: file
+#      retention: limits
+#      max_age: 86400
+#      subjects:
+#        - events.>
+#  cron:                  # Recurring jobs, synced by `cosmo --setup`
+#    daily_report:
+#      class: ReportJob
+#      schedule: "@daily"
+#      stream: default
+
+consumers:
+  jobs:
+    default:
+      <<: *consumer_config
+      priority: 15         # relative polling weight among job streams
+#    critical:
+#      <<: *consumer_config
+#      priority: 50

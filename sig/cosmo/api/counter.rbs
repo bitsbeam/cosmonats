@@ -8,6 +8,8 @@ module Cosmo
 
       def self.setup!: () -> void
 
+      def self.stream_config: () -> Hash[Symbol, untyped]
+
       def initialize: (::String namespace) -> void
 
       def increment: (Symbol key, ?by: ::Integer) -> ::Integer

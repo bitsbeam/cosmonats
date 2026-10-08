@@ -12,10 +12,10 @@ module Cosmo
       require "cosmo/active_job"
     end
 
-    # Autoload config/cosmo.yml when it exists and no config has been loaded yet.
+    # Loads config/cosmo.yml, or the built-in defaults without one, unless a config has been loaded already.
     initializer "cosmo.load_config", after: "cosmo.active_job_adapter" do |app|
       config_path = app.root.join("config", "cosmo.yml")
-      Config.load(config_path.to_s) if config_path.exist? && Config.instance.none?
+      Config.load(config_path.exist? ? config_path.to_s : nil) if Config.instance.none?
     end
   end
 end

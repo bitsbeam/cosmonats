@@ -34,11 +34,11 @@ module Cosmo
       end
 
       def scheduled
-        Stream.new("scheduled").size
+        Config.scheduled.enabled ? Stream.new("scheduled").size : 0
       end
 
       def dead
-        Stream.new("dead").size
+        Config.dead.enabled ? Stream.new("dead").size : 0
       end
     end
   end

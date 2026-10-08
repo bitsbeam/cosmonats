@@ -84,7 +84,6 @@ module Cosmo
     extend Dispatcher
 
     BUCKET = "cosmo_jobs_batches"
-    DEFAULT_EXPIRY = "3d"
     EVENTS = %i[success complete].freeze
 
     def self.current
@@ -104,7 +103,7 @@ module Cosmo
     end
 
     def self.kv
-      @kv ||= API::KV.new(BUCKET, ttl: Utils::Duration.parse(Config[:batch_expiry] || DEFAULT_EXPIRY))
+      @kv ||= API::KV.new(BUCKET, ttl: Utils::Duration.parse(Config.batches.expiry), replicas: Config.replicas)
     end
 
     attr_reader :bid, :parent_id

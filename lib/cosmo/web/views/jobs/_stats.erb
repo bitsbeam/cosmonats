@@ -34,6 +34,7 @@
          class="<%= 'active' if referrer?('/jobs/enqueued') %>">&#x1F4EC; Enqueued</a>
     </p>
   </article>
+<% if Cosmo::Config.scheduled.enabled -%>
   <article class="stat-card">
     <h3><%= format_numbers(@scheduled) %></h3>
     <p>
@@ -45,6 +46,8 @@
          class="<%= 'active' if referrer?('/jobs/scheduled') %>">&#x23F0; Scheduled</a>
     </p>
   </article>
+<% end -%>
+<% if Cosmo::Config.dead.enabled -%>
   <article class="stat-card">
     <h3><%= format_numbers(@dead) %></h3>
     <p>
@@ -56,6 +59,7 @@
          class="<%= 'active' if referrer?('/jobs/dead') %>">&#x1F480; Dead</a>
     </p>
   </article>
+<% end -%>
 </div>
 
 <script>

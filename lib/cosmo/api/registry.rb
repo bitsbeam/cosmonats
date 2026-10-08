@@ -57,7 +57,7 @@ module Cosmo
       private
 
       def bucket
-        KV.new(self.class::BUCKET, { ttl: self.class::TTL })
+        KV.new(self.class::BUCKET, { ttl: self.class::TTL, replicas: Config.replicas })
       end
 
       def sanitize(key)

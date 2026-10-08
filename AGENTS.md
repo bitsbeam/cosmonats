@@ -20,11 +20,14 @@ CLI → Engine → ThreadPool
 
 - **`Cosmo::Client`** (`lib/cosmo/client.rb`) — singleton NATS connection. `client.nc` = raw NATS, `client.js` =
   JetStream. URL from `NATS_URL` env (default `nats://localhost:4222`).
-- **`Cosmo::Config`** (`lib/cosmo/config.rb`) — a `Hash` subclass holding the parsed YAML. No defaults ship with the
-  gem: `Config.load(path)` **replaces** the contents with that file (default `config/cosmo.yml`), so the config file
-  must be explicit and complete. Class-level `[]`, `fetch`, `dig`, `to_h`, `set`, `load`, `server_middleware` are
-  delegated to the singleton; call `Config.set(:key, value)` for programmatic overrides. `Cosmo.configure { |config| }`
-  yields the same singleton. `server_middleware` is an instance variable, not a key, so `load` keeps it.
+- **`Cosmo::Config`** (`lib/cosmo/config.rb`) — a `Hash` subclass holding the effective YAML config.
+  `Config.load(path)` replaces the contents with `Config.build`: the shipped `lib/cosmo/config/cosmo.yml` with the
+  user's file deep-merged over it (no file → the defaults alone). The one exception: a user `setup.jobs` replaces the
+  built-in `default` job stream and consumer instead of merging. YAML holds user-defined things only — `scheduled`/`dead`
+  under `setup.jobs`/`consumers.jobs`, or `batch_expiry`, raise `ConfigError`. Class-level `[]`, `fetch`, `dig`,
+  `to_h`, `set`, `load`, `server_middleware`, `replicas`, `scheduled`, `dead`, `batches` are delegated to the
+  singleton; call `Config.set(:key, value)` for programmatic overrides. `Cosmo.configure { |config| }` yields the same
+  singleton. `server_middleware` and the service settings are instance variables, not keys, so `load` keeps them.
   `config.logger=` / `config.log_level=` wrap `Logger.instance=` / `Logger.level=`; `Logger.trace` is a no-op for
   loggers without `trace`, and `Logger::Context` tags are only printed by `Logger::SimpleFormatter`.
 - **`Cosmo::Engine`** (`lib/cosmo/engine.rb`) — singleton; starts `Job::Processor` and/or `Stream::Processor` sharing
@@ -46,6 +49,12 @@ CLI → Engine → ThreadPool
 - **`Cosmo::Batch`** (`lib/cosmo/batch.rb`) — groups jobs and fires a `:success`/`:complete` callback when the group
   finishes; state lives in `API::Counter` counters plus a TTL'd KV bucket. Nested batches are created with
   `Batch.new(parent: bid)`.
+- **`Cosmo::Services`** (`lib/cosmo/services.rb`) — the service streams Cosmo depends on, built on demand from the
+  `Cosmo.configure` settings (never from YAML, since an initializer runs after the CLI loads it): `scheduled` stream +
+  consumer (`config.scheduled.enabled`; off → no stream, no scheduler, `perform_in`/crons raise
+  `SchedulingDisabledError`), `dead` (`config.dead`: retention, or off → given-up jobs are `term`ed), and the
+  `_cosmostats` counters (always on; the web UI needs them). `config.replicas` sizes these and the KV buckets.
+  `Services.setup!` runs in `cosmo --setup`; specs get it through `create_streams`.
 - **`Cosmo::API::Cron`** (`lib/cosmo/api/cron.rb`) — recurring jobs use **NATS 2.14 server-side message schedules**
   (`Nats-Schedule` headers on a template stored at `cosmo.cron.<target stream>.>`). Every template lives in the
   `scheduled` stream: NATS only lets a schedule fire at a subject its own stream covers, and rejects `discard: new`
@@ -187,7 +196,8 @@ docker compose up nats
 ## Key Files
 | Purpose | Path |
 |---|---|
-| Config file (not in repo — see README; test copy at `spec/support/cosmo.yml`) | `config/cosmo.yml` |
+| Built-in config defaults (`cosmo --init` copies it; test config at `spec/support/cosmo.yml`) | `lib/cosmo/config/cosmo.yml` |
+| Service streams (scheduled, dead, counters) | `lib/cosmo/services.rb` |
 | Job mixin + ClassMethods | `lib/cosmo/job.rb` + `lib/cosmo/job/` |
 | API base classes (KV bucket, counter, TTL'd registry) | `lib/cosmo/api/{kv,counter,registry}.rb` |
 | Dashboard stats built on them (`API::Stats.summary`) | `lib/cosmo/api/stats.rb` + `lib/cosmo/api/stats/` |

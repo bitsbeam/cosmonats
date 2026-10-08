@@ -15,6 +15,7 @@ require "cosmo/heartbeat"
 require "cosmo/engine"
 require "cosmo/api"
 require "cosmo/middleware"
+require "cosmo/services"
 require "cosmo/railtie" if defined?(Rails::Railtie)
 
 module Cosmo
@@ -43,9 +44,17 @@ module Cosmo
 
   class NotImplementedError < Error; end
 
+  class ConfigError < Error; end
+
   class ConfigNotFoundError < Error
     def initialize(config_file)
       super("No such file #{config_file}")
+    end
+  end
+
+  class SchedulingDisabledError < Error
+    def initialize
+      super("Scheduling is turned off (config.scheduled.enabled = false), so delayed jobs and crons are unavailable")
     end
   end
 

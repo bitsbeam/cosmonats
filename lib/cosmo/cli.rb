@@ -2,6 +2,7 @@
 
 require "yaml"
 require "optparse"
+require "fileutils"
 
 module Cosmo
   # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
@@ -20,6 +21,7 @@ module Cosmo
     def run
       @argv = ARGV.dup
       flags, command, options = parse
+      return run_init if flags[:init]
       return run_setup(flags) if flags[:setup]
 
       load_config(flags)
@@ -63,6 +65,16 @@ module Cosmo
       Config.set(:http, :port, flags[:http_port]) if flags[:http_port]
     end
 
+    def run_init
+      path = File.expand_path(Config::DEFAULT_PATH)
+      raise Error, "#{Config::DEFAULT_PATH} already exists" if File.exist?(path)
+
+      FileUtils.mkdir_p(File.dirname(path))
+      FileUtils.cp(Config::DEFAULTS_FILE, path)
+      puts "Created #{Config::DEFAULT_PATH} with Cosmo's defaults"
+      exit(0)
+    end
+
     def run_setup(flags)
       load_config(flags)
       boot_application
@@ -80,7 +92,8 @@ module Cosmo
         puts unless first_line
       end
 
-      API::Counter.setup!
+      services = Services.setup!
+      puts "Service streams are ready: #{services.join(", ")}" if services.any?
 
       schedules = Config.dig(:setup, :cron)&.reduce(0) do |sum, (name, entry)|
         class_name = entry.delete(:class)
@@ -149,6 +162,10 @@ module Cosmo
 
         o.on "-S", "--setup", "Create/update streams and sync cron schedules, then exit" do
           flags[:setup] = true
+        end
+
+        o.on "--init", "Write #{Config::DEFAULT_PATH} with Cosmo's defaults, then exit" do
+          flags[:init] = true
         end
 
         o.on_tail "-v", "--version", "Print version" do

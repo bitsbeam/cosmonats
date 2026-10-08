@@ -54,7 +54,7 @@ module Cosmo
       end
 
       def scheduled_config
-        Config.dig(:consumers, :jobs, StreamFilter::SCHEDULED)
+        Services.scheduled_consumer
       end
 
       def schedule_loop # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/AbcSize
@@ -249,7 +249,7 @@ module Cosmo
 
       def drop_message(message, data)
         message.term
-        Logger.debug "job dropped #{data[:jid]}"
+        Logger.debug "job dropped #{data&.dig(:jid)}"
       end
 
       # Logs why a message can't be processed at all and parks it in the DLQ.
@@ -259,6 +259,8 @@ module Cosmo
       end
 
       def move_message(message, data = nil, exception = nil)
+        return drop_message(message, data) unless Config.dead.enabled
+
         klass = data ? Utils::String.underscore(data[:class]) : "default"
         headers = { "X-Stream" => message.metadata.stream, "X-Subject" => message.subject }
         headers.merge!(Failure.headers(exception)) if exception
