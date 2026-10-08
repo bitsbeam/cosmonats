@@ -1,9 +1,11 @@
 module Cosmo
   module Job
     module Enqueuer
-      def self.enqueue: (::String class_name, Array[untyped] args, Hash[Symbol, untyped] options, ?batch: Batch?) -> ::String
+      def self.enqueue: (::String class_name, Array[untyped] args, Hash[Symbol, untyped] options, ?batch: Batch?) -> ::String?
 
-      def self.publish: (Data data) -> untyped
+      def self.pipe: (::String class_name, Data data) -> bool
+
+      def self.publish: (Data data, Hash[Symbol, untyped] payload) -> untyped
     end
   end
 end

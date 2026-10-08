@@ -44,6 +44,8 @@ module Cosmo
 
     def self.server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
 
+    def self.client_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
+
     def self.error_handlers: () -> Array[untyped]
 
     @server_middleware: Middleware::Chain
@@ -51,6 +53,10 @@ module Cosmo
     def load: (?::String? path, ?overrides: Hash[Symbol, untyped]?) -> void
 
     def server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
+
+    @client_middleware: Middleware::Chain
+
+    def client_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
 
     @error_handlers: Array[untyped]
 

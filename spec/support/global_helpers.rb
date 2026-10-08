@@ -19,7 +19,7 @@ RSpec.shared_context "Global helpers" do
     Cosmo::Job::Limit.instance_variable_set(:@instance, nil)
     Cosmo::Batch.instance_variable_set(:@counter, nil)
     Cosmo::Batch.instance_variable_set(:@kv, nil)
-    %i[@server_middleware @error_handlers @replicas @scheduled @dead @batches].each { Cosmo::Config.instance.instance_variable_set(_1, nil) }
+    %i[@server_middleware @client_middleware @error_handlers @replicas @scheduled @dead @batches].each { Cosmo::Config.instance.instance_variable_set(_1, nil) }
   end
 
   def wait_until(timeout:)

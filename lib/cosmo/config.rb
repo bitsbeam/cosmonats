@@ -14,7 +14,7 @@ module Cosmo
     class << self
       extend Forwardable
 
-      delegate %i[[] fetch dig load server_middleware error_handlers replicas scheduled dead batches] => :instance
+      delegate %i[[] fetch dig load server_middleware client_middleware error_handlers replicas scheduled dead batches] => :instance
     end
 
     def self.to_ns(seconds)
@@ -195,6 +195,22 @@ module Cosmo
       end
       yield @server_middleware if block_given?
       @server_middleware
+    end
+
+    # The chain every job enqueue runs through, empty by default. A middleware is called with
+    # +(job_class_name, payload, stream)+ around the publish: it may change +payload+ (the Hash that gets published),
+    # or not yield to stop the publish, so +perform_async+ returns +nil+. +stream+ is the stream the job runs on.
+    #
+    #   Cosmo.configure do |config|
+    #     config.client_middleware { |chain| chain.add RequestIdMiddleware }
+    #   end
+    #
+    # @yieldparam chain [Middleware::Chain]
+    # @return [Middleware::Chain]
+    def client_middleware
+      @client_middleware ||= Middleware::Chain.new
+      yield @client_middleware if block_given?
+      @client_middleware
     end
   end
 end

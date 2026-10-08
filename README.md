@@ -662,6 +662,23 @@ and acks it. To put a job back for later instead, raise `Cosmo::Job::Requeue.new
 redelivered without failing, though the redelivery still counts toward its `retry` and `max_deliver`.
 A fresh instance is built for every job. `perform_sync` doesn't run the chain.
 
+The **client** chain runs where a job is enqueued (`perform_async`, `perform_in`, `perform_at`, and the ActiveJob
+adapter), around the publish. It starts empty, and a middleware gets the job class name, the payload Hash that will be
+published, and the stream the job runs on:
+```ruby
+class RequestIdMiddleware
+  def call(_job_class, payload, _stream)
+    payload[:request_id] = Current.request_id
+    yield
+  end
+end
+
+Cosmo.configure do |config|
+  config.client_middleware { |chain| chain.add RequestIdMiddleware }
+end
+```
+Not yielding stops the publish: `perform_async` returns `nil`, and a batch the job was joining doesn't wait for it.
+
 ### Testing
 
 ```ruby

@@ -304,6 +304,12 @@ RSpec.describe Cosmo::Config do
     end
   end
 
+  describe "#client_middleware" do
+    it "starts empty" do
+      expect(described_class.client_middleware).to be_empty
+    end
+  end
+
   describe "#server_middleware" do
     let(:custom) { Class.new }
 

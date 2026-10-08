@@ -73,8 +73,12 @@ CLI → Engine → ThreadPool
   the retry/DLQ rescue. It starts as `[Middleware::Limit, Middleware::Busy, Middleware::Totals]`: Limit enforces a
   job class's `limit:` (concurrency slots via `Job::Limit`, the duration timeout) and raises `Job::Requeue` while slots
   are taken, which the processor naks with its delay instead of failing the job; Totals counts every execution, retries
-  included. Logging and batch notification stay hard-wired in the processor. Server-side only:
-  there is no client (publish) chain, and `perform_sync` and stream processors don't run it.
+  included. Logging and batch notification stay hard-wired in the processor. `perform_sync` and stream processors
+  don't run it.
+- **Client middleware** (`Config#client_middleware`) — an initially empty `Middleware::Chain` that
+  `Job::Enqueuer.enqueue` invokes as `call(job_class_name, payload, stream)` around the publish (so for
+  `perform_*` and the ActiveJob adapter, never `perform_sync`). `payload` is the Hash that gets published; not
+  yielding stops the publish (`enqueue` returns nil) and releases the batch slot. `stream` is the target stream.
 - **Error handlers** (`Config#error_handlers`, `Cosmo.handle_error`) — callables given `(error, context)` for every
   error Cosmo rescues: failed job attempts and rejected messages (`Job::Processor`), failing stream batches
   (`Stream::Processor`, now logged at error level), fetch, scheduler, `retry_in` and limit-slot errors. `context` has
