@@ -50,7 +50,7 @@ module Cosmo
     def setup!
       streams = { SCHEDULED => scheduled_stream, DEAD => dead_stream }.compact
       streams.each { |name, config| setup_stream(name, config) }
-      API::Counter.setup!
+      API::Stats::Counters.setup!
       API::Stats::Metrics.setup! if Config.metrics.enabled
       streams.keys
     end

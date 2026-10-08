@@ -4,7 +4,7 @@ module Cosmo
   module API
     module Stats
       # Processed and failed job totals across all workers.
-      class Totals < Counter
+      class Totals < Counters
         def self.instance
           @instance ||= new("jobs")
         end

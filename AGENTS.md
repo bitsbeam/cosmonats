@@ -47,7 +47,7 @@ CLI → Engine → ThreadPool
   details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `cosmo_processes`
   KV bucket via `API::Stats::Processes`. Unregisters on graceful shutdown; a crashed process expires by the bucket's 60s TTL.
 - **`Cosmo::Batch`** (`lib/cosmo/batch.rb`) — groups jobs and fires a `:success`/`:complete` callback when the group
-  finishes; state lives in `API::Counter` counters plus a TTL'd KV bucket. Nested batches are created with
+  finishes; state lives in `API::Stats::Counters` (the `_cosmostats` stream) plus a TTL'd KV bucket. Nested batches are created with
   `Batch.new(parent: bid)`.
 - **`Cosmo::Services`** (`lib/cosmo/services.rb`) — the service streams Cosmo depends on, built on demand from the
   `Cosmo.configure` settings (never from YAML, since an initializer runs after the CLI loads it): `scheduled` stream +

@@ -8,17 +8,18 @@ module Cosmo
       # so a job costs no NATS round trip; a crashed worker loses at most one heartbeat's worth.
       class Metrics < Counter
         STREAM_NAME = "_cosmometrics"
+        DESCRIPTION = "Cosmo metrics"
         DAY = 86_400
 
         def self.instance
           @instance ||= new
         end
 
+        # Each day's counters expire +config.metrics.retention+ after their last update.
+        #
         # @return [Hash]
         def self.stream_config
-          { subjects: ["#{STREAM_NAME}.>"], allow_msg_counter: true, allow_direct: true, max_msgs_per_subject: 1,
-            max_age: Config.to_ns(Utils::Duration.parse(Config.metrics.retention)), num_replicas: Config.replicas,
-            description: "Cosmo job metrics" }
+          super.merge(max_age: Config.to_ns(Utils::Duration.parse(Config.metrics.retention)))
         end
 
         def initialize

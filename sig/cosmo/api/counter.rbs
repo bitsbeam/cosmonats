@@ -1,9 +1,6 @@
 module Cosmo
   module API
     class Counter
-      STREAM_NAME: ::String
-      STREAM_CONFIG: Hash[Symbol, untyped]
-
       @namespace: ::String
 
       def self.setup!: () -> void

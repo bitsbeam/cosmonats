@@ -83,7 +83,7 @@ RSpec.describe Cosmo::CLI do
         allow(Cosmo::Client.instance).to receive(:setup_stream)
         allow(Cosmo::Config).to receive(:[]).with(:setup).and_return(setup)
         allow(Cosmo::Config).to receive(:dig).with(:setup, :cron).and_return(nil)
-        allow(Cosmo::API::Counter).to receive(:setup!)
+        allow(Cosmo::API::Stats::Counters).to receive(:setup!)
       end
 
       let(:setup) { { jobs: { default: {}, low: {} }, streams: { events: {} } } }
@@ -98,7 +98,7 @@ RSpec.describe Cosmo::CLI do
       it "sets up the service streams" do
         expect(Cosmo::Client.instance).to receive(:setup_stream).with("scheduled", hash_including(allow_msg_schedules: true))
         expect(Cosmo::Client.instance).to receive(:setup_stream).with("dead", hash_including(retention: "workqueue"))
-        expect(Cosmo::API::Counter).to receive(:setup!)
+        expect(Cosmo::API::Stats::Counters).to receive(:setup!)
         expect { cli.run }.to output(anything).to_stdout
       end
 

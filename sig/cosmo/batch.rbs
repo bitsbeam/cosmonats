@@ -5,14 +5,14 @@ module Cosmo
     BUCKET: ::String
     EVENTS: ::Array[Symbol]
 
-    self.@counter: API::Counter
+    self.@counter: API::Stats::Counters
     self.@kv: API::KV
 
     def self.current: () -> Batch?
 
     def self.notify: (::String bid, ::String jid, success: bool) -> void
 
-    def self.counter: () -> API::Counter
+    def self.counter: () -> API::Stats::Counters
 
     def self.kv: () -> API::KV
 
@@ -35,7 +35,7 @@ module Cosmo
 
     private
 
-    def counter: () -> API::Counter
+    def counter: () -> API::Stats::Counters
 
     def kv: () -> API::KV
 

@@ -53,7 +53,7 @@ RSpec.describe Cosmo::Services do
 
       expect(described_class.scheduled_stream).to include(num_replicas: 3)
       expect(described_class.dead_stream).to include(num_replicas: 3)
-      expect(Cosmo::API::Counter.stream_config).to include(num_replicas: 3)
+      expect(Cosmo::API::Stats::Counters.stream_config).to include(num_replicas: 3)
     end
   end
 end

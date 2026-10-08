@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Cosmo::API::Counter do
+RSpec.describe Cosmo::API::Stats::Counters do
   subject(:counter) { described_class.new("test") }
 
   let(:stream_name) { described_class::STREAM_NAME }
@@ -83,7 +83,7 @@ RSpec.describe Cosmo::API::Counter do
 
   describe ".setup!" do
     it "trims an existing unlimited stream to one message per counter without losing totals" do
-      client.create_stream(stream_name, described_class::STREAM_CONFIG.except(:max_msgs_per_subject))
+      client.create_stream(stream_name, described_class.stream_config.except(:max_msgs_per_subject))
       5.times { counter.increment(:processed) }
       2.times { counter.increment(:failed) }
 

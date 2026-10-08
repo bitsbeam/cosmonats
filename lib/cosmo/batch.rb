@@ -51,7 +51,7 @@ module Cosmo
   # Every batch has an id (bid, a random hex string). State lives
   # in two places, both keyed by that bid:
   #
-  # 1. Three atomic counters (via API::Counter, namespace "batch", backed by
+  # 1. Three atomic counters (via API::Stats::Counters, namespace "batch", backed by
   #    the shared _cosmostats stream):
   #
   #      <bid>.total    - how many jobs have ever joined this batch
@@ -99,7 +99,7 @@ module Cosmo
     end
 
     def self.counter
-      @counter ||= API::Counter.new("batch")
+      @counter ||= API::Stats::Counters.new("batch")
     end
 
     def self.kv

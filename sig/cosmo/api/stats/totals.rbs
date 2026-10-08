@@ -1,7 +1,7 @@
 module Cosmo
   module API
     module Stats
-      class Totals < Counter
+      class Totals < Counters
         self.@instance: Totals
 
         def self.instance: () -> Totals

@@ -2,27 +2,22 @@
 
 module Cosmo
   module API
+    # Base for NATS counters (+Nats-Incr+) kept in a stream of their own. A subclass names it with +STREAM_NAME+ and
+    # +DESCRIPTION+ and may extend {.stream_config}; every instance counts under its namespace in that stream.
     class Counter
-      STREAM_NAME = "_cosmostats"
-      STREAM_CONFIG = {
-        subjects: ["#{STREAM_NAME}.>"],
-        allow_msg_counter: true,
-        allow_direct: true,
-        max_msgs_per_subject: 1,
-        description: "Cosmo statistics"
-      }.freeze
-
-      # Creates the counters stream, or brings an existing one up to STREAM_CONFIG. Every stored
-      # counter message carries the running total, so only the last one per subject is kept.
+      # Creates the counters stream, or brings an existing one up to {.stream_config}.
       #
       # @return [void]
       def self.setup!
         Client.instance.setup_stream(self::STREAM_NAME, stream_config)
       end
 
-      # @return [Hash] {STREAM_CONFIG} with the configured replicas
+      # Every stored counter message carries the running total, so only the last one per subject is kept.
+      #
+      # @return [Hash]
       def self.stream_config
-        STREAM_CONFIG.merge(num_replicas: Config.replicas)
+        { subjects: ["#{self::STREAM_NAME}.>"], allow_msg_counter: true, allow_direct: true, max_msgs_per_subject: 1,
+          num_replicas: Config.replicas, description: self::DESCRIPTION }
       end
 
       def initialize(namespace)

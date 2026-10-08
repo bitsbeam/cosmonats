@@ -1,0 +1,10 @@
+module Cosmo
+  module API
+    module Stats
+      class Counters < Counter
+        STREAM_NAME: ::String
+        DESCRIPTION: ::String
+      end
+    end
+  end
+end

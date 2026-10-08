@@ -3,6 +3,7 @@ module Cosmo
     module Stats
       class Metrics < Counter
         STREAM_NAME: ::String
+        DESCRIPTION: ::String
         DAY: Integer
 
         self.@instance: Metrics
