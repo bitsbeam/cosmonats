@@ -38,8 +38,10 @@ module Cosmo
         processor.process(messages)
         Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
       rescue StandardError => e
-        Logger.debug e
+        Logger.error e
         Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
+        Cosmo.handle_error(e, { source: :stream, stream: metadata&.stream, processor: processor.class.name,
+                                size: messages&.size })
       rescue Exception # rubocop:disable Lint/RescueException
         Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail" }
         raise

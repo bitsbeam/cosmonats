@@ -16,9 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `config.replicas`, `config.dead` (retention, or off), `config.scheduled.enabled`, and `config.batches.expiry` in
   `Cosmo.configure` for Cosmo's own service streams
 - `Cosmo::Job::Requeue`: a middleware raises it to redeliver a job later instead of failing it
+- `config.error_handlers`: callables given every error Cosmo rescues, jobs and stream batches included
 
 ### Changed
 
+- Stream processor errors are logged at error level instead of debug
+- **Breaking:** `Cosmo::Middleware::Sentry` only traces; register `Cosmo::Middleware::Sentry::ERROR_HANDLER` in
+  `config.error_handlers` to keep capturing exceptions
 - A job class's `limit:` is enforced by `Cosmo::Middleware::Limit`, the first entry of the server middleware chain,
   instead of the job processor
 - **Breaking:** the `scheduled` and `dead` streams are Cosmo's, created by `cosmo --setup`: listing them under

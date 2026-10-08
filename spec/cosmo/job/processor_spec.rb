@@ -729,6 +729,41 @@ RSpec.describe Cosmo::Job::Processor do
       expect(Cosmo::API::Stats.processed).to eq(1)
     end
 
+    it "hands every failed attempt to the error handlers with the job's context" do
+      allow(processor).to receive(:default_retry_delay).and_return(0.1)
+      Cosmo.configure { |config| config.error_handlers << ->(error, context) { Results.instance << [error.message, context] } }
+
+      FailingJob.perform_async("Bob")
+      wait_until(timeout: 10) { stream_size("dead") >= 1 }
+
+      expect(results.map(&:first)).to eq(["intentional failure", "intentional failure"])
+      expect(results.map { _2[:attempt] }).to eq([1, 2])
+      expect(results.first.last).to include(source: :job, class: "FailingJob", args: ["Bob"], stream: "default",
+                                            subject: "jobs.default.failing_job", jid: a_kind_of(String))
+    end
+
+    it "hands a message for an unknown job class to the error handlers" do
+      Cosmo.configure { |config| config.error_handlers << ->(error, context) { Results.instance << [error.message, context] } }
+      payload = Cosmo::Utils::Json.dump({ jid: "ghost-1", class: "GhostJobXYZ", args: [], retry: 0, dead: true })
+
+      client.publish("jobs.default.ghost_job_xyz", payload, header: { "Nats-Msg-Id" => "ghost-1" })
+      wait_until(timeout: 5) { results.any? }
+
+      expect(results.first.first).to eq("GhostJobXYZ class not found")
+      expect(results.first.last).to include(source: :reject, class: "GhostJobXYZ", stream: "default")
+    end
+
+    it "keeps processing when an error handler raises" do
+      Cosmo.configure do |config|
+        config.error_handlers << ->(*) { raise "handler down" }
+        config.error_handlers << ->(error, _) { Results.instance << error.message }
+      end
+
+      GreeterJob.perform_async("Alice")
+      FailingJob.perform_async("Bob")
+      wait_until(timeout: 10) { results.include?("Alice") && results.include?("intentional failure") }
+    end
+
     it "redelivers a job a middleware requeues, without counting it as failed" do
       Cosmo.configure do |config|
         config.server_middleware.prepend(Class.new do
@@ -766,6 +801,7 @@ RSpec.describe Cosmo::Job::Processor do
     before do
       transport.events.clear
       Cosmo::Config.server_middleware.add(Cosmo::Middleware::Sentry)
+      Cosmo::Config.error_handlers << Cosmo::Middleware::Sentry::ERROR_HANDLER
 
       stub_const("GreeterJob", Class.new do
         include Cosmo::Job
@@ -809,10 +845,12 @@ RSpec.describe Cosmo::Job::Processor do
 
       error = transport.events.find { _1.instance_of?(Sentry::ErrorEvent) }
       expect(error.contexts[:cosmonats]).to include(
+        source: :job,
         class: "GreeterJobFail",
         args: ["Alice"],
-        nats_stream: "default",
-        nats_subject: "jobs.default.greeter_job_fail"
+        stream: "default",
+        subject: "jobs.default.greeter_job_fail",
+        attempt: 1
       )
       expect(error.contexts[:trace]).to include(trace_id: a_kind_of(String), span_id: a_kind_of(String))
       expect(error.exception.values.first.type).to eq("RuntimeError")

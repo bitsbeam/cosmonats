@@ -513,6 +513,17 @@ RSpec.describe Cosmo::Stream::Processor do
 
       expect(results).not_to include("broken")
     end
+
+    it "hands the error to the configured error handlers" do
+      Cosmo.configure { |config| config.error_handlers << ->(error, context) { Results.instance << [error.message, context] } }
+
+      FaultyProcessor.publish({ fail: true }, subject: "test_errors.item")
+      wait_until(timeout: 5) { results.any? }
+
+      message, context = results.first
+      expect(message).to eq("intentional error")
+      expect(context).to include(source: :stream, stream: "test_errors", processor: "FaultyProcessor", size: 1)
+    end
   end
 
   describe "#work_loop" do

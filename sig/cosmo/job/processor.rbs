@@ -53,6 +53,8 @@ module Cosmo
 
       def reject_message: (untyped message, Exception error, ?Hash[Symbol, untyped]? data) -> void
 
+      def error_context: (untyped message, Hash[Symbol, untyped]? data, ?source: Symbol) -> Hash[Symbol, untyped]
+
       def move_message: (untyped message, ?Hash[Symbol, untyped]? data, ?Exception? exception) -> void
 
       def perform_job: (untyped job_instance, data: Hash[Symbol, untyped], message: untyped) -> untyped

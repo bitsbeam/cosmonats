@@ -3,6 +3,8 @@ module Cosmo
 
   def self.configure: () { (Config config) -> void } -> void
 
+  def self.handle_error: (Exception error, Hash[Symbol, untyped] context) -> void
+
   class Error < StandardError
   end
 

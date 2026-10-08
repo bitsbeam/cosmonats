@@ -6,6 +6,7 @@ module Cosmo
       SPAN_ORIGIN: ::String
       STATUS_OK: ::Integer
       STATUS_FAIL: ::Integer
+      ERROR_HANDLER: ^(Exception error, Hash[Symbol, untyped] context) -> void
 
       def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
     end

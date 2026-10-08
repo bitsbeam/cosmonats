@@ -616,6 +616,17 @@ If the proc returns something non-numeric/non-positive, or raises, the default b
 instead. Note: if this job class also sets `limit: { concurrency: ... }` (see above), `count`
 includes deliveries that were turned away for lack of a free slot, not just failed attempts.
 
+**Error handlers** receive every error Cosmo rescues — each failed job attempt, a failing stream batch, fetch and
+scheduler errors, and rejected messages — so one hook reports them all:
+```ruby
+Cosmo.configure do |config|
+  config.error_handlers << ->(error, context) { Honeybadger.notify(error, context: context) }
+end
+```
+`context` is a Hash with a `:source` (`:job`, `:stream`, `:fetch`, `:scheduler`, `:reject`, `:retry_in`, `:limit`)
+and what is known there: for a job its payload (`jid`, `class`, `args`, …), `stream`, `subject`, and `attempt`; for
+a stream batch its `stream`, `processor`, and `size`. A handler that raises is logged and skipped.
+
 ### Middleware
 
 Every job execution on a worker runs through the server middleware chain. A middleware gets the
@@ -694,11 +705,12 @@ require "cosmo/middleware/sentry"
 
 Cosmo.configure do |config|
   config.server_middleware { |c| c.add Cosmo::Middleware::Sentry }
+  config.error_handlers << Cosmo::Middleware::Sentry::ERROR_HANDLER
 end
 ```
-A [middleware](#middleware) that wraps every job execution in a Sentry transaction (`queue.cosmonats`)
-and captures unhandled exceptions with the job's id, stream, subject, and retry count attached as
-context — no other setup beyond having `sentry-ruby` initialized.
+The [middleware](#middleware) wraps every job execution in a Sentry transaction (`queue.cosmonats`), and the
+[error handler](#error-handling) captures every error Cosmo rescues — failed jobs, stream batches, fetches, the
+scheduler — with its context under `cosmonats`. No other setup beyond having `sentry-ruby` initialized.
 
 
 ## 🖥️ CLI Reference

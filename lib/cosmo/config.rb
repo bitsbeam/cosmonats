@@ -14,7 +14,7 @@ module Cosmo
     class << self
       extend Forwardable
 
-      delegate %i[[] fetch dig load server_middleware replicas scheduled dead batches] => :instance
+      delegate %i[[] fetch dig load server_middleware error_handlers replicas scheduled dead batches] => :instance
     end
 
     def self.to_ns(seconds)
@@ -140,6 +140,19 @@ module Cosmo
     # @return [Batches]
     def batches
       @batches ||= Batches.new(expiry: 3 * 86_400)
+    end
+
+    # Callables given every error Cosmo rescues: failed jobs and stream batches, fetch and scheduler errors, rejected
+    # messages. Each is called with +(error, context)+, +context+ being a Hash with a +:source+ (+:job+, +:stream+,
+    # +:fetch+, +:scheduler+, +:reject+, +:retry_in+, +:limit+) and what is known there, e.g. a job's payload.
+    #
+    #   Cosmo.configure do |config|
+    #     config.error_handlers << ->(error, context) { Honeybadger.notify(error, context: context) }
+    #   end
+    #
+    # @return [Array<#call>]
+    def error_handlers
+      @error_handlers ||= []
     end
 
     # @return [::Logger] the logger Cosmo writes to, see {Logger.instance}

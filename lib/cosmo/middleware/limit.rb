@@ -35,6 +35,7 @@ module Cosmo
         slot
       rescue NATS::Error => e
         Logger.error e
+        Cosmo.handle_error(e, { source: :limit, class: job_class.name, jid: data[:jid] })
         raise Job::Requeue
       end
 

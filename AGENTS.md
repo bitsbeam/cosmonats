@@ -75,8 +75,13 @@ CLI → Engine → ThreadPool
   are taken, which the processor naks with its delay instead of failing the job; Totals counts every execution, retries
   included. Logging and batch notification stay hard-wired in the processor. Server-side only:
   there is no client (publish) chain, and `perform_sync` and stream processors don't run it.
-- **Sentry** (`lib/cosmo/middleware/sentry.rb`) — `Middleware::Sentry`, not loaded by default (needs `sentry-ruby`):
-  apps `require "cosmo/middleware/sentry"` and add it to the chain themselves.
+- **Error handlers** (`Config#error_handlers`, `Cosmo.handle_error`) — callables given `(error, context)` for every
+  error Cosmo rescues: failed job attempts and rejected messages (`Job::Processor`), failing stream batches
+  (`Stream::Processor`, now logged at error level), fetch, scheduler, `retry_in` and limit-slot errors. `context` has
+  a `:source` plus what is known there. A raising handler is logged and skipped; `handle_error` itself doesn't log.
+- **Sentry** (`lib/cosmo/middleware/sentry.rb`) — `Middleware::Sentry` (transactions only) and
+  `Middleware::Sentry::ERROR_HANDLER` (exception capture), not loaded by default (needs `sentry-ruby`): apps
+  `require "cosmo/middleware/sentry"` and register both themselves.
 
 ---
 

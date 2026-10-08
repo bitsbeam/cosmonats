@@ -44,11 +44,17 @@ module Cosmo
 
     def self.server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
 
+    def self.error_handlers: () -> Array[untyped]
+
     @server_middleware: Middleware::Chain
 
     def load: (?::String? path, ?overrides: Hash[Symbol, untyped]?) -> void
 
     def server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
+
+    @error_handlers: Array[untyped]
+
+    def error_handlers: () -> Array[untyped]
 
     @replicas: Integer?
     @scheduled: Scheduled

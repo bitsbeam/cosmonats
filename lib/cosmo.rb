@@ -38,6 +38,20 @@ module Cosmo
     yield Config.instance
   end
 
+  # Hands +error+ to every handler in {Config#error_handlers}. A handler that raises is logged and skipped, so error
+  # reporting never breaks processing.
+  #
+  # @param error [Exception]
+  # @param context [Hash] where it happened, see {Config#error_handlers}
+  # @return [void]
+  def self.handle_error(error, context)
+    Config.error_handlers.each do |handler|
+      handler.call(error, context)
+    rescue StandardError => e
+      Logger.error "Error handler failed: #{e.class}: #{e.message}"
+    end
+  end
+
   class Error < StandardError; end
 
   class ArgumentError < Error; end

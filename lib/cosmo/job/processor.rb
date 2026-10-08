@@ -90,6 +90,7 @@ module Cosmo
             # to escape #each and kill this thread — schedule_loop only runs once per processor,
             # so an unhandled exception would silently stop all future scheduled-job dispatch.
             Logger.error e
+            Cosmo.handle_error(e, { source: :scheduler, subject: message.subject })
             message.nak rescue nil
           end
 
@@ -128,10 +129,12 @@ module Cosmo
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "requeue[#{e.delay}s]" }
         rescue Timeout::Error => e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[timeout]" }
+          Cosmo.handle_error(e, error_context(message, data))
           handle_failure(worker_class, message, data, e)
         rescue StandardError => e
           Logger.debug e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[error]" }
+          Cosmo.handle_error(e, error_context(message, data))
           handle_failure(worker_class, message, data, e)
         rescue Exception # rubocop:disable Lint/RescueException
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[exception]" }
@@ -205,6 +208,7 @@ module Cosmo
         delay.is_a?(Numeric) && delay.positive? ? delay : default_retry_delay(current_attempt)
       rescue StandardError => e
         Logger.error e
+        Cosmo.handle_error(e, { source: :retry_in, class: data[:class], jid: data[:jid] })
         default_retry_delay(current_attempt)
       end
 
@@ -229,7 +233,13 @@ module Cosmo
       # Logs why a message can't be processed at all and parks it in the DLQ.
       def reject_message(message, error, data = nil)
         Logger.error error
+        Cosmo.handle_error(error, error_context(message, data, source: :reject))
         move_message(message, data, error)
+      end
+
+      def error_context(message, data, source: :job)
+        meta = message.metadata
+        { source:, stream: meta.stream, subject: message.subject, attempt: meta.num_delivered }.merge(Hash(data))
       end
 
       def move_message(message, data = nil, exception = nil)

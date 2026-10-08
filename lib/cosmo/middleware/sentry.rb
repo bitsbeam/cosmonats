@@ -3,13 +3,15 @@
 # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize
 module Cosmo
   module Middleware
-    # Wraps every job execution in a Sentry transaction and captures the exceptions it raises. Needs +sentry-ruby+,
-    # so it is not loaded by default:
+    # Wraps every job execution in a Sentry transaction. Errors reach Sentry through {ERROR_HANDLER}, which also
+    # captures those outside jobs (stream batches, fetches, the scheduler). Needs +sentry-ruby+, so it is not loaded
+    # by default:
     #
     #   require "cosmo/middleware/sentry"
     #
     #   Cosmo.configure do |config|
     #     config.server_middleware { |chain| chain.add Cosmo::Middleware::Sentry }
+    #     config.error_handlers << Cosmo::Middleware::Sentry::ERROR_HANDLER
     #   end
     class Sentry
       NAME_PREFIX = "Cosmonats"
@@ -17,6 +19,12 @@ module Cosmo
       SPAN_ORIGIN = "auto.queue.cosmonats"
       STATUS_OK = 200
       STATUS_FAIL = 500
+
+      ERROR_HANDLER = lambda do |error, context|
+        next unless ::Sentry.initialized?
+
+        ::Sentry.capture_exception(error, contexts: { cosmonats: context }, hint: { background: true, integration: "cosmonats" })
+      end
 
       # @param job [Cosmo::Job]
       # @param data [Hash]
@@ -42,24 +50,10 @@ module Cosmo
           transaction&.set_http_status(STATUS_OK)
           transaction&.finish
           result
-        rescue StandardError => e
-          ::Sentry.capture_exception(
-            e,
-            contexts: {
-              cosmonats: data.merge(
-                nats_stream: message.metadata.stream,
-                nats_subject: message.subject,
-                timeout_duration: job.class.default_options[:limit]&.dig(:duration)&.to_i
-              )
-            },
-            hint: {
-              background: true,
-              integration: "cosmonats"
-            }
-          )
+        rescue StandardError
           transaction&.set_http_status(STATUS_FAIL)
           transaction&.finish
-          raise e
+          raise
         end
       end
     end
