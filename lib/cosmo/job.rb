@@ -2,6 +2,7 @@
 
 require "cosmo/job/data"
 require "cosmo/job/enqueuer"
+require "cosmo/job/requeue"
 require "cosmo/job/failure"
 require "cosmo/job/stream_filter"
 require "cosmo/job/limit"

@@ -728,6 +728,24 @@ RSpec.describe Cosmo::Job::Processor do
 
       expect(Cosmo::API::Stats.processed).to eq(1)
     end
+
+    it "redelivers a job a middleware requeues, without counting it as failed" do
+      Cosmo.configure do |config|
+        config.server_middleware.prepend(Class.new do
+          def call(job, *)
+            raise Cosmo::Job::Requeue, 0.2 if job.attempt == 1
+
+            yield
+          end
+        end)
+      end
+
+      GreeterJob.perform_async("Alice")
+      wait_until(timeout: 5) { results.include?("Alice") }
+
+      expect(Cosmo::API::Stats.failed).to eq(0)
+      expect(stream_size("dead")).to eq(0)
+    end
   end
 
   context "with Sentry integration" do

@@ -70,8 +70,10 @@ CLI → Engine → ThreadPool
 - **Server middleware** (`Config#server_middleware`, `lib/cosmo/middleware/`) — a `Middleware::Chain`, registered via
   `Cosmo.configure { |config| config.server_middleware { |chain| ... } }`, that `Job::Processor#process` invokes as
   `call(job, data, message)` around `perform_job`, inside
-  the retry/DLQ rescue. It starts as `[Middleware::Busy, Middleware::Totals]`; Totals counts every execution, retries
-  included. Logging, concurrency slots, and batch notification stay hard-wired in the processor. Server-side only:
+  the retry/DLQ rescue. It starts as `[Middleware::Limit, Middleware::Busy, Middleware::Totals]`: Limit enforces a
+  job class's `limit:` (concurrency slots via `Job::Limit`, the duration timeout) and raises `Job::Requeue` while slots
+  are taken, which the processor naks with its delay instead of failing the job; Totals counts every execution, retries
+  included. Logging and batch notification stay hard-wired in the processor. Server-side only:
   there is no client (publish) chain, and `perform_sync` and stream processors don't run it.
 - **Sentry** (`lib/cosmo/middleware/sentry.rb`) — `Middleware::Sentry`, not loaded by default (needs `sentry-ruby`):
   apps `require "cosmo/middleware/sentry"` and add it to the chain themselves.

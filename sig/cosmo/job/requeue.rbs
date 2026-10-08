@@ -1,0 +1,9 @@
+module Cosmo
+  module Job
+    class Requeue < StandardError
+      attr_reader delay: Numeric
+
+      def initialize: (?Numeric delay) -> void
+    end
+  end
+end

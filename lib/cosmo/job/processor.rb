@@ -97,7 +97,7 @@ module Cosmo
         end
       end
 
-      def process(messages, _) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def process(messages, _) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         message = messages.first
         Logger.debug "received messages #{messages.inspect}"
         data = Utils::Json.parse(message.data)
@@ -110,13 +110,6 @@ module Cosmo
           return
         end
 
-        if worker_class.limits_concurrency?
-          slot = acquire_concurrency_slot(worker_class, message, data)
-          return if slot == false
-        end
-
-        duration = worker_class.default_options[:limit]&.dig(:duration)&.to_i
-
         begin
           sw = stopwatch
           Logger.with(jid: data[:jid])
@@ -124,12 +117,15 @@ module Cosmo
 
           instance = build_worker(worker_class, data, message)
           Config.server_middleware.invoke(instance, data, message) do
-            perform_job(instance, data: data, message: message, duration: duration)
+            perform_job(instance, data: data, message: message)
           end
 
           message.ack
           notify_batch(data, success: true)
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "done" }
+        rescue Requeue => e
+          message.nak(delay: Config.to_ns(e.delay))
+          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "requeue[#{e.delay}s]" }
         rescue Timeout::Error => e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[timeout]" }
           handle_failure(worker_class, message, data, e)
@@ -142,7 +138,6 @@ module Cosmo
           raise
         end
       ensure
-        Limit.instance.release(slot) if slot
         Logger.without(:jid)
         Logger.debug "processed message #{message.inspect}"
       end
@@ -155,27 +150,6 @@ module Cosmo
           worker.scheduled_by = scheduled_by(message)
           worker.batch_id = data[:batch_id]
         end
-      end
-
-      # Tries to acquire a concurrency slot for the job.
-      # Returns the slot key (String) on success, or false if all slots are
-      # taken (a message is NAK'd with a delay of +retry_in+ before returning
-      def acquire_concurrency_slot(worker_class, message, data)
-        options = worker_class.concurrency_options
-        key = worker_class.concurrency_key(data[:args])
-
-        slot = Limit.instance.acquire(key, jid: data[:jid], limit: options[:limit], duration: options[:duration])
-        return slot if slot
-
-        message.nak(delay: Config.to_ns(options[:retry_in]))
-        Logger.debug "concurrency limit reached for #{data[:class]}, re-queueing back #{data[:jid]}"
-        false
-      rescue NATS::Error => e
-        # Unexpected KV failure (e.g. transient NATS error). NAK immediately so
-        # the message is retried rather than stuck in-flight until ack_wait expires.
-        Logger.error e
-        message.nak
-        false
       end
 
       def handle_failure(worker_class, message, data, exception) # rubocop:disable Naming/PredicateMethod
@@ -310,15 +284,10 @@ module Cosmo
       # @param job_instance [Cosmo::Job]
       # @param data [Hash]
       # @param message [NATS::Msg]
-      # @param duration [Float, nil]
       #
       # rubocop:disable-next Lint/UnusedMethodArgument
-      def perform_job(job_instance, data:, message:, duration: nil)
-        if duration
-          Timeout.timeout(duration, Timeout::Error, "execution expired after the #{duration}s duration limit") { job_instance.perform(*data[:args]) }
-        else
-          job_instance.perform(*data[:args])
-        end
+      def perform_job(job_instance, data:, message:)
+        job_instance.perform(*data[:args])
       end
     end
   end

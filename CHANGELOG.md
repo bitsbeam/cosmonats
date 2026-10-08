@@ -15,9 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `cosmo --init` writes them into the project
 - `config.replicas`, `config.dead` (retention, or off), `config.scheduled.enabled`, and `config.batches.expiry` in
   `Cosmo.configure` for Cosmo's own service streams
+- `Cosmo::Job::Requeue`: a middleware raises it to redeliver a job later instead of failing it
 
 ### Changed
 
+- A job class's `limit:` is enforced by `Cosmo::Middleware::Limit`, the first entry of the server middleware chain,
+  instead of the job processor
 - **Breaking:** the `scheduled` and `dead` streams are Cosmo's, created by `cosmo --setup`: listing them under
   `setup.jobs`/`consumers.jobs` raises `ConfigError`, as does `batch_expiry` (now `config.batches.expiry`). Listing
   your own `setup.jobs` replaces the built-in `default` stream

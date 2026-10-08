@@ -644,11 +644,14 @@ Cosmo.configure do |config|
 end
 ```
 Register middleware at boot, before workers start (e.g. in a Rails initializer; loading `cosmo.yml` afterwards keeps
-it). The chain starts with the built-in `Cosmo::Middleware::Busy`
-(the Web UI's Busy page) and `Cosmo::Middleware::Totals` (processed/failed counts, one per execution);
-`add` appends innermost, and `prepend`, `insert_before`, `insert_after`, and `remove` reorder it.
+it). The chain starts with Cosmo's required middleware: `Cosmo::Middleware::Limit` (a job class's `limit:`
+option), `Cosmo::Middleware::Busy` (the Web UI's Busy page), and `Cosmo::Middleware::Totals` (processed/failed counts,
+one per execution). `add` appends innermost, after them; `prepend`, `insert_before`, `insert_after`, and `remove`
+reorder the chain, so moving or removing the built-ins is at your own risk.
 A middleware that raises sends the job through the usual retry/DLQ path, and one that doesn't yield skips the job
-and acks it. A fresh instance is built for every job. `perform_sync` doesn't run the chain.
+and acks it. To put a job back for later instead, raise `Cosmo::Job::Requeue.new(delay_in_seconds)`: the job is
+redelivered without failing, though the redelivery still counts toward its `retry` and `max_deliver`.
+A fresh instance is built for every job. `perform_sync` doesn't run the chain.
 
 ### Testing
 

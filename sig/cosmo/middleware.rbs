@@ -1,5 +1,15 @@
 module Cosmo
   module Middleware
+    class Limit
+      def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
+
+      private
+
+      def acquire: (untyped job_class, Hash[Symbol, untyped] data) -> ::String?
+
+      def timeout: (Numeric? duration) { () -> untyped } -> untyped
+    end
+
     class Busy
       def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
     end

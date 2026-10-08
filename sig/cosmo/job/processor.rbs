@@ -55,9 +55,7 @@ module Cosmo
 
       def move_message: (untyped message, ?Hash[Symbol, untyped]? data, ?Exception? exception) -> void
 
-      def acquire_concurrency_slot: (untyped worker_class, untyped message, Hash[Symbol, untyped] data) -> (::String | false)
-
-      def perform_job: (untyped job_instance, data: Hash[Symbol, untyped], message: untyped, ?duration: Float?) -> untyped
+      def perform_job: (untyped job_instance, data: Hash[Symbol, untyped], message: untyped) -> untyped
     end
   end
 end
