@@ -49,5 +49,7 @@ module Cosmo
     def self.instance=: (untyped logger) -> void
 
     def self.level=: (Symbol | ::String | Integer level) -> void
+
+    def self.coerce_level: (Symbol | ::String | Integer level) -> Integer
   end
 end

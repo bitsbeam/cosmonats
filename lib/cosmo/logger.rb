@@ -87,7 +87,6 @@ module Cosmo
     def self.coerce_level(level)
       level.to_s.downcase == "trace" ? TRACE : ::Logger::Severity.coerce(level)
     end
-    private_class_method :coerce_level
 
     # @param logger [::Logger] any stdlib-compatible logger. Its formatter is left alone, so context such as
     #   +jid+ and +elapsed+ is only printed when it uses {SimpleFormatter}.
