@@ -44,7 +44,7 @@ CLI → Engine → ThreadPool
   mounted, `Rack::Auth::Basic` standalone). It also has **no CSRF protection** yet, while exposing
   destructive routes (retry/delete dead jobs, pause streams, delete/run crons).
 - **`Cosmo::Heartbeat`** (`lib/cosmo/heartbeat.rb`) — started by `Engine#run`; every 10s writes this process's
-  details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `cosmo_processes`
+  details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `_cosmoprocesses`
   KV bucket via `API::Stats::Processes`. Unregisters on graceful shutdown; a crashed process expires by the bucket's 60s TTL.
 - **`Cosmo::Batch`** (`lib/cosmo/batch.rb`) — groups jobs and fires a `:success`/`:complete` callback when the group
   finishes; state lives in `Batch::Counters` (the `_cosmobatches` stream, `max_age` = `config.batches.expiry`, so an
@@ -54,7 +54,7 @@ CLI → Engine → ThreadPool
   `Cosmo.configure` settings (never from YAML, since an initializer runs after the CLI loads it): `scheduled` stream +
   consumer (`config.scheduled.enabled`; off → no stream, no scheduler, `perform_in`/crons raise
   `SchedulingDisabledError`), `dead` (`config.dead`: retention, or off → given-up jobs are `term`ed), and the
-  `_cosmostats` totals (`API::Stats::Totals`; always on, never expire) and the `_cosmobatches` batch counters,
+  `_cosmototals` totals (`API::Stats::Totals`; always on, never expire) and the `_cosmobatches` batch counters,
   all `API::Counter` subclasses. `config.replicas` sizes these and the KV buckets.
   `Services.setup!` runs in `cosmo --setup`; specs get it through `create_streams`.
 - **`Cosmo::API::Cron`** (`lib/cosmo/api/cron.rb`) — recurring jobs use **NATS 2.14 server-side message schedules**
@@ -131,6 +131,10 @@ are eagerly loaded by the CLI.
 
 ## Subject & Stream Naming Conventions
 
+- **Cosmo's internal storage**: every stream and KV bucket Cosmo keeps for itself is named `_cosmo<domain>`, one word
+  per domain: streams `_cosmototals`, `_cosmometrics`, `_cosmobatches`; KV buckets `_cosmobatches`, `_cosmobusy`,
+  `_cosmoprocesses`, `_cosmolimits` (NATS shows those as `KV__cosmo…`). The web UI's Streams page hides `_cosmo*` and
+  `KV_*`. The `scheduled` and `dead` job streams keep plain names, as their subjects live in `jobs.*`
 - **Job subjects**: `jobs.<stream_name>.<underscored_class_name>` — e.g. `jobs.default.send_email_job`
 - **Dead letter**: `jobs.dead.<underscored_class_name>`
 - **Scheduled jobs**: routed through the `:scheduled` stream with headers `X-Execute-At`, `X-Stream`, `X-Subject`.

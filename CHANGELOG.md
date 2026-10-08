@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** the `scheduled` and `dead` streams are Cosmo's, created by `cosmo --setup`: listing them under
   `setup.jobs`/`consumers.jobs` raises `ConfigError`, as does `batch_expiry` (now `config.batches.expiry`). Listing
   your own `setup.jobs` replaces the built-in `default` stream
+- **Breaking:** Cosmo's internal streams and KV buckets are named `_cosmo<domain>`: `_cosmostats` is `_cosmototals`, and
+  the `cosmo_jobs_batches`, `cosmo_jobs_busy`, `cosmo_processes`, and `cosmo_jobs_limits` buckets are `_cosmobatches`,
+  `_cosmobusy`, `_cosmoprocesses`, and `_cosmolimits`; nothing is migrated automatically
 - **Breaking:** batch counters moved from `_cosmostats` to their own `_cosmobatches` stream, which expires them after
   `config.batches.expiry`; batches still open during the upgrade lose their progress counters
 - **Breaking:** `Config.set` and `Config.to_h` are removed: streams and settings go in `cosmo.yml`, code-level setup in

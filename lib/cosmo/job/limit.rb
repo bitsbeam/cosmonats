@@ -13,7 +13,7 @@ module Cosmo
     # expires it automatically via the per-message Nats-TTL header. Both
     # paths leave the slot equally empty -- no tombstone, no delete marker.
     class Limit
-      BUCKET = "cosmo_jobs_limits"
+      BUCKET = "_cosmolimits"
 
       def self.instance
         @instance ||= new

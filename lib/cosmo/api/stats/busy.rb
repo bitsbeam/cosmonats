@@ -9,7 +9,7 @@ module Cosmo
       class Busy < Registry
         TTL = 70
         HEARTBEAT = 30
-        BUCKET = "cosmo_jobs_busy"
+        BUCKET = "_cosmobusy"
 
         def initialize
           super

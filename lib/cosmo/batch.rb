@@ -84,7 +84,7 @@ module Cosmo
   class Batch
     extend Dispatcher
 
-    BUCKET = "cosmo_jobs_batches"
+    BUCKET = "_cosmobatches"
     EVENTS = %i[success complete].freeze
 
     def self.current

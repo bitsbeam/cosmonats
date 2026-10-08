@@ -900,8 +900,7 @@ sudo systemctl enable cosmo && sudo systemctl start cosmo
 - **Jobs** — enqueued, scheduled, busy, and dead views, with per-job retry and delete
 - **Processes** — the Jobs dashboard lists every live worker (idle ones included): host, pid, IP, NATS connection
   name, command line, subscribed streams, busy/concurrency, running/quiet/stopping state, memory, NATS RTT and
-  reconnects. Each worker
-  beats into the `cosmo_processes` KV bucket every 10s, and a crashed worker drops out within 60s
+  reconnects. Each worker beats into the `_cosmoprocesses` KV bucket every 10s, and a crashed worker drops out within 60s
 - **Streams** — per-stream state (messages, bytes, consumers) with pause/resume
 - **Crons** — every schedule deployed in NATS, with run-now and delete
 - **Batches** — open and finished batches with pending/succeeded/failed counts

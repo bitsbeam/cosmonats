@@ -3,9 +3,9 @@
 module Cosmo
   module API
     module Stats
-      # Processed and failed job totals across all workers, in the +_cosmostats+ counters. They never expire.
+      # Processed and failed job totals across all workers, in the +_cosmototals+ counters. They never expire.
       class Totals < Counter
-        STREAM_NAME = "_cosmostats"
+        STREAM_NAME = "_cosmototals"
         DESCRIPTION = "Cosmo statistics"
 
         def self.instance

@@ -6,7 +6,7 @@ module Cosmo
       # Live worker processes, one entry per process, refreshed by Cosmo::Heartbeat.
       class Processes < Registry
         TTL = 60
-        BUCKET = "cosmo_processes"
+        BUCKET = "_cosmoprocesses"
         KINDS = %w[jobs streams jobs+streams none].freeze
 
         # Which processors a process is pulling for, judged by its non-empty subscriptions.
