@@ -43,14 +43,15 @@ module Cosmo
         subjects: ["jobs.#{DEAD}.>"], num_replicas: Config.replicas, description: "Dead jobs", metadata: METADATA }
     end
 
-    # Creates or updates every enabled service stream, plus the internal stats counters and, while enabled, the job
-    # metrics.
+    # Creates or updates every enabled service stream, plus the internal totals and batch counters and, while enabled,
+    # the job metrics.
     #
     # @return [Array<String>] the names of the service streams set up, without the internal ones
     def setup!
       streams = { SCHEDULED => scheduled_stream, DEAD => dead_stream }.compact
       streams.each { |name, config| setup_stream(name, config) }
-      API::Stats::Counters.setup!
+      API::Stats::Totals.setup!
+      Batch::Counters.setup!
       API::Stats::Metrics.setup! if Config.metrics.enabled
       streams.keys
     end

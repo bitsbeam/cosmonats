@@ -1,0 +1,10 @@
+module Cosmo
+  class Batch
+    class Counters < API::Counter
+      STREAM_NAME: ::String
+      DESCRIPTION: ::String
+
+      def self.stream_config: () -> Hash[Symbol, untyped]
+    end
+  end
+end

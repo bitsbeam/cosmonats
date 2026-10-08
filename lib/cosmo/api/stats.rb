@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "cosmo/api/stats/counters"
 require "cosmo/api/stats/totals"
 require "cosmo/api/stats/busy"
 require "cosmo/api/stats/processes"

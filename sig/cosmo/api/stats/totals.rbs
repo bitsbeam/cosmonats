@@ -1,7 +1,10 @@
 module Cosmo
   module API
     module Stats
-      class Totals < Counters
+      class Totals < Counter
+        STREAM_NAME: ::String
+        DESCRIPTION: ::String
+
         self.@instance: Totals
 
         def self.instance: () -> Totals

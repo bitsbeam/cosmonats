@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
-RSpec.describe Cosmo::API::Stats::Counters do
-  subject(:counter) { described_class.new("test") }
+RSpec.describe Cosmo::API::Counter do
+  subject(:counter) { counter_class.new("test") }
 
-  let(:stream_name) { described_class::STREAM_NAME }
+  let(:counter_class) { Cosmo::API::Stats::Totals }
+  let(:stream_name) { counter_class::STREAM_NAME }
 
   before { destroy_streams }
   after { destroy_streams }
@@ -83,11 +84,11 @@ RSpec.describe Cosmo::API::Stats::Counters do
 
   describe ".setup!" do
     it "trims an existing unlimited stream to one message per counter without losing totals" do
-      client.create_stream(stream_name, described_class.stream_config.except(:max_msgs_per_subject))
+      client.create_stream(stream_name, counter_class.stream_config.except(:max_msgs_per_subject))
       5.times { counter.increment(:processed) }
       2.times { counter.increment(:failed) }
 
-      described_class.setup!
+      counter_class.setup!
 
       expect(client.stream_info(stream_name).state.messages).to eq(2)
       expect(counter.get(:processed)).to eq(5)
@@ -97,7 +98,7 @@ RSpec.describe Cosmo::API::Stats::Counters do
     end
 
     it "creates the stream when it is missing" do
-      described_class.setup!
+      counter_class.setup!
       expect(client.stream_info(stream_name).config.max_msgs_per_subject).to eq(1)
     end
   end
