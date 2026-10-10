@@ -228,7 +228,6 @@ docker compose up nats
 | Cron schedules (NATS 2.14) | `lib/cosmo/api/cron.rb` + `lib/cosmo/api/cron/entry.rb` |
 | Concurrency limiter | `lib/cosmo/job/limit.rb` |
 | ActiveJob adapter + Railtie | `lib/cosmo/active_job/` + `lib/cosmo/railtie.rb` |
-| Vendored nats-pure fixes | `lib/cosmo/utils/overrides.rb` |
 | Stream mixin + registration | `lib/cosmo/stream.rb` + `lib/cosmo/stream/` |
 | Server middleware chain + built-ins | `lib/cosmo/middleware.rb` + `lib/cosmo/middleware/` |
 | Engine / signal handling | `lib/cosmo/engine.rb` |

@@ -2,7 +2,6 @@
 
 require "socket"
 require "nats/client"
-require "cosmo/utils/overrides"
 
 module Cosmo
   class Client
