@@ -6,6 +6,22 @@ module Cosmo
       ASSETS_ROOT = File.expand_path("assets", __dir__).freeze
       VIEWS_ROOT  = File.expand_path("views",  __dir__).freeze
 
+      @templates = {}
+      @lock = Mutex.new
+
+      # Compiles a view into a Context method on its first render, so later renders skip reading and parsing it.
+      #
+      # @param path [String] the view, relative to VIEWS_ROOT and without +.erb+, e.g. +"jobs/_busy"+
+      # @return [String] the name of the Context method that renders it
+      def self.template(path)
+        @lock.synchronize do
+          @templates[path] ||= "template#{@templates.size}".tap do |name|
+            source = File.read(File.join(VIEWS_ROOT, "#{path}.erb"))
+            ERB.new(source, trim_mode: "-").def_method(Context, name, "#{path}.erb")
+          end
+        end
+      end
+
       def redirect_to(url, status = 302)
         [status, { "location" => url_for(url) }, []]
       end
@@ -48,10 +64,7 @@ module Cosmo
       end
 
       def erb(path, locals, content_for = nil)
-        path = File.join(VIEWS_ROOT, "#{path}.erb")
-        erb  = ERB.new(File.read(path), trim_mode: "-")
-        context = Context.new(locals, content_for)
-        erb.result(context.binding)
+        Context.new(locals, content_for).public_send(Renderer.template(path))
       end
     end
   end

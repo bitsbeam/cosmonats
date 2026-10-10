@@ -12,10 +12,6 @@ module Cosmo
         locals.each { |k, v| instance_variable_set("@#{k}", v) }
       end
 
-      def binding # rubocop:disable Lint/UselessMethodDefinition
-        super
-      end
-
       def content_for(name)
         @content_for[name]
       end
