@@ -1,58 +1,37 @@
 <% if @schedules.empty? -%>
-  <div class="alert alert-success">
-    No cron schedules deployed in NATS.<br>
-    Add a <code>cron:</code> section to <code>cosmo.yml</code> and run
-    <code>cosmo --setup</code> to publish them.
+  <div class="empty">
+    <b>No cron schedules deployed in NATS</b>
+    <span>Add a <code>cron:</code> section to <code>cosmo.yml</code> and run <code>cosmo --setup</code> to publish them.</span>
   </div>
 <% else -%>
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Job</th>
-          <th>Expression</th>
-          <th>Timezone</th>
-          <th>Args</th>
-          <th>Stream</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @schedules.each do |s| -%>
-        <tr id="cron-row-<%= h(s[:registry_key].to_s.gsub("/", "-")) %>">
-          <td>
-            <div class="job-class"><%= h(s[:class].to_s) %></div>
-            <% if s[:name] -%>
-              <code class="text-muted" style="font-size:0.8em;"><%= h(s[:name].to_s) %></code>
-            <% end -%>
-            <div style="font-size:0.75em; color:#888; margin-top:2px;">
-              <code><%= h(s[:schedule_subject].to_s) %></code>
-            </div>
-          </td>
-          <td><code class="subject-tag"><%= h(s[:schedule].to_s) %></code></td>
-          <td><%= h(s[:timezone] || "UTC") %></td>
-          <td>
-            <% if s[:args]&.any? -%>
-              <code><%= h(s[:args].inspect) %></code>
-            <% else -%>
-              <span class="text-muted">&mdash;</span>
-            <% end -%>
-          </td>
-          <td><code><%= h(s[:stream].to_s) %></code></td>
-          <td style="white-space:nowrap;">
-            <a hx-post="<%= url_for('/crons/run', { subject: u(s[:schedule_subject].to_s) }) %>"
-               class="btn btn-success btn-sm"
-               title="Dispatch this job now, bypassing the schedule timer">&#x25BA; Run Now</a>
-            <a hx-delete="<%= url_for('/crons/delete', { subject: u(s[:schedule_subject].to_s) }) %>"
-               hx-target="#crons-table"
-               hx-swap="innerHTML"
-               hx-confirm="Delete '<%= h(s[:schedule_subject].to_s) %>'? NATS will stop firing it."
-               class="btn btn-danger btn-sm"
-               title="Purge schedule from NATS">&#x1F5D1; Delete</a>
-          </td>
-        </tr>
+  <div class="scroll"><div style="min-width:900px">
+    <div class="thead t-crons"><span>Schedule</span><span>Cron</span><span>Stream</span><span>Args</span><span></span></div>
+    <% @schedules.each do |s| -%>
+      <% subject = s[:schedule_subject].to_s -%>
+      <div class="trow hover t-crons">
+        <div class="stack">
+          <span class="strong ellip"><%= h(s[:name] || s[:class]) %></span>
+          <% if s[:name] -%><span class="small-mono ellip"><%= h(s[:class]) %></span><% end -%>
+          <span class="small-mono ellip" title="<%= h(subject) %>"><%= h(subject) %></span>
+        </div>
+        <div class="stack">
+          <span class="mono" style="font-size:12.5px"><%= h(s[:schedule]) %></span>
+          <span class="mute" style="font-size:11.5px"><%= h(s[:timezone] || 'UTC') %></span>
+        </div>
+        <span class="qname"><span class="dot" style="background:<%= hue(s[:stream]) %>"></span><span class="mono ellip"><%= h(s[:stream]) %></span></span>
+        <% if s[:args]&.any? -%>
+          <span class="mono mute ellip" style="font-size:11.5px" title="<%= h(s[:args].inspect) %>"><%= h(s[:args].inspect) %></span>
+        <% else -%>
+          <span class="faint">—</span>
         <% end -%>
-      </tbody>
-    </table>
-  </div>
+        <div class="btns">
+          <button type="button" class="btn" title="Dispatch this job now, bypassing the schedule timer"
+                  hx-post="<%= url_for('/crons/run', { subject: u(subject) }) %>" hx-swap="none" hx-indicator="#global-spinner">► Run now</button>
+          <button type="button" class="btn danger" title="Purge schedule from NATS"
+                  hx-delete="<%= url_for('/crons/delete', { subject: u(subject) }) %>" hx-target="#crons-table" hx-swap="innerHTML"
+                  hx-indicator="#global-spinner" hx-confirm="Delete '<%= h(subject) %>'? NATS will stop firing it.">Delete</button>
+        </div>
+      </div>
+    <% end -%>
+  </div></div>
 <% end -%>

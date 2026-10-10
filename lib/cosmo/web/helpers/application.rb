@@ -78,6 +78,61 @@ module Cosmo
           "#{(diff / 86_400).to_i}d"
         end
 
+        # @return [String] e.g. "940", "18.9k", "1.28M"
+        def compact_number(num)
+          n = num.to_i
+          return format("%.2fM", n / 1e6).sub(/\.?0+M\z/, "M") if n >= 1_000_000
+          return format("%.1fk", n / 1e3).sub(/\.0k\z/, "k") if n >= 10_000
+
+          format_numbers(n)
+        end
+
+        # @param seconds [Numeric, nil]
+        # @return [String] e.g. "45s", "30m", "7d", or "—" without a value
+        def format_span(seconds)
+          s = seconds.to_i
+          return "—" unless s.positive?
+
+          { 86_400 => "d", 3_600 => "h", 60 => "m" }.each { |size, unit| return "#{(s / size.to_f).round(1).to_s.delete_suffix(".0")}#{unit}" if s >= size }
+          "#{s}s"
+        end
+
+        # A stable chart color per name, one of the palette's five hues: job streams take them in name order, so the
+        # first five never share one, anything else by a hash of its name.
+        def hue(name)
+          @hues ||= API::Stream.jobs.map(&:name).sort.each_with_index.to_h
+          index = @hues.fetch(name.to_s) { Zlib.crc32(name.to_s) }
+          "var(--c#{(index % 5) + 1})"
+        end
+
+        # @return [Array<Hash>] the sidebar entries, +:key+, +:label+ and +:path+, for the enabled pages
+        def nav_items
+          items = [%w[overview Overview /], %w[jobs Jobs /jobs], %w[streams Streams /streams]]
+          items << %w[crons Crons /crons] if Config.scheduled.enabled
+          items << %w[batches Batches /batches]
+          items << %w[metrics Metrics /metrics] if Config.metrics.enabled
+          items.map { |key, label, path| { key:, label:, path: } }
+        end
+
+        # @return [String] the nav key of the page being rendered
+        def current_section
+          path = @request.path_info
+          return "overview" if path.empty? || path == "/" || path.start_with?("/processes")
+
+          path.split("/")[1].to_s
+        end
+
+        # @return [Hash] the connected NATS server's +:url+, +:name+ and +:version+, empty while unknown
+        def nats_server
+          connection = Client.instance.nc
+          info = connection.server_info || {}
+          uri = connection.connected_server
+          name = info[:server_name] unless info[:server_name] == info[:server_id]
+          { url: uri && "#{uri.host}:#{uri.port}", name:, version: info[:version] }.compact
+        rescue StandardError
+          {}
+        end
+
         def h(value)
           Rack::Utils.escape_html(value.to_s)
         end

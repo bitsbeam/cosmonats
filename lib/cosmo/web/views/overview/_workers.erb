@@ -1,0 +1,25 @@
+<div class="card-head">
+  <div class="card-title">Workers</div>
+  <div class="mono mute" style="font-size:11px"><%= @busy %> / <%= @threads %> busy</div>
+</div>
+<% if @processes.empty? -%>
+  <div class="empty"><b>No worker processes</b>Start one with <code>cosmo -C config/cosmo.yml</code>.</div>
+<% else -%>
+  <div class="cells">
+    <% @cells.each do |stream| -%>
+      <i<% if stream %> style="background:<%= hue(stream) %>" title="<%= h(stream) %>"<% end %>></i>
+    <% end -%>
+  </div>
+  <% if @hidden.positive? -%><div class="small-mono">+<%= @hidden %> more threads</div><% end -%>
+  <div class="procs">
+    <% @processes.each do |process| -%>
+      <div class="proc">
+        <div class="ellip" title="<%= h(process[:cmdline]) %>"><%= h(process[:hostname]) %> · pid <%= h(process[:pid]) %></div>
+        <span class="mute"><%= h(process[:busy]) %>/<%= h(process[:concurrency]) %></span>
+        <span class="faint"><%= process[:rss] ? format_bytes(process[:rss].to_i * 1024) : '—' %></span>
+        <span style="color:<%= { 'running' => 'var(--ok)', 'quiet' => 'var(--warn)', 'stopping' => 'var(--err)' }.fetch(process[:state].to_s, 'var(--mute)') %>"><%= h(process[:state]) %></span>
+      </div>
+    <% end -%>
+  </div>
+  <a class="small-mono" href="<%= url_for('/processes') %>">All <%= @total %> process(es) &rarr;</a>
+<% end -%>

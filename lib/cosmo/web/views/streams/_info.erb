@@ -1,92 +1,34 @@
-<div class="cards-container">
-  <article class="stat-card">
-    <h3><%= format_numbers(@state.messages) %></h3>
-    <p>Messages</p>
-  </article>
-  <article class="stat-card">
-    <h3><%= format_bytes(@state.bytes) %></h3>
-    <p>Size</p>
-  </article>
-  <article class="stat-card">
-    <h3><%= @state.consumer_count %></h3>
-    <p>Consumers</p>
-  </article>
-  <article class="stat-card">
-    <h3><%= format_numbers(@state.first_seq) + " &rarr; " + format_numbers(@state.last_seq) %></h3>
-    <p>Sequence Range</p>
-  </article>
+<div>
+  <a class="small-mono" href="<%= url_for('/streams') %>">&larr; Back to streams</a>
 </div>
 
-<%= render("streams/_pause_banner", { name: @name, paused: @paused }) %>
-
-<div class="nav">
-  <a href="<%= url_for('/streams') %>"
-     hx-get="<%= url_for('/streams') %>"
-     hx-target="#content"
-     hx-push-url="true"
-     class="btn">Back to Streams</a>
+<div class="kpis">
+  <div class="kpi" style="--hue:var(--c1)"><div class="kpi-label"><i></i>Messages</div><div class="kpi-val"><b><%= format_numbers(@state.messages) %></b></div></div>
+  <div class="kpi" style="--hue:var(--c2)"><div class="kpi-label"><i></i>Size</div><div class="kpi-val"><b><%= format_bytes(@state.bytes) %></b></div></div>
+  <div class="kpi" style="--hue:var(--c3)"><div class="kpi-label"><i></i>Consumers</div><div class="kpi-val"><b><%= @state.consumer_count %></b></div></div>
+  <div class="kpi" style="--hue:var(--c4)"><div class="kpi-label"><i></i>Sequence range</div><div class="kpi-val"><b style="font-size:22px"><%= format_numbers(@state.first_seq) %> → <%= format_numbers(@state.last_seq) %></b></div></div>
 </div>
 
-<h2>Configuration</h2>
-<div class="table-container">
-  <table>
-    <tbody>
-      <tr>
-        <th>Name</th>
-        <td>
-          <code><%= h(@name) %></code>
-        </td>
-      </tr>
-      <tr>
-        <th>Retention</th>
-        <td>
-          <code><%= h(@config.retention.to_s) %></code>
-        </td>
-      </tr>
-      <tr>
-        <th>Storage</th>
-        <td>
-          <code><%= h(@config.storage.to_s) %></code>
-        </td>
-      </tr>
-      <tr>
-        <th>Discard Policy</th>
-        <td>
-          <code><%= h(@config.discard.to_s) %></code>
-        </td>
-      </tr>
-      <tr>
-        <th>Max Consumers</th>
-        <td>
-          <code><%= @config.max_consumers || "Unlimited" %></code>
-        </td>
-      </tr>
-      <tr>
-        <th>Max Messages</th>
-        <td>
-          <code><%= @config.max_msgs || "Unlimited" %></code>
-        </td>
-      </tr>
-      <tr>
-        <th>Max Bytes</th>
-        <td>
-          <code><%= @config.max_bytes&.positive? ? format_bytes(@config.max_bytes) : "Unlimited" %></code>
-        </td>
-      </tr>
-      <tr>
-        <th>Max Age</th>
-        <td>
-          <code><%= @config.max_age&.positive? ? "#{@config.max_age}ns" : "Unlimited" %></code>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+<%= render('streams/_pause_banner', { name: @name, paused: @paused }) %>
 
-<h2>Subjects</h2>
-<div class="subjects" style="margin-top: var(--space-2x);">
-  <% Array(@config.subjects).each do |sub| -%>
-    <div class="subject-tag" style="padding: var(--space) var(--space-2x); font-size: 1rem;"><%= h(sub) %></div>
+<section class="card">
+  <div class="card-head bar ruled"><div class="card-title">Configuration</div></div>
+  <% rows = {
+       'Name' => @name,
+       'Retention' => @config.retention,
+       'Storage' => @config.storage,
+       'Replicas' => @config.num_replicas || 1,
+       'Discard policy' => @config.discard,
+       'Max consumers' => @config.max_consumers.to_i.positive? ? @config.max_consumers : 'Unlimited',
+       'Max messages' => @config.max_msgs.to_i.positive? ? format_numbers(@config.max_msgs) : 'Unlimited',
+       'Max bytes' => @config.max_bytes.to_i.positive? ? format_bytes(@config.max_bytes) : 'Unlimited',
+       'Max age' => @config.max_age.to_i.positive? ? "#{format_span(@config.max_age.to_i / 1_000_000_000)} (#{@config.max_age}ns)" : 'Unlimited'
+     } -%>
+  <% rows.each do |label, value| -%>
+    <div class="trow t-kv"><span class="eyebrow"><%= label %></span><code><%= h(value) %></code></div>
   <% end -%>
-</div>
-
+  <div class="trow t-kv">
+    <span class="eyebrow">Subjects</span>
+    <div class="subjects"><% Array(@config.subjects).each do |subject| -%><span class="subject"><%= h(subject) %></span><% end -%></div>
+  </div>
+</section>

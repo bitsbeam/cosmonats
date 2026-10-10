@@ -1,0 +1,20 @@
+<% grid = @compact ? 't-queues' : 't-queues-full' -%>
+<% if @compact -%>
+  <div class="card-head bar">
+    <div class="card-title">Queues</div>
+    <a class="small-mono" href="<%= url_for('/jobs') %>">All queues &rarr;</a>
+  </div>
+<% end -%>
+<% if @queues.empty? -%>
+  <div class="empty"><b>No job streams</b>Run <code>cosmo --setup</code> to create them.</div>
+<% else -%>
+  <div class="scroll"><div style="min-width:<%= @compact ? 520 : 680 %>px">
+    <div class="thead<%= ' top' if @compact %> <%= grid %>">
+      <span>Queue</span><span class="r">Size</span><span class="r">Busy</span><span class="r">Retries</span>
+      <% if @compact -%><span></span><% else -%><span>Status</span><span></span><% end -%>
+    </div>
+    <% @queues.each do |queue| -%>
+      <%= render('jobs/_queue_row', { queue:, compact: @compact }) %>
+    <% end -%>
+  </div></div>
+<% end -%>

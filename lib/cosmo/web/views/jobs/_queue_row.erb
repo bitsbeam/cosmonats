@@ -1,0 +1,18 @@
+<% q = @queue -%>
+<div class="trow hover <%= @compact ? 't-queues' : 't-queues-full' %>">
+  <div class="qname">
+    <span class="dot" style="background:<%= q[:paused] ? 'var(--warn)' : hue(q[:name]) %>"></span>
+    <a class="mono ellip" style="color:var(--ink)" href="<%= url_for('/jobs/enqueued', stream_name: u(q[:name])) %>"><%= h(q[:name]) %></a>
+  </div>
+  <div class="r"><%= format_numbers(q[:size]) %></div>
+  <div class="r mute"><%= format_numbers(q[:busy]) %></div>
+  <div class="r" style="color:<%= q[:retries].positive? ? 'var(--warn)' : 'var(--mute)' %>"><%= format_numbers(q[:retries]) %></div>
+  <% if @compact -%>
+    <div class="r"><% if q[:paused] -%><span class="paused-tag">paused</span><% end -%></div>
+  <% else -%>
+    <span class="pill" style="--tone:<%= q[:paused] ? 'var(--warn)' : 'var(--ok)' %>"><%= q[:paused] ? 'paused' : 'active' %></span>
+    <button type="button" class="btn<%= ' quiet' unless q[:paused] %>" style="justify-self:end"
+            hx-patch="<%= url_for(q[:paused] ? '/streams/unpause' : '/streams/pause', name: u(q[:name]), view: 'queue') %>"
+            hx-target="closest .trow" hx-swap="outerHTML" hx-indicator="#global-spinner"><%= q[:paused] ? '▶ Resume' : '⏸ Pause' %></button>
+  <% end -%>
+</div>

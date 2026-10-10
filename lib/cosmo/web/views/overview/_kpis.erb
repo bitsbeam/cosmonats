@@ -1,0 +1,19 @@
+<% metrics_path = Cosmo::Config.metrics.enabled ? '/metrics' : nil -%>
+<% kpis = [
+     ['Processed', @processed, 'all time', 'var(--c1)', metrics_path],
+     ['Failed', @failed, 'all time', 'var(--err)', metrics_path],
+     ['Busy', @busy, 'running now', 'var(--c3)', '/jobs/busy'],
+     ['Enqueued', @enqueued, 'waiting in queues', 'var(--c2)', '/jobs/enqueued'],
+     ['Retries', @retries, 'redeliveries', 'var(--warn)', '/jobs']
+   ] -%>
+<% kpis << ['Scheduled', @scheduled, 'delayed & cron', 'var(--c5)', '/jobs/scheduled'] if Cosmo::Config.scheduled.enabled -%>
+<% kpis << ['Dead', @dead, 'gave up', 'var(--c4)', '/jobs/dead'] if Cosmo::Config.dead.enabled -%>
+<div class="kpis">
+  <% kpis.each do |label, value, sub, color, link| -%>
+    <<%= link ? %(a href="#{url_for(link)}") : 'div' %> class="kpi" style="--hue:<%= color %>">
+      <div class="kpi-label"><i></i><%= label %></div>
+      <div class="kpi-val"><b title="<%= format_numbers(value) %>"><%= compact_number(value) %></b></div>
+      <div class="kpi-sub"><%= sub %></div>
+    </<%= link ? 'a' : 'div' %>>
+  <% end -%>
+</div>

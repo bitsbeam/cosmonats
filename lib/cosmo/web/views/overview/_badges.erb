@@ -1,0 +1,3 @@
+<% @badges.each do |key, count| -%>
+<span class="badge" id="badge-<%= key %>" hx-swap-oob="true"><%= compact_number(count) %></span>
+<% end -%>

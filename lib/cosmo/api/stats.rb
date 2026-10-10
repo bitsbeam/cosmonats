@@ -41,6 +41,21 @@ module Cosmo
       def dead
         Config.dead.enabled ? Stream.new("dead").size : 0
       end
+
+      # @return [Array<Hash>] a {.queue} row per job stream
+      def queues
+        busy = Busy.instance.by_stream
+        Stream.jobs.map { queue(_1, busy) }
+      end
+
+      # @param stream [Stream] a job stream
+      # @param busy [Hash{String => Integer}] running jobs per stream, as {Busy#by_stream} counts them
+      # @return [Hash] the stream's +:name+, waiting messages as +:size+, running jobs as +:busy+, redeliveries as
+      #   +:retries+, and whether it is +:paused+
+      def queue(stream, busy = Busy.instance.by_stream)
+        { name: stream.name, size: stream.size, busy: busy.fetch(stream.name, 0), retries: stream.retries,
+          paused: stream.paused? }
+      end
     end
   end
 end

@@ -1,9 +1,9 @@
-<div id="metrics-panel"
+<div id="metrics-panel" class="view"
      hx-get="<%= url_for('/metrics/_panel', { days: @days, job: u(@job) }) %>"
      hx-trigger="every 30s"
      hx-swap="outerHTML">
   <% if @rows.empty? -%>
-    <div class="alert alert-success">No metrics recorded in this period.</div>
+    <section class="card"><div class="empty"><b>No metrics yet</b>Nothing recorded in this period.</div></section>
   <% else -%>
     <% if @chart -%>
       <%= render('metrics/_chart', { job: @job, days: @days, chart: @chart }) %>

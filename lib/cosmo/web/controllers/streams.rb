@@ -7,62 +7,60 @@ module Cosmo
     module Controllers
       class Streams < Application
         def index
-          return _table if hx_request?
+          return ok(list) if hx_request?
 
           content_for :title, "Streams"
+          content_for :subtitle, "JetStream streams and the consumers reading them."
           ok render("streams/index", layout: true)
         end
 
         def info
-          name = Rack::Utils.unescape(@request.params["name"])
-          return _info if hx_request?
+          return ok(render("streams/_info", info_locals(API::Stream.new(name)))) if hx_request?
 
           content_for :title, "Streams"
-          ok render("streams/info", { name: name }, layout: true)
+          content_for :subtitle, "Configuration of #{name}."
+          ok render("streams/info", { name: }, layout: true)
         end
 
         def pause
-          name = Rack::Utils.unescape(@request.params["name"])
           stream = API::Stream.new(name)
           stream.pause!
-          return ok render("streams/_pause_banner", banner_locals(stream)) if @request.params["banner"]
-
-          ok render("streams/_stream_row", { stream: row_locals(stream) })
+          toggled(stream, "paused")
         end
 
         def unpause
-          name = Rack::Utils.unescape(@request.params["name"])
           stream = API::Stream.new(name)
           stream.unpause!
-          return ok render("streams/_pause_banner", banner_locals(stream)) if @request.params["banner"]
-
-          ok render("streams/_stream_row", { stream: row_locals(stream) })
-        end
-
-        def _table
-          streams = API::Stream.all.reject { |s| s.name.start_with?("KV_") || s.name.start_with?("_cosmo") }.map { row_locals(_1) }
-          ok render("streams/_table", { streams: streams })
-        end
-
-        def _info
-          name = Rack::Utils.unescape(@request.params["name"])
-          stream = API::Stream.new(name)
-          ok render("streams/_info", stream.info.merge(name:, paused: stream.paused?))
+          toggled(stream, "resumed")
         end
 
         private
 
-        def row_locals(stream)
-          state, config = stream.info.values
-          { name: stream.name, messages: state.messages, bytes: state.bytes,
-            first_seq: state.first_seq, last_seq: state.last_seq,
-            consumer_count: state.consumer_count,
-            subjects: config.subjects,
-            paused: stream.paused? }
+        def name
+          Rack::Utils.unescape(params["name"].to_s)
         end
 
-        def banner_locals(stream)
-          { name: stream.name, paused: stream.paused? }
+        def list
+          streams = API::Stream.all.reject { _1.name.start_with?("KV_", "_cosmo") }.map { card(_1) }
+          render("streams/_list", { streams: })
+        end
+
+        def toggled(stream, verb)
+          body = case params["view"] || (params["banner"] && "banner")
+                 when "banner" then render("streams/_pause_banner", { name: stream.name, paused: stream.paused? })
+                 when "queue" then render("jobs/_queue_row", { queue: API::Stats.queue(stream), compact: false })
+                 else render("streams/_stream", { stream: card(stream) })
+                 end
+          ok body + flash("#{stream.name} #{verb}")
+        end
+
+        def card(stream)
+          state, config = stream.info.values
+          { name: stream.name, state:, config:, consumers: stream.consumers, paused: stream.paused? }
+        end
+
+        def info_locals(stream)
+          stream.info.merge(name: stream.name, paused: stream.paused?)
         end
       end
     end

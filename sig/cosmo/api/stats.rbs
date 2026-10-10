@@ -16,6 +16,10 @@ module Cosmo
       def self.scheduled: () -> ::Integer
 
       def self.dead: () -> ::Integer
+
+      def self.queues: () -> Array[Hash[Symbol, untyped]]
+
+      def self.queue: (Stream stream, ?Hash[::String, ::Integer] busy) -> Hash[Symbol, untyped]
     end
   end
 end

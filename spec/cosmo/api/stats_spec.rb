@@ -60,6 +60,39 @@ RSpec.describe Cosmo::API::Stats do
     end
   end
 
+  describe ".queue" do
+    let(:stream) { double(name: "default", size: 7, retries: 2, paused?: true) }
+
+    it "describes a job stream with its running jobs" do
+      expect(described_class.queue(stream, { "default" => 3, "low" => 1 }))
+        .to eq(name: "default", size: 7, busy: 3, retries: 2, paused: true)
+    end
+
+    it "counts no running jobs for a stream without any" do
+      expect(described_class.queue(stream, { "low" => 1 })).to include(busy: 0)
+    end
+
+    it "counts running jobs itself without a tally" do
+      allow(busy).to receive(:by_stream).and_return({ "default" => 4 })
+
+      expect(described_class.queue(stream)).to include(busy: 4)
+    end
+  end
+
+  describe ".queues" do
+    it "describes every job stream, counting running jobs once" do
+      streams = [double(name: "default", size: 1, retries: 0, paused?: false),
+                 double(name: "low", size: 0, retries: 5, paused?: false)]
+      allow(Cosmo::API::Stream).to receive(:jobs).and_return(streams)
+      allow(busy).to receive(:by_stream).once.and_return({ "low" => 2 })
+
+      expect(described_class.queues).to eq([
+                                             { name: "default", size: 1, busy: 0, retries: 0, paused: false },
+                                             { name: "low", size: 0, busy: 2, retries: 5, paused: false }
+                                           ])
+    end
+  end
+
   describe ".summary" do
     it "returns all counters as a hash" do
       summary = described_class.summary

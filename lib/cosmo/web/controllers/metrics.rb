@@ -13,6 +13,7 @@ module Cosmo
           return not_found unless Config.metrics.enabled
 
           content_for :title, "Metrics"
+          content_for :subtitle, "Runs, failures, execution and wait time per job class."
           ok render("metrics/index", { days:, ranges: RANGES }, layout: true)
         end
 

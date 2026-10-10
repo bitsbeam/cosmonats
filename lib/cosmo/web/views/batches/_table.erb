@@ -1,58 +1,46 @@
 <% if @batches.empty? -%>
-  <div class="alert alert-success">No batches tracked.</div>
+  <section class="card"><div class="empty"><b>No batches tracked</b>Group jobs with <code>Cosmo::Batch.new.jobs { … }</code>.</div></section>
 <% else -%>
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Batch</th>
-          <th>Parent</th>
-          <th>Status</th>
-          <th>Progress</th>
-          <th>Total</th>
-          <th>Pending</th>
-          <th>Succeeded</th>
-          <th>Failed</th>
-          <th>Created</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @batches.each do |b| -%>
-          <% stats = b.stats -%>
-          <% total = stats[:total].to_i -%>
-          <tr>
-            <td><code><%= h(b.bid) %></code></td>
-            <td>
-              <% if b.parent_id -%>
-                <code><%= h(b.parent_id) %></code>
-              <% else -%>
-                <span class="text-muted">&mdash;</span>
-              <% end -%>
-            </td>
-            <td>
-              <% if !b.ready? -%>
-                <span class="badge badge-info">Open</span>
-              <% elsif stats[:failed].to_i.positive? -%>
-                <span class="badge badge-danger">Complete</span>
-              <% else -%>
-                <span class="badge badge-success">Success</span>
-              <% end -%>
-            </td>
-            <td>
-              <% if total.positive? -%>
-                <%= ((total - stats[:pending].to_i) * 100 / total).clamp(0, 100) %>%
-              <% else -%>
-                <span class="text-muted">&mdash;</span>
-              <% end -%>
-            </td>
-            <td><%= format_numbers(stats[:total]) %></td>
-            <td><%= format_numbers(stats[:pending]) %></td>
-            <td><%= format_numbers(stats[:succeeded]) %></td>
-            <td><%= format_numbers(stats[:failed]) %></td>
-            <td><%= format_timestamp(b.created_at) %></td>
-          </tr>
-        <% end -%>
-      </tbody>
-    </table>
+  <div class="batches">
+    <% @batches.each do |b| -%>
+      <% stats = b.stats -%>
+      <% total = stats[:total].to_i -%>
+      <% succeeded = stats[:succeeded].to_i -%>
+      <% failed = stats[:failed].to_i -%>
+      <% done = total - stats[:pending].to_i -%>
+      <% status, tone = if !b.ready? then ['open', 'var(--acc)'] elsif failed.positive? then ['complete with failures', 'var(--warn)'] else ['success', 'var(--ok)'] end -%>
+      <% callbacks = b.callbacks.compact -%>
+      <section class="card batch">
+        <div class="batch-top">
+          <div class="stack" style="flex:1;gap:4px">
+            <div class="mono strong ellip"><%= h(b.bid) %></div>
+            <div class="small-mono ellip">
+              <% if b.parent_id -%>parent <%= h(b.parent_id) %> · <% end -%>started <%= b.created_at ? "#{elapsed(b.created_at)} ago" : '—' %>
+            </div>
+          </div>
+          <span class="pill" style="--tone:<%= tone %>"><%= status %></span>
+        </div>
+        <div class="batch-pct">
+          <b><%= total.positive? ? (done * 100 / total).clamp(0, 100) : 0 %>%</b>
+          <span class="mono mute" style="font-size:11.5px"><%= compact_number(done) %> / <%= compact_number(total) %></span>
+        </div>
+        <div class="progress">
+          <% if total.positive? -%>
+            <i style="width:<%= (succeeded * 100.0 / total).round(2) %>%;background:<%= hue(b.bid) %>"></i>
+            <% if failed.positive? -%><i style="width:<%= [failed * 100.0 / total, 0.6].max.round(2) %>%;background:var(--err)"></i><% end -%>
+          <% end -%>
+        </div>
+        <div class="batch-foot">
+          <span><span class="num" style="color:var(--ink)"><%= format_numbers(succeeded) %></span> succeeded</span>
+          <span><span class="num" style="color:var(--err)"><%= format_numbers(failed) %></span> failed</span>
+          <span><span class="num" style="color:var(--ink)"><%= format_numbers(stats[:pending]) %></span> pending</span>
+          <% if callbacks.any? -%>
+            <span class="cb">
+              <% callbacks.each do |event, callback| -%><span>on_<%= event %> → <%= h(callback[:class]) %></span><% end -%>
+            </span>
+          <% end -%>
+        </div>
+      </section>
+    <% end -%>
   </div>
 <% end -%>

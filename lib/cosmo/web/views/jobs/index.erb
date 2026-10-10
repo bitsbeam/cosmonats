@@ -1,18 +1,5 @@
-<section>
-  <header><%= render('jobs/_tabs') %></header>
-
-  <div hx-get="<%= url_for('/jobs/_stats') %>"
-       hx-trigger="load, every <%= poll_interval %>s"
-       hx-swap="innerHTML">
-    <div class="alert alert-info">Loading statistics…</div>
-  </div>
-
-  <div id="content">
-    <div id="processes-poller"
-         hx-get="<%= url_for('/jobs/_processes', (@processes_query unless @processes_query.empty?)) %>"
-         hx-trigger="load"
-         hx-swap="outerHTML">
-      <div class="alert alert-info">Loading processes&hellip;</div>
-    </div>
-  </div>
+<section class="card" hx-get="<%= url_for('/jobs/_queues') %>" hx-trigger="load, every <%= poll_interval %>s" hx-swap="innerHTML">
+  <div class="loading">Loading queues&hellip;</div>
 </section>
+
+<%= @panel %>

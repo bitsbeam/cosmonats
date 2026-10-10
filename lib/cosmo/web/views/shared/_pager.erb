@@ -1,0 +1,22 @@
+<% if @total_pages.to_i > 1 -%>
+  <% link = ->(page) { url_for(@path, Hash(@query).merge(page: page)) } -%>
+  <nav class="pager">
+    <% if @page > 1 -%>
+      <a class="btn quiet" hx-get="<%= link.(@page - 1) %>" hx-target="<%= @target %>" hx-swap="outerHTML" hx-indicator="#global-spinner">&larr; Prev</a>
+    <% else -%>
+      <span class="btn quiet disabled">&larr; Prev</span>
+    <% end -%>
+    <% pages(@page, @total_pages).each do |p| -%>
+      <% if p == :gap -%>
+        <span class="gap">&hellip;</span>
+      <% else -%>
+        <a class="btn<%= ' cur' if p == @page %>" hx-get="<%= link.(p) %>" hx-target="<%= @target %>" hx-swap="outerHTML" hx-indicator="#global-spinner"><%= p %></a>
+      <% end -%>
+    <% end -%>
+    <% if @page < @total_pages -%>
+      <a class="btn quiet" hx-get="<%= link.(@page + 1) %>" hx-target="<%= @target %>" hx-swap="outerHTML" hx-indicator="#global-spinner">Next &rarr;</a>
+    <% else -%>
+      <span class="btn quiet disabled">Next &rarr;</span>
+    <% end -%>
+  </nav>
+<% end -%>

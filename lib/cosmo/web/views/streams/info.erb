@@ -1,11 +1,3 @@
-<section>
-  <header></header>
-
-  <div id="content">
-    <div hx-get="<%= url_for("/streams/_info", { name: u(@name) }) %>"
-         hx-trigger="load"
-         hx-swap="innerHTML">
-      <div class="alert alert-info">Loading stream info…</div>
-    </div>
-  </div>
-</section>
+<div class="view" hx-get="<%= url_for('/streams/info', { name: u(@name) }) %>" hx-trigger="load" hx-swap="innerHTML">
+  <section class="card"><div class="loading">Loading stream info&hellip;</div></section>
+</div>

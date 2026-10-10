@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Redesigned web UI: sidebar navigation, light/dark/auto theme, an Overview page (totals, daily throughput, workers,
+  queues, running jobs), per-stream consumer tables and batch cards; fonts and assets are bundled, nothing is loaded
+  from a CDN. The Actions placeholder page is gone and the processes table moved to `/processes`
+- `API::Stats::Metrics#daily` sums every job class when called without one; `API::Stream#consumers` lists consumers
+
 ## [0.8.0] - 2026-10-08
 
 Upgrading needs a few manual NATS steps: see [docs/upgrading.md](docs/upgrading.md).

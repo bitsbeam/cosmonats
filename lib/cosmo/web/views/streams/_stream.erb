@@ -1,0 +1,52 @@
+<% s = @stream -%>
+<% state = s[:state] -%>
+<% config = s[:config] -%>
+<% max_age = config.max_age.to_i -%>
+<section class="card">
+  <div class="stream-head">
+    <div class="stack" style="gap:6px">
+      <a class="stream-name" style="--hue:<%= s[:paused] ? 'var(--warn)' : hue(s[:name]) %>"
+         href="<%= url_for('/streams/info', name: u(s[:name])) %>"><i></i><%= h(s[:name]) %></a>
+      <div class="mono mute ellip" style="font-size:11.5px" title="<%= h(Array(config.subjects).join(', ')) %>"><%= h(Array(config.subjects).join('  ·  ')) %></div>
+    </div>
+    <div class="stat"><span class="eyebrow">Messages</span><b><%= compact_number(state.messages) %></b></div>
+    <div class="stat"><span class="eyebrow">Size</span><b><%= format_bytes(state.bytes) %></b></div>
+    <div class="stat"><span class="eyebrow">Retention</span><b><%= h(config.retention) %><%= " · #{format_span(max_age / 1_000_000_000)}" if max_age.positive? %></b></div>
+    <div class="stat"><span class="eyebrow">Replicas</span><b>R<%= h(config.num_replicas || 1) %></b></div>
+    <div class="stat"><span class="eyebrow">Sequence</span><b class="ellip"><%= compact_number(state.first_seq) %> → <%= compact_number(state.last_seq) %></b></div>
+  </div>
+  <div class="stream-tools">
+    <% if s[:paused] -%><span class="paused-tag">paused · consumers are not fetching</span><% end -%>
+    <span class="spacer"></span>
+    <a class="btn quiet" href="<%= url_for('/streams/info', name: u(s[:name])) %>">Details</a>
+    <button type="button" class="btn<%= ' quiet' unless s[:paused] %>"
+            hx-patch="<%= url_for(s[:paused] ? '/streams/unpause' : '/streams/pause', name: u(s[:name])) %>"
+            hx-target="closest section" hx-swap="outerHTML" hx-indicator="#global-spinner"><%= s[:paused] ? '▶ Resume' : '⏸ Pause' %></button>
+  </div>
+  <% if s[:consumers].empty? -%>
+    <div class="thead top tint"><span>No consumers</span></div>
+  <% else -%>
+    <div class="scroll"><div style="min-width:760px">
+      <div class="thead top tint t-cons"><span>Consumer</span><span class="r">Pending</span><span class="r">Ack pending</span><span class="r">Ack wait</span><span class="r">Redeliv.</span><span>Lag</span></div>
+      <% s[:consumers].each do |consumer| -%>
+        <% cfg = Hash(consumer['config']) -%>
+        <% pending = consumer['num_pending'].to_i -%>
+        <% redelivered = consumer['num_redelivered'].to_i -%>
+        <% ratio = pending.fdiv([state.messages.to_i, 1].max).clamp(0, 1) -%>
+        <% tone = ratio > 0.7 ? 'var(--err)' : ratio > 0.3 ? 'var(--warn)' : 'var(--ok)' -%>
+        <% filters = Array(cfg['filter_subjects']).concat(Array(cfg['filter_subject'])).reject(&:empty?) -%>
+        <div class="trow t-cons">
+          <div class="stack">
+            <span class="strong ellip"><%= h(consumer['name']) %></span>
+            <span class="small-mono ellip" title="<%= h(filters.join(', ')) %>">deliver: <%= h(cfg['deliver_policy']) %><%= " · #{h(filters.join(', '))}" if filters.any? %></span>
+          </div>
+          <span class="r"><%= format_numbers(pending) %></span>
+          <span class="r mute"><%= format_numbers(consumer['num_ack_pending'].to_i) %></span>
+          <span class="r mute"><%= format_span(cfg['ack_wait'].to_i / 1_000_000_000) %></span>
+          <span class="r" style="color:<%= redelivered > 100 ? 'var(--warn)' : 'var(--mute)' %>"><%= format_numbers(redelivered) %></span>
+          <div class="lag"><div class="lag-track"><i style="width:<%= [ratio * 100, 2].max.round(1) %>%;background:<%= tone %>"></i></div><span style="color:<%= tone %>"><%= compact_number(pending) %></span></div>
+        </div>
+      <% end -%>
+    </div></div>
+  <% end -%>
+</section>

@@ -14,7 +14,7 @@ module Cosmo
         path = File.join(ASSETS_ROOT, filename)
         return not_found unless File.exist?(path)
 
-        respond_with 200, body: File.read(path), headers: { "content-type" => content_type }.merge(headers || {})
+        respond_with 200, body: File.binread(path), headers: { "content-type" => content_type }.merge(headers || {})
       end
 
       def ok(body = "")
@@ -27,7 +27,7 @@ module Cosmo
       end
 
       def not_found
-        body = "<div class='alert alert-danger'>404 — Not Found</div>"
+        body = "<div class=\"empty\"><b>404</b>Not found</div>"
         headers = { "content-type" => "text/html; charset=utf-8" }
         respond_with 404, body:, headers:
       end

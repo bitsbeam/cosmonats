@@ -1,0 +1,67 @@
+<% states = { 'running' => 'var(--ok)', 'quiet' => 'var(--warn)', 'stopping' => 'var(--err)' } -%>
+<% kinds = { 'jobs' => 'Jobs', 'streams' => 'Streams', 'jobs+streams' => 'Jobs & Streams', 'none' => 'No subscriptions' } -%>
+<section class="card" id="processes"
+  <% if @polling -%>
+         hx-get="<%= url_for('/processes', @query.merge(page: @page)) %>" hx-trigger="every <%= poll_interval %>s" hx-swap="outerHTML"
+  <% end -%>>
+  <div class="card-head bar ruled">
+    <div class="card-title"><%= @total %> process(es) alive</div>
+    <% if @polling -%>
+      <button type="button" class="btn quiet" hx-get="<%= url_for('/processes', @query.merge(page: @page, poll: 0)) %>"
+              hx-target="#processes" hx-swap="outerHTML" hx-indicator="#global-spinner">⏸ Stop polling</button>
+    <% else -%>
+      <button type="button" class="btn" hx-get="<%= url_for('/processes', @query.except(:poll).merge(page: @page)) %>"
+              hx-target="#processes" hx-swap="outerHTML" hx-indicator="#global-spinner">▶ Live poll</button>
+    <% end -%>
+  </div>
+
+  <% if @groups.empty? -%>
+    <div class="empty"><b>No worker processes</b>Start one with <code>cosmo -C config/cosmo.yml</code>.</div>
+  <% else -%>
+    <div class="scroll"><div style="min-width:1040px">
+      <div class="thead t-procs">
+        <span>Process</span><span>Command</span><span>Subscriptions</span><span class="r">Busy</span><span>State</span>
+        <span class="r">RTT</span><span class="r">Reconn.</span><span class="r">Memory</span><span class="r">Uptime</span><span class="r">Last beat</span>
+      </div>
+      <% @groups.each do |kind, group| -%>
+        <div class="trow group t-procs"><span class="full"><%= h(kinds.fetch(kind, kind)) %> (<%= group.size %>)</span></div>
+        <% group.each do |process| -%>
+          <% nats = Hash(process[:nats]) -%>
+          <% cmdline = process[:cmdline].to_s -%>
+          <div class="trow hover t-procs">
+            <div class="stack">
+              <span class="strong ellip"><%= h(process[:hostname]) %>:<%= h(process[:pid]) %></span>
+              <span class="small-mono ellip"><%= h(nats[:ip] || 'unknown IP') %><% if nats[:name] -%> · <%= h(nats[:name]) %><% end -%></span>
+            </div>
+            <div class="stack">
+              <% if cmdline.length > 32 -%>
+                <details>
+                  <summary class="mono ellip" style="font-size:11.5px" title="<%= h(cmdline) %>"><%= h(cmdline) %></summary>
+                  <pre class="code-block"><%= h(cmdline) %></pre>
+                </details>
+              <% else -%>
+                <span class="mono" style="font-size:11.5px"><%= h(cmdline) %></span>
+              <% end -%>
+              <span class="small-mono">cosmo <%= h(process[:version]) %> · <%= h(process[:ruby]) %><% if process[:http_port] -%> · http :<%= h(process[:http_port]) %><% end -%></span>
+            </div>
+            <div class="stack">
+              <% Hash(process[:subscriptions]).each do |type, names| -%>
+                <% next if Array(names).empty? -%>
+                <span class="mono ellip" style="font-size:11.5px" title="<%= h(Array(names).join(', ')) %>"><% if kind == 'jobs+streams' -%><span class="faint"><%= h(type) %>:</span> <% end -%><%= h(Array(names).join(', ')) %></span>
+              <% end -%>
+            </div>
+            <span class="mono r"><%= h(process[:busy]) %>/<%= h(process[:concurrency]) %></span>
+            <span class="pill" style="--tone:<%= states.fetch(process[:state].to_s, 'var(--acc)') %>"><%= h(process[:state]) %></span>
+            <span class="mono mute r"><%= nats[:rtt] ? "#{h(nats[:rtt])}ms" : '—' %></span>
+            <span class="mono mute r"><%= h(nats[:reconnects].to_i) %></span>
+            <span class="mono mute r"><%= process[:rss] ? format_bytes(process[:rss].to_i * 1024) : '—' %></span>
+            <span class="mono mute r"><%= elapsed(process[:started_at]) %></span>
+            <span class="mono mute r"><%= elapsed(process[:beat_at]) %> ago</span>
+          </div>
+        <% end -%>
+      <% end -%>
+    </div></div>
+  <% end -%>
+
+  <%= render('shared/_pager', { path: '/processes', query: @query, page: @page, total_pages: @total_pages, target: '#processes' }) %>
+</section>

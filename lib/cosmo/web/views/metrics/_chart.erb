@@ -1,36 +1,41 @@
-<div class="metrics-chart">
-  <div class="metrics-chart-header">
-    <span><code><%= h(@job) %></code> <span class="text-muted">last <%= @days %> days</span></span>
-    <span class="metrics-legend">
-      <span class="metrics-legend-runs">runs per day</span>
-      <span class="metrics-legend-exec">avg execution (ms)</span>
-    </span>
+<section class="card card-pad">
+  <div class="card-head">
+    <div class="card-title"><span class="mono"><%= h(@job) %></span> <span class="mute" style="font-size:13px">last <%= @days %> days</span></div>
+    <div class="legend"><i class="bars"></i>runs / day</div>
+    <div class="legend"><i class="line"></i>avg execution</div>
   </div>
   <% if @chart.empty? -%>
-    <div class="alert alert-info">No runs of <code><%= h(@job) %></code> in this period.</div>
+    <div class="empty"><b>No runs</b><code><%= h(@job) %></code> didn't run in this period.</div>
   <% else -%>
-    <svg viewBox="0 0 <%= Cosmo::Web::Chart::WIDTH %> <%= Cosmo::Web::Chart::HEIGHT %>" role="img"
-         aria-label="Runs per day and average execution time of <%= h(@job) %>">
-      <% @chart.ticks.each do |tick| -%>
-        <line class="chart-grid" x1="<%= Cosmo::Web::Chart::LEFT %>" x2="<%= Cosmo::Web::Chart::RIGHT %>"
-              y1="<%= tick[:y] %>" y2="<%= tick[:y] %>"/>
-        <text class="chart-axis" x="<%= Cosmo::Web::Chart::LEFT - 6 %>" y="<%= tick[:y] + 4 %>"
-              text-anchor="end"><%= format_numbers(tick[:count]) %></text>
-        <text class="chart-axis chart-axis-exec" x="<%= Cosmo::Web::Chart::RIGHT + 6 %>" y="<%= tick[:y] + 4 %>"
-              text-anchor="start"><%= format_numbers(tick[:exec_ms]) %></text>
-      <% end -%>
-      <% @chart.bars.each do |bar| -%>
-        <rect class="chart-bar" x="<%= bar[:x] %>" y="<%= bar[:y] %>" width="<%= bar[:width] %>"
-              height="<%= bar[:height] %>"><title><%= h(bar[:title]) %></title></rect>
-      <% end -%>
-      <polyline class="chart-line" points="<%= @chart.line %>"/>
-      <% @chart.points.each do |point| -%>
-        <circle class="chart-point" cx="<%= point[:x] %>" cy="<%= point[:y] %>" r="4"><title><%= h(point[:title]) %></title></circle>
-      <% end -%>
-      <% @chart.labels.each do |label| -%>
-        <text class="chart-axis" x="<%= label[:x] %>" y="<%= Cosmo::Web::Chart::BOTTOM + 18 %>"
-              text-anchor="middle"><%= label[:text] %></text>
-      <% end -%>
-    </svg>
+    <div class="chart dual">
+      <div class="yaxis"><% @chart.ticks.each do |tick| -%><span><%= compact_number(tick[:count]) %></span><% end -%></div>
+      <div class="plot-col">
+        <div class="plot">
+          <svg viewBox="0 0 <%= Cosmo::Web::Chart::WIDTH %> <%= Cosmo::Web::Chart::HEIGHT %>" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="runsFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--c1)" stop-opacity="0.55"/><stop offset="1" stop-color="var(--c1)" stop-opacity="0.18"/></linearGradient>
+            </defs>
+            <path d="<%= @chart.grid %>" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke" fill="none"/>
+            <path d="<%= @chart.bars %>" fill="url(#runsFill)"/>
+            <path d="<%= @chart.line %>" stroke="var(--c4)" stroke-width="1.75" vector-effect="non-scaling-stroke" fill="none" stroke-linejoin="round"/>
+          </svg>
+          <% @chart.points.each do |point| -%>
+            <% if point[:dot] -%><i class="pt" style="left:<%= point[:center] %>%;top:<%= point[:dot] %>%"></i><% end -%>
+            <div class="hit band<%= ' flip' if point[:center] > 62 %>" style="left:<%= point[:left] %>%;width:<%= point[:width] %>%">
+              <div class="hv-dot" style="top:<%= point[:dot] || point[:top] %>%;border-color:<%= point[:dot] ? 'var(--c4)' : 'var(--c1)' %>"></div>
+              <div class="tip">
+                <span class="mono mute" style="font-size:10.5px"><%= point[:label] %></span>
+                <div><span class="mute">runs</span><span class="num"><%= format_numbers(point[:count]) %></span></div>
+                <div><span class="mute">failed</span><span class="num" style="color:var(--err)"><%= format_numbers(point[:failed]) %></span></div>
+                <div><span class="mute">avg exec</span><span class="num" style="color:var(--c4)"><%= duration(point[:exec_ms]) %></span></div>
+                <div><span class="mute">avg wait</span><span class="num"><%= duration(point[:wait_ms]) %></span></div>
+              </div>
+            </div>
+          <% end -%>
+        </div>
+        <div class="xaxis abs"><% @chart.labels.each do |label| -%><span style="left:<%= label[:left] %>%"><%= label[:text] %></span><% end -%></div>
+      </div>
+      <div class="yaxis right"><% @chart.ticks.each do |tick| -%><span><%= duration(tick[:exec_ms]) %></span><% end -%></div>
+    </div>
   <% end -%>
-</div>
+</section>

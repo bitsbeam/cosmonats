@@ -1,0 +1,7 @@
+<% if @streams.empty? -%>
+  <section class="card"><div class="empty"><b>No streams</b>Run <code>cosmo --setup</code> to create them.</div></section>
+<% else -%>
+  <% @streams.each do |stream| -%>
+    <%= render('streams/_stream', { stream: }) %>
+  <% end -%>
+<% end -%>

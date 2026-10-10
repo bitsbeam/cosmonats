@@ -10,6 +10,7 @@ module Cosmo
           return not_found unless Config.scheduled.enabled
 
           content_for :title, "Crons"
+          content_for :subtitle, "Schedules parked in NATS. NATS keeps the time."
           ok render("crons/index", layout: true)
         end
 
@@ -26,7 +27,7 @@ module Cosmo
 
           subject = Rack::Utils.unescape(params["subject"].to_s)
           cron.run_now!(subject)
-          ok
+          ok flash("#{label(subject)} enqueued now")
         end
 
         # Purge the schedule from NATS so it stops firing.
@@ -35,13 +36,19 @@ module Cosmo
 
           subject = Rack::Utils.unescape(params["subject"].to_s)
           cron.delete!(subject)
-          _table
+          ok render("crons/_table", { schedules: cron.all }) + flash("#{label(subject)} deleted")
         end
 
         private
 
         def cron
           @cron ||= API::Cron.instance
+        end
+
+        # "cosmo.cron.default.report_job.monthly" → "monthly", "cosmo.cron.default.report_job" → "report_job"
+        def label(subject)
+          parts = subject.split(".")
+          parts.size > 4 ? parts.drop(4).join(".") : parts.last
         end
       end
     end

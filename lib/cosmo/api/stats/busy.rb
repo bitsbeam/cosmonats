@@ -43,6 +43,11 @@ module Cosmo
           super.map { _1.merge(data: Utils::Json.parse(_1[:data])) }
         end
 
+        # @return [Hash{String => Integer}] the number of jobs running per stream, for the streams running any
+        def by_stream
+          all.group_by { _1[:stream] }.transform_values(&:size)
+        end
+
         private
 
         def heartbeat_loop

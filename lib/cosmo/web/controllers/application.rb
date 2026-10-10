@@ -37,6 +37,11 @@ module Cosmo
         def hx_request?
           @request.get_header("HTTP_HX_REQUEST") == "true"
         end
+
+        # An out-of-band swap of the page header's flash message, appended to an htmx response.
+        def flash(message)
+          %(<div id="flash" class="flash" hx-swap-oob="true">#{Rack::Utils.escape_html(message)}</div>)
+        end
       end
     end
   end

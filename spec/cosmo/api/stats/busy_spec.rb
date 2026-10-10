@@ -65,6 +65,21 @@ RSpec.describe Cosmo::API::Stats::Busy do
     end
   end
 
+  describe "#by_stream" do
+    def running(seq, stream)
+      double("message", metadata: double(sequence: double(stream: seq), stream:, num_delivered: 1), data: "{}")
+    end
+
+    it "counts the running jobs of each stream" do
+      busy.add(running(1, "default"))
+      busy.add(running(2, "default"))
+      busy.add(running(3, "low"))
+      wait_until(timeout: 5) { busy.size == 3 }
+
+      expect(busy.by_stream).to eq("default" => 2, "low" => 1)
+    end
+  end
+
   describe "#list" do
     before do
       allow(message).to receive(:data).and_return(Cosmo::Utils::Json.dump({ class: "MyWorker", args: [] }))

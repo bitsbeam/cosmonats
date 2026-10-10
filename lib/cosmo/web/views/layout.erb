@@ -3,32 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cosmo<%= " — #{h(content_for :title)}" if content_for?(:title) %></title>
-  <script src="<%= url_for('/assets/htmx.min.js.gz') %>" defer></script>
+  <title>Cosmonats<%= " · #{h(content_for :title)}" if content_for?(:title) %></title>
+  <script>(function(r){var m='auto';try{m=localStorage.getItem('cosmo-theme')||'auto'}catch(e){}r.dataset.themeMode=m;r.dataset.theme=m==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):m})(document.documentElement)</script>
+  <link rel="preload" href="<%= url_for('/assets/fonts/geist.woff2') %>" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="<%= url_for('/assets/app.css') %>">
+  <link rel="icon" href="<%= url_for('/assets/logo.svg') %>" type="image/svg+xml">
+  <script src="<%= url_for('/assets/htmx.min.js.gz') %>" defer></script>
+  <script src="<%= url_for('/assets/app.js') %>" defer></script>
 </head>
 <body>
-  <header>
-    <div class="container">
+<% server = nats_server -%>
+<% section = current_section -%>
+  <div class="backdrop" data-action="close-menu"></div>
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand" href="<%= url_for('/') %>">
+        <img src="<%= url_for('/assets/logo.svg') %>" alt="">
+        <div class="brand-text">
+          <div class="brand-name">cosmonats</div>
+          <div class="eyebrow">mission control</div>
+        </div>
+      </a>
       <nav class="nav">
-        <a href="<%= url_for('/jobs') %>" class="navbar-brand">🚀 Cosmo</a>
-        <ul class="nav-list">
-          <li>
-            <a href="<%= url_for('/jobs') %>" class="<%= "active" if path_prefix?('/jobs', '/crons', '/batches', '/metrics') %>">Jobs</a>
-          </li>
-          <li>
-            <a href="<%= url_for('/streams') %>" class="<%= "active" if current_page?('/streams') %>">Streams</a>
-          </li>
-          <li>
-            <a href="<%= url_for('/actions') %>" class="<%= "active" if current_page?('/actions') %>">Actions</a>
-          </li>
-        </ul>
+        <% nav_items.each_with_index do |item, index| -%>
+          <a class="nav-item<%= ' active' if item[:key] == section %>" style="--hue:var(--c<%= (index % 5) + 1 %>)"
+             href="<%= url_for(item[:path]) %>">
+            <span class="bar"></span><span class="n"><%= format('%02d', index + 1) %></span>
+            <span class="label"><%= item[:label] %></span><span class="badge" id="badge-<%= item[:key] %>"></span>
+          </a>
+        <% end -%>
       </nav>
-    </div>
-  </header>
-  <main class="container">
-    <%= content_for :view %>
-    <div id="global-spinner" class="htmx-indicator" aria-hidden="true"></div>
-  </main>
+      <div hx-get="<%= url_for('/_badges') %>" hx-trigger="load, every 30s" hx-swap="none"></div>
+      <div class="side-foot">
+        <div class="conn">
+          <div class="conn-title"><span class="conn-dot"></span>NATS connected</div>
+          <div class="conn-meta">
+            <%= h(server[:url] || "unknown server") %><br>
+            <% if server[:name] -%><%= h(server[:name]) %> · <% end -%><% if server[:version] -%>v<%= h(server[:version]) %> · <% end -%>R<%= Cosmo::Config.replicas %>
+          </div>
+        </div>
+        <div class="theme-toggle" role="group" aria-label="Theme">
+          <button type="button" data-action="theme" data-theme-set="light" title="Light" aria-label="Light theme">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><path d="M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg>
+          </button>
+          <button type="button" data-action="theme" data-theme-set="dark" title="Dark" aria-label="Dark theme">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a12 12 0 0 0 11 11z" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <button type="button" data-action="theme" data-theme-set="auto" title="Auto (follow the system)" aria-label="Automatic theme">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7a5 5 0 0 0 0 10z" fill="currentColor"/><path d="M1.5 12H4M4.6 4.6l1.8 1.8M4.6 19.4l1.8-1.8"/><path d="M13.5 3a9 9 0 0 1 0 18a12 12 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg>
+          </button>
+        </div>
+        <div class="version">cosmonats v<%= Cosmo::VERSION %> · ruby <%= RUBY_VERSION %></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button type="button" class="icon-btn" data-action="open-menu" aria-label="Open menu"><span></span><span></span><span></span></button>
+        <img class="logo-sm" src="<%= url_for('/assets/logo.svg') %>" alt="">
+        <div class="crumb"><%= h(server[:name] || server[:url] || "nats") %> <span class="sep">/</span> <span class="cur"><%= h(content_for(:title).to_s.downcase) %></span></div>
+        <div class="spacer"></div>
+        <div id="global-spinner" class="spinner" aria-hidden="true"></div>
+        <div class="live">live<span class="t" id="clock"></span></div>
+      </header>
+
+      <div class="content">
+        <div class="page-head">
+          <div class="titles">
+            <h1><%= h(content_for :title) %></h1>
+            <% if content_for?(:subtitle) -%><p><%= h(content_for :subtitle) %></p><% end -%>
+          </div>
+          <div class="flash" id="flash"></div>
+        </div>
+        <div class="view">
+          <%= content_for :view %>
+        </div>
+      </div>
+    </main>
+  </div>
 </body>
 </html>

@@ -7,123 +7,114 @@ module Cosmo
     module Controllers
       class Jobs < Application
         def index
-          content_for :title, "Jobs"
-          processes_query = params.slice("page", "limit").transform_values(&:to_i).select { _2.positive? }
-          ok render("jobs/index", { processes_query: }, layout: true)
+          tab("busy")
         end
 
         def busy
-          return _busy if hx_request?
-
-          content_for :title, "Busy Jobs"
-          ok render("jobs/busy", layout: true)
+          tab("busy")
         end
 
         def enqueued
-          return _enqueued if hx_request?
-
-          content_for :title, "Enqueued Jobs"
-          stream_name, _stream_names = streams
-          ok render("jobs/enqueued", { stream_name: }, layout: true)
+          tab("enqueued")
         end
 
         def scheduled
           return not_found unless Config.scheduled.enabled
 
-          return _scheduled if hx_request?
-
-          content_for :title, "Scheduled Jobs"
-          ok render("jobs/scheduled", layout: true)
+          tab("scheduled")
         end
 
         def dead
           return not_found unless Config.dead.enabled
 
-          return _dead if hx_request?
+          tab("dead")
+        end
 
-          content_for :title, "Dead Jobs"
-          ok render("jobs/dead", layout: true)
+        def _queues
+          ok render("jobs/_queues", { queues: API::Stats.queues, compact: params["compact"].to_s == "1" })
         end
 
         def retry
           return not_found unless Config.dead.enabled
 
           seq = path.split("/").last.to_i
-          stream = API::Stream.new("dead")
-          stream.retry(seq)
-          ok
+          API::Stream.new("dead").retry(seq)
+          ok flash("Dead job ##{seq} sent back to its queue")
         end
 
         def delete
           return not_found unless Config.dead.enabled
 
           seq = path.split("/").last.to_i
-          stream = API::Stream.new("dead")
-          stream.delete(seq)
-          ok
+          API::Stream.new("dead").delete(seq)
+          ok flash("Dead job ##{seq} deleted")
         end
 
         def delete_enqueued
           seq = path.split("/").last.to_i
           stream_name, = streams
           API::Stream.new(stream_name).delete(seq)
-          _enqueued
+          ok panel("enqueued") + flash("Message ##{seq} removed from #{stream_name}")
         end
 
-        def _scheduled
-          return not_found unless Config.scheduled.enabled
+        private
 
-          stream = API::Stream.new("scheduled")
-          jobs = stream.messages(page: params["page"], limit: params["limit"])
-          ok render("jobs/_scheduled", { jobs: jobs, total: stream.total })
+        def tab(name)
+          return ok(panel(name)) if hx_request?
+
+          content_for :title, "Jobs"
+          content_for :subtitle, "Queues, in-flight work and everything waiting its turn."
+          ok render("jobs/index", { panel: panel(name) }, layout: true)
         end
 
-        def _dead
-          return not_found unless Config.dead.enabled
-
-          stream = API::Stream.new("dead")
-          jobs = stream.messages(page: params["page"], limit: params["limit"])
-          ok render("jobs/_dead", { jobs: jobs, total: stream.total })
+        def panel(name)
+          render("jobs/_panel", send("#{name}_locals").merge(tab: name, counts: counts))
         end
 
-        def _busy
+        def counts
+          counts = { busy: API::Stats.busy, enqueued: API::Stats.enqueued }
+          counts[:scheduled] = API::Stats.scheduled if Config.scheduled.enabled
+          counts[:dead] = API::Stats.dead if Config.dead.enabled
+          counts
+        end
+
+        def busy_locals
           busy = API::Stats::Busy.instance
           total = busy.size
           page, limit, total_pages = paginate(total, API::Stats::Busy::LIMIT)
           polling = params["poll"].to_s != "0"
-          ok render("jobs/_busy", { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages:, polling: })
+          { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages:, polling:, query: { limit:, poll: (0 unless polling) }.compact }
         end
 
-        def _processes
-          processes = API::Stats::Processes.instance
-          total = processes.size
-          page, limit, total_pages = paginate(total, API::Stats::Processes::LIMIT)
-          polling = params["poll"].to_s != "0"
-          groups = processes.list(page:, limit:).chunk { API::Stats::Processes.kind(_1) }.to_a
-          ok render("jobs/_processes", { groups:, total:, page:, limit:, total_pages:, polling: })
-        end
-
-        def _enqueued # rubocop:disable Metrics/AbcSize
+        def enqueued_locals # rubocop:disable Metrics/AbcSize
           stream_name, stream_names = streams
           limit = (params["limit"] || API::Stream::LIMIT).to_i
           page = [params["page"].to_i, 1].max
+          locals = { stream_name:, stream_names:, page:, limit:, total: 0, total_pages: 0, jobs: nil, polling: false,
+                     query: { stream_name: Rack::Utils.escape(stream_name.to_s), limit: } }
+          return locals if stream_name.to_s.empty?
 
-          unless stream_name.to_s.empty?
-            stream = API::Stream.new(stream_name)
-            total = stream.total
-            total_pages = (total.to_f / limit).ceil
-            page = page.clamp(1, [total_pages, 1].max)
-            jobs = stream.messages(page:, limit:)
-          end
-
-          ok render("jobs/_enqueued", { jobs:, total:, stream_name:, stream_names:, page:, limit:, total_pages: })
+          stream = API::Stream.new(stream_name)
+          total = stream.total
+          total_pages = (total.to_f / limit).ceil
+          page = page.clamp(1, [total_pages, 1].max)
+          locals.merge(total:, total_pages:, page:, jobs: stream.messages(page:, limit:))
         end
 
-        def _stats
-          ok render("jobs/_stats", API::Stats.summary)
+        def scheduled_locals
+          stored_locals("scheduled").merge(polling: true)
         end
 
-        private
+        def dead_locals
+          stored_locals("dead").merge(polling: false)
+        end
+
+        def stored_locals(name)
+          stream = API::Stream.new(name)
+          total = stream.total
+          page, limit, total_pages = paginate(total, API::Stream::LIMIT)
+          { jobs: stream.messages(page:, limit:), total:, page:, limit:, total_pages:, query: { limit: } }
+        end
 
         def paginate(total, default_limit)
           limit = (params["limit"] || default_limit).to_i

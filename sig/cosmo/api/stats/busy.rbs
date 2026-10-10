@@ -20,6 +20,8 @@ module Cosmo
 
         def list: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
 
+        def by_stream: () -> Hash[::String, ::Integer]
+
         private
 
         def heartbeat_loop: () -> void

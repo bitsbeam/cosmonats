@@ -8,6 +8,7 @@ module Cosmo
       class Batches < Application
         def index
           content_for :title, "Batches"
+          content_for :subtitle, "Grouped jobs with a callback when the last one lands."
           ok render("batches/index", layout: true)
         end
 

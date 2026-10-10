@@ -1,0 +1,18 @@
+<div class="card-head bar ruled">
+  <div class="card-title">Running now</div>
+  <a class="small-mono" href="<%= url_for('/jobs/busy') %>"><%= @total %> busy &rarr;</a>
+</div>
+<% if @jobs.empty? -%>
+  <div class="empty"><b>All quiet</b>No jobs are running right now.</div>
+<% else -%>
+  <div class="feed">
+    <% @jobs.each do |job| -%>
+      <div class="feed-row" title="<%= h(job.dig(:data, :jid)) %> · <%= h(job[:worker]) %>">
+        <span class="mono faint"><%= Time.at(job[:started_at].to_i).strftime('%H:%M:%S') %></span>
+        <span class="dot" style="background:<%= hue(job[:stream]) %>"></span>
+        <span class="ellip"><%= h(job.dig(:data, :class)) %></span>
+        <span class="mono mute"><%= h(job[:stream]) %> · <%= elapsed(job[:started_at]) %></span>
+      </div>
+    <% end -%>
+  </div>
+<% end -%>

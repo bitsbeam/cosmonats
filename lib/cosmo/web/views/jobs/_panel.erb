@@ -1,0 +1,29 @@
+<% tabs = { busy: 'Busy', enqueued: 'Enqueued', scheduled: 'Scheduled', dead: 'Dead' }.slice(*@counts.keys) -%>
+<% tab_path = "/jobs/#{@tab}" -%>
+<section class="card" id="jobs-panel"
+  <% if @polling -%>
+         hx-get="<%= url_for(tab_path, @query.merge(page: @page)) %>" hx-trigger="every <%= poll_interval %>s" hx-swap="outerHTML"
+  <% end -%>>
+  <div class="tabs">
+    <% tabs.each do |key, label| -%>
+      <a class="<%= 'on' if key.to_s == @tab %>" href="<%= url_for("/jobs/#{key}") %>"
+         hx-get="<%= url_for("/jobs/#{key}") %>" hx-target="#jobs-panel" hx-swap="outerHTML" hx-push-url="true"
+         hx-indicator="#global-spinner"><%= label %><span><%= compact_number(@counts[key]) %></span></a>
+    <% end -%>
+    <div class="tools">
+      <% if @tab == 'busy' -%>
+        <% if @polling -%>
+          <button type="button" class="btn quiet" hx-get="<%= url_for(tab_path, @query.merge(page: @page, poll: 0)) %>"
+                  hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner">⏸ Stop polling</button>
+        <% else -%>
+          <button type="button" class="btn" hx-get="<%= url_for(tab_path, @query.except(:poll).merge(page: @page)) %>"
+                  hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner">▶ Live poll</button>
+        <% end -%>
+      <% end -%>
+    </div>
+  </div>
+
+  <%= render("jobs/_#{@tab}", { jobs: @jobs, total: @total, page: @page, limit: @limit, stream_name: @stream_name, stream_names: @stream_names }) %>
+
+  <%= render('shared/_pager', { path: tab_path, query: @query, page: @page, total_pages: @total_pages, target: '#jobs-panel' }) %>
+</section>
