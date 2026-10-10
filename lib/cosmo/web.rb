@@ -4,6 +4,7 @@ require "rack"
 require "json"
 require "erb"
 require "zlib"
+require "cosmo/web/cache"
 require "cosmo/web/context"
 require "cosmo/web/renderer"
 require "cosmo/web/controllers/application"
@@ -25,8 +26,20 @@ module Cosmo
       new.call(env)
     end
 
-    def call(env) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+    # Serves the UI. An htmx refresh is shared through Cache with concurrent and recent identical ones; any other
+    # method than GET changes something, so it empties the cache.
+    def call(env)
       @request = Rack::Request.new(env)
+      return route.tap { Cache.instance.clear } unless @request.get?
+      return route unless @request.get_header("HTTP_HX_REQUEST") == "true"
+
+      status, headers, body = Cache.instance.fetch(@request.fullpath) { route }
+      [status, headers.dup, body.dup]
+    end
+
+    private
+
+    def route # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       path     = @request.path_info
       method   = @request.request_method
 
@@ -72,8 +85,6 @@ module Cosmo
                  end
       handler(response)
     end
-
-    private
 
     def handler(response)
       if response[0].is_a?(Class)
