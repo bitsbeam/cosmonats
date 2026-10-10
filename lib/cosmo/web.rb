@@ -5,6 +5,7 @@ require "json"
 require "erb"
 require "zlib"
 require "cosmo/web/cache"
+require "cosmo/web/circuit"
 require "cosmo/web/context"
 require "cosmo/web/renderer"
 require "cosmo/web/controllers/application"
@@ -27,14 +28,19 @@ module Cosmo
     end
 
     # Serves the UI. An htmx refresh is shared through Cache with concurrent and recent identical ones; any other
-    # method than GET changes something, so it empties the cache.
-    def call(env)
+    # method than GET changes something, so it empties the cache. While Circuit is open, anything but an asset
+    # answers 503 at once instead of waiting on NATS.
+    def call(env) # rubocop:disable Metrics/AbcSize
       @request = Rack::Request.new(env)
-      return route.tap { Cache.instance.clear } unless @request.get?
-      return route unless @request.get_header("HTTP_HX_REQUEST") == "true"
+      return route if @request.path_info.start_with?("/assets/", "/favicon.ico")
+      return guarded.tap { Cache.instance.clear } unless @request.get?
+      return guarded unless @request.get_header("HTTP_HX_REQUEST") == "true"
 
-      status, headers, body = Cache.instance.fetch(@request.fullpath) { route }
+      status, headers, body = Cache.instance.fetch(@request.fullpath) { guarded }
       [status, headers.dup, body.dup]
+    rescue *Circuit::ERRORS
+      Circuit.instance.trip!
+      unavailable
     end
 
     private
@@ -84,6 +90,14 @@ module Cosmo
                  else not_found
                  end
       handler(response)
+    end
+
+    def guarded
+      Circuit.instance.open? ? unavailable : route
+    end
+
+    def unavailable
+      Controllers::Application.new(@request).unavailable
     end
 
     def handler(response)

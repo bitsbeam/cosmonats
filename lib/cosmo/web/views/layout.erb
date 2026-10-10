@@ -36,7 +36,7 @@
       <div hx-get="<%= url_for('/_badges') %>" hx-trigger="load, cosmo:poll" data-poll="30" hx-swap="none"></div>
       <div class="side-foot">
         <div class="conn">
-          <div class="conn-title"><span class="conn-dot"></span>NATS connected</div>
+          <div class="conn-title"><span class="conn-dot<%= ' down' if server.empty? %>"></span><%= server.empty? ? 'NATS unreachable' : 'NATS connected' %></div>
           <div class="conn-meta">
             <%= h(server[:url] || "unknown server") %><br>
             <% if server[:name] -%><%= h(server[:name]) %> · <% end -%><% if server[:version] -%>v<%= h(server[:version]) %> · <% end -%>R<%= Cosmo::Config.replicas %>

@@ -54,6 +54,7 @@ pre{margin:0;white-space:pre-wrap;word-break:break-all}
 .conn{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:8px}
 .conn-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500}
 .conn-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
+.conn-dot.down{background:var(--err);animation:none}
 .conn-meta{font-family:var(--mono);font-size:11px;color:var(--mute);line-height:1.6;word-break:break-all}
 .theme-toggle{display:grid;grid-template-columns:repeat(3,1fr);padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
 .theme-toggle button{display:flex;align-items:center;justify-content:center;border:0;padding:6px;border-radius:6px;background:transparent;color:var(--faint)}

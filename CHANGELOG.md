@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   queues, running jobs), per-stream consumer tables and batch cards; fonts and assets are bundled, nothing is loaded
   from a CDN. The Actions placeholder page is gone and the processes table moved to `/processes`
 - The web UI refreshes after each response instead of on a fixed clock, backs off while refreshes fail, and shares
-  identical refreshes between viewers for `COSMO_WEB_CACHE_TTL` seconds (default 2, 0 turns it off)
+  identical refreshes between viewers for `COSMO_WEB_CACHE_TTL` seconds (default 2, 0 turns it off). While NATS is
+  unreachable it answers 503 at once instead of waiting on NATS, which kept threads of a host app's Puma busy
 - `API::Stats::Metrics#daily` sums every job class when called without one; `API::Stream#consumers` lists consumers
 - Requires nats-pure 2.7, which ships the concurrent `fetch` fixes and struct fields Cosmo used to patch in, so the
   patches are gone. nats-pure 2.7 now sends stream and KV settings 2.5 dropped: see its changelog if your app passes any

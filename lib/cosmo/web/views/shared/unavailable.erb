@@ -1,0 +1,7 @@
+<section class="card" data-reload="<%= @retry %>">
+  <div class="empty">
+    <b>NATS is unreachable</b>
+    <span>Nothing was fetched, so this page shows no data. It tries again every <%= @retry %> seconds.</span>
+    <a class="btn" href="<%= h(@request.fullpath) %>">Retry now</a>
+  </div>
+</section>

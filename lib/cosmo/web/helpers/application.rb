@@ -124,6 +124,8 @@ module Cosmo
 
         # @return [Hash] the connected NATS server's +:url+, +:name+ and +:version+, empty while unknown
         def nats_server
+          return {} if Web::Circuit.instance.open?
+
           connection = Client.instance.nc
           info = connection.server_info || {}
           uri = connection.connected_server
