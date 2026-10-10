@@ -1,5 +1,5 @@
 <section class="card card-pad grow2" id="throughput"
-         hx-get="<%= url_for('/_throughput', days: @days) %>" hx-trigger="every 30s" hx-swap="outerHTML">
+         hx-get="<%= url_for('/_throughput', days: @days) %>" hx-trigger="cosmo:poll" data-poll="30" hx-swap="outerHTML">
   <div class="card-head">
     <div class="card-title">Throughput</div>
     <div class="legend"><i></i>succeeded / day</div>

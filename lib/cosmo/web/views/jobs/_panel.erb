@@ -2,7 +2,7 @@
 <% tab_path = "/jobs/#{@tab}" -%>
 <section class="card" id="jobs-panel"
   <% if @polling -%>
-         hx-get="<%= url_for(tab_path, @query.merge(page: @page)) %>" hx-trigger="every <%= poll_interval %>s" hx-swap="outerHTML"
+         hx-get="<%= url_for(tab_path, @query.merge(page: @page)) %>" hx-trigger="cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="outerHTML"
   <% end -%>>
   <div class="tabs">
     <% tabs.each do |key, label| -%>

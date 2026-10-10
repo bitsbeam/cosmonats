@@ -33,7 +33,7 @@
           </a>
         <% end -%>
       </nav>
-      <div hx-get="<%= url_for('/_badges') %>" hx-trigger="load, every 30s" hx-swap="none"></div>
+      <div hx-get="<%= url_for('/_badges') %>" hx-trigger="load, cosmo:poll" data-poll="30" hx-swap="none"></div>
       <div class="side-foot">
         <div class="conn">
           <div class="conn-title"><span class="conn-dot"></span>NATS connected</div>
@@ -64,7 +64,7 @@
         <div class="crumb"><%= h(server[:name] || server[:url] || "nats") %> <span class="sep">/</span> <span class="cur"><%= h(content_for(:title).to_s.downcase) %></span></div>
         <div class="spacer"></div>
         <div id="global-spinner" class="spinner" aria-hidden="true"></div>
-        <div class="live">live<span class="t" id="clock"></span></div>
+        <div class="live"><span class="live-label">live</span><span class="t" id="clock"></span></div>
       </header>
 
       <div class="content">

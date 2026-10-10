@@ -1,4 +1,4 @@
-<section class="card" hx-get="<%= url_for('/jobs/_queues') %>" hx-trigger="load, every <%= poll_interval %>s" hx-swap="innerHTML">
+<section class="card" hx-get="<%= url_for('/jobs/_queues') %>" hx-trigger="load, cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="innerHTML">
   <div class="loading">Loading queues&hellip;</div>
 </section>
 

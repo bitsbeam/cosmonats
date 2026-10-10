@@ -1,3 +1,3 @@
-<div class="view" hx-get="<%= url_for('/streams') %>" hx-trigger="load, every <%= poll_interval %>s" hx-swap="innerHTML">
+<div class="view" hx-get="<%= url_for('/streams') %>" hx-trigger="load, cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="innerHTML">
   <section class="card"><div class="loading">Loading streams&hellip;</div></section>
 </div>

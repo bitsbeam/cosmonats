@@ -1,6 +1,6 @@
 <div id="metrics-panel" class="view"
      hx-get="<%= url_for('/metrics/_panel', { days: @days, job: u(@job) }) %>"
-     hx-trigger="every 30s"
+     hx-trigger="cosmo:poll" data-poll="30"
      hx-swap="outerHTML">
   <% if @rows.empty? -%>
     <section class="card"><div class="empty"><b>No metrics yet</b>Nothing recorded in this period.</div></section>

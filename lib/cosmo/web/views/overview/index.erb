@@ -1,4 +1,4 @@
-<div hx-get="<%= url_for('/_kpis') %>" hx-trigger="load, every <%= poll_interval %>s" hx-swap="innerHTML">
+<div hx-get="<%= url_for('/_kpis') %>" hx-trigger="load, cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="innerHTML">
   <div class="kpis"><div class="kpi"><div class="loading">Loading statistics&hellip;</div></div></div>
 </div>
 
@@ -10,18 +10,18 @@
     </section>
   <% end -%>
   <section class="card card-pad <%= @metrics ? 'grow1' : 'grow2' %>"
-           hx-get="<%= url_for('/_workers') %>" hx-trigger="load, every <%= poll_interval %>s" hx-swap="innerHTML">
+           hx-get="<%= url_for('/_workers') %>" hx-trigger="load, cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="innerHTML">
     <div class="card-head"><div class="card-title">Workers</div></div>
     <div class="loading">Loading workers&hellip;</div>
   </section>
 </div>
 
 <div class="row-wrap">
-  <section class="card grow2" hx-get="<%= url_for('/jobs/_queues', compact: 1) %>" hx-trigger="load, every <%= poll_interval %>s" hx-swap="innerHTML">
+  <section class="card grow2" hx-get="<%= url_for('/jobs/_queues', compact: 1) %>" hx-trigger="load, cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="innerHTML">
     <div class="card-head bar"><div class="card-title">Queues</div></div>
     <div class="loading">Loading queues&hellip;</div>
   </section>
-  <section class="card grow1" hx-get="<%= url_for('/_running') %>" hx-trigger="load, every <%= poll_interval %>s" hx-swap="innerHTML">
+  <section class="card grow1" hx-get="<%= url_for('/_running') %>" hx-trigger="load, cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="innerHTML">
     <div class="card-head bar ruled"><div class="card-title">Running now</div></div>
     <div class="loading">Loading jobs&hellip;</div>
   </section>

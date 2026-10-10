@@ -77,6 +77,8 @@ pre{margin:0;white-space:pre-wrap;word-break:break-all}
 .seg .on{background:var(--panel2);color:var(--ink)}
 .live{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--mute);white-space:nowrap}
 .live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+body.offline .live{color:var(--err)}
+body.offline .live::before{background:var(--err)}
 .spinner{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--acc);border-radius:50%;opacity:0;transition:opacity .2s}
 .spinner.htmx-request{opacity:1;animation:spin .7s linear infinite}
 
