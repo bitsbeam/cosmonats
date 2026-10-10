@@ -44,9 +44,14 @@ module Cosmo
       alias size total
 
       def retries
-        client.list_consumers(name).sum { _1["num_redelivered"].to_i }
+        consumers.sum { _1["num_redelivered"].to_i }
+      end
+
+      # @return [Array<Hash>] the stream's consumers as JetStream reports them, with their config and delivery state
+      def consumers
+        client.list_consumers(name)
       rescue NATS::Error
-        0
+        []
       end
 
       def each

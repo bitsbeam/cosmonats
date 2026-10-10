@@ -67,12 +67,12 @@ module Cosmo
           totals.map { |job, sums| row(sums).merge(job: job) }.sort_by { -_1[:count] }
         end
 
-        # @param job_class [String]
+        # @param job_class [String, nil] nil sums every job class
         # @param days [Integer]
         # @return [Array<Hash>] one +{ date:, count:, failed:, exec_ms:, wait_ms: }+ per day, oldest first
-        def daily(job_class, days: 30)
+        def daily(job_class = nil, days: 30) # rubocop:disable Metrics/AbcSize
           sums = Hash.new { |hash, day| hash[day] = Hash.new(0) }
-          read(days).each { |(day, job, field), value| sums[day][field] += value if job == job_class }
+          read(days).each { |(day, job, field), value| sums[day][field] += value if job_class.nil? || job == job_class }
           dates(days).map { |day| row(sums[day]).merge(date: day) }
         end
 

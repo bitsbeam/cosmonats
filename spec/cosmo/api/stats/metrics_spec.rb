@@ -41,6 +41,15 @@ RSpec.describe Cosmo::API::Stats::Metrics do
       expect(days.last).to include(count: 1, exec_ms: 50.0)
       expect(days.first).to include(count: 0, exec_ms: nil)
     end
+
+    it "sums every job class without one" do
+      metrics.record("OtherJob", exec_ms: 50)
+      metrics.record("Reports::DailyJob", exec_ms: 150)
+      metrics.record("Reports::DailyJob", failed: true)
+      metrics.flush
+
+      expect(metrics.daily(days: 1)).to eq([{ date: today, count: 2, failed: 1, exec_ms: 100.0, wait_ms: nil }])
+    end
   end
 
   describe ".stream_config" do

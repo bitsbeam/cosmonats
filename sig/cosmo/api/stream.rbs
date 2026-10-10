@@ -26,6 +26,8 @@ module Cosmo
 
       def retries: () -> ::Integer
 
+      def consumers: () -> Array[Hash[::String, untyped]]
+
       def each: () { (Job) -> void } -> void
 
       def messages: (?page: ::Integer?, ?limit: ::Integer?) -> Array[Job]

@@ -23,7 +23,7 @@ module Cosmo
 
         def summary: (?days: Integer) -> Array[Hash[Symbol, untyped]]
 
-        def daily: (::String job_class, ?days: Integer) -> Array[Hash[Symbol, untyped]]
+        def daily: (?::String? job_class, ?days: Integer) -> Array[Hash[Symbol, untyped]]
 
         private
 
