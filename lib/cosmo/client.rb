@@ -198,8 +198,9 @@ module Cosmo
 
     private
 
-    # NOTE: nats-pure's #pull_subscribe has no path to a true ephemeral pull consumer.
-    # Its rescue branch unconditionally sets `config[:durable_name] = durable` (jetstream.rb).
+    # NOTE: nats-pure's #pull_subscribe can't create a true ephemeral pull consumer: its rescue branch
+    # unconditionally sets `config[:durable_name] = durable` (jetstream.rb). So the consumer is created
+    # here, and #pull_subscribe only binds to it by name.
     def ephemeral_subscribe(subject, config) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       config = config.dup
       stream = config.delete(:stream) or raise ArgumentError, "stream required for ephemeral consumers"
@@ -214,14 +215,7 @@ module Cosmo
       end
 
       info = js.add_consumer(stream, consumer_config)
-
-      sub = nc.subscribe(nc.new_inbox)
-      sub.extend(NATS::JetStream.const_get(:PullSubscription))
-      sub.jsi = NATS::JetStream.const_get(:JS)::Sub.new(
-        js: js, stream: stream, consumer: info.name,
-        nms: "#{js.prefix}.CONSUMER.MSG.NEXT.#{stream}.#{info.name}"
-      )
-      sub
+      js.pull_subscribe(subject, nil, stream: stream, name: info.name)
     end
 
     # NOTE: KV manager in nats-pure hardcodes the fields it copies into StreamConfig,
