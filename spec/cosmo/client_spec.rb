@@ -42,6 +42,14 @@ RSpec.describe Cosmo::Client do
       instance.close
     end
 
+    it "keeps reconnecting instead of giving up on an outage" do
+      expect(NATS).to receive(:connect)
+        .with("nats://localhost:4222", hash_including(max_reconnect_attempts: -1)).and_return(double(:nc, jetstream: nil, close: nil))
+      instance = described_class.new(nats_url: "nats://localhost:4222")
+    ensure
+      instance.close
+    end
+
     it "names the connection so it can be found in connz" do
       expect(client.name).to eq(described_class.default_name)
       expect(client.name).to start_with("cosmo-")

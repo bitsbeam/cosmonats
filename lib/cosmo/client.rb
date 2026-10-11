@@ -9,6 +9,9 @@ module Cosmo
     JS_TIMEOUT = 5
     # Seconds to wait for the TCP connect+handshake. Override with COSMO_CONNECT_TIMEOUT.
     CONNECT_TIMEOUT = 2
+    # Reconnect attempts before the connection closes for good; -1 never gives up, so a process outlives a NATS
+    # outage. nats-pure lets NATS_MAX_RECONNECT_ATTEMPTS override it.
+    MAX_RECONNECT_ATTEMPTS = -1
 
     def self.instance
       @instance ||= Client.new
@@ -40,7 +43,8 @@ module Cosmo
     def initialize(nats_url: ENV.fetch("NATS_URL", "nats://localhost:4222"), name: self.class.default_name)
       @name = name
       Logger.debug "Connecting to NATS server at #{nats_url} as #{@name}..."
-      @nc = NATS.connect(nats_url, name: @name, connect_timeout: self.class.connect_timeout)
+      @nc = NATS.connect(nats_url, name: @name, connect_timeout: self.class.connect_timeout,
+                                   max_reconnect_attempts: MAX_RECONNECT_ATTEMPTS)
       Logger.debug "Connection established"
       @js = @nc.jetstream(timeout: self.class.js_timeout)
     end

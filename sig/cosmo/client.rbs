@@ -2,6 +2,7 @@ module Cosmo
   class Client
     JS_TIMEOUT: ::Integer
     CONNECT_TIMEOUT: ::Integer
+    MAX_RECONNECT_ATTEMPTS: ::Integer
 
     attr_reader name: ::String
 

@@ -433,6 +433,7 @@ Cosmo leaves a custom logger's formatter alone, so its lines lack Cosmo's `jid`/
 | `COSMO_CLIENT_NAME`        | `cosmo-<program>-<host>-<pid>`       | NATS connection name, shown in `nats server report connections` and `/connz`        |
 | `COSMO_JS_TIMEOUT`         | `5`                                  | JetStream API timeout in seconds; raise it for the web UI on a busy server          |
 | `COSMO_CONNECT_TIMEOUT`    | `2`                                  | NATS TCP connect timeout in seconds                                                 |
+| `NATS_MAX_RECONNECT_ATTEMPTS` | `-1`                              | Reconnect attempts before giving up on NATS; `-1` keeps trying through any outage   |
 | `COSMO_JOBS_STREAMS`       | all configured                       | Comma-separated job streams to subscribe to, when `--streams`/`--stream` isn't given |
 | `COSMO_JOBS_FETCH_TIMEOUT` | `0.1`                                | Seconds a jobs worker waits on each fetch                                           |
 | `COSMO_WEB_POLL_INTERVAL`  | `5`                                  | Web UI auto-refresh interval in seconds                                             |
