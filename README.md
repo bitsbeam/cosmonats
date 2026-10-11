@@ -58,8 +58,6 @@ bundle exec cosmo -C config/cosmo.yml -c 20 jobs    # Jobs only
 bundle exec cosmo -C config/cosmo.yml -c 20 streams # Streams only
 ```
 
-![webui.gif](webui.gif)
-
 ## 📖 Index
 
 - [Why?](#-why)
@@ -437,6 +435,7 @@ Cosmo leaves a custom logger's formatter alone, so its lines lack Cosmo's `jid`/
 | `COSMO_JOBS_STREAMS`       | all configured                       | Comma-separated job streams to subscribe to, when `--streams`/`--stream` isn't given |
 | `COSMO_JOBS_FETCH_TIMEOUT` | `0.1`                                | Seconds a jobs worker waits on each fetch                                           |
 | `COSMO_WEB_POLL_INTERVAL`  | `5`                                  | Web UI auto-refresh interval in seconds                                             |
+| `COSMO_WEB_CACHE_TTL`      | `2`                                  | Seconds the web UI shares a refresh between viewers; `0` turns sharing off          |
 
 
 ## 🔧 Advanced Usage
@@ -544,7 +543,7 @@ end
   ```
 - Batch tracking data (pending counts, callbacks, results) expires automatically after
   `config.batches.expiry` (default: 3 days), set in `Cosmo.configure`.
-- Open and finished batches — with pending/succeeded/failed counts — are listed live in the web UI's **Batches** tab.
+- Open and finished batches — with pending/succeeded/failed counts — are listed live on the web UI's **Batches** page.
 - Only `Cosmo::Job`-based jobs are tracked; the ActiveJob adapter doesn't currently participate in
   batches (see [`docs/active_job.md`](docs/active_job.md)).
 
@@ -897,19 +896,29 @@ sudo systemctl enable cosmo && sudo systemctl start cosmo
 
 ## 📊 Monitoring
 
-**Web UI** — mount `Cosmo::Web` (see [Installation](#-installation)) for a live, htmx-powered dashboard:
-- **Jobs** — enqueued, scheduled, busy, and dead views, with per-job retry and delete
-- **Processes** — the Jobs dashboard lists every live worker (idle ones included): host, pid, IP, NATS connection
-  name, command line, subscribed streams, busy/concurrency, running/quiet/stopping state, memory, NATS RTT and
-  reconnects. Each worker beats into the `_cosmoprocesses` KV bucket every 10s, and a crashed worker drops out within 60s
-- **Streams** — per-stream state (messages, bytes, consumers) with pause/resume
+**Web UI** — mount `Cosmo::Web` (see [Installation](#-installation)) for a live, htmx-powered dashboard with a
+light, dark, or automatic (system) theme. Fonts and assets are bundled, so it loads nothing from a CDN:
+- **Overview** — processed, failed, busy, enqueued, retries, scheduled and dead totals; a 7- or 30-day throughput
+  chart of successful and failed runs; a grid of every worker thread, busy ones colored by stream; the queues; and the
+  jobs running right now, longest first
+- **Jobs** — each job queue with its size, busy jobs and redeliveries, paused and resumed in place; then busy,
+  enqueued (per queue), scheduled and dead jobs, with retry and delete for dead ones and their error and backtrace
+- **Processes** — every live worker (idle ones included): host, pid, IP, NATS connection name, command line,
+  subscribed streams, busy/concurrency, running/quiet/stopping state, memory, NATS RTT and reconnects. Each worker
+  beats into the `_cosmoprocesses` KV bucket every 10s, and a crashed worker drops out within 60s
+- **Streams** — every stream with its subjects, messages, size, retention and replicas, its consumers' pending,
+  ack-pending and redelivered counts, and pause/resume
 - **Crons** — every schedule deployed in NATS, with run-now and delete
-- **Batches** — open and finished batches with pending/succeeded/failed counts
+- **Batches** — open and finished batches with their progress, succeeded/failed/pending counts and callbacks
 - **Metrics** — per job class over today, 7, or 30 days: runs, failures, average execution time (successful runs), and
   average wait from enqueue to first delivery, plus a per-day chart of runs and average execution time. Recorded by
   `Cosmo::Middleware::Metrics`, flushed by every worker's heartbeat into the internal `_cosmometrics` counters stream;
   turn it off with `config.metrics.enabled = false`
-- Summary counters (processed / failed / busy / enqueued / retries / scheduled / dead) backed by a NATS KV counter, no separate metrics store needed
+
+Each panel refreshes `COSMO_WEB_POLL_INTERVAL` seconds after its previous response, never on top of one still
+running, backs off while refreshes fail, and pauses in a hidden tab. Identical refreshes from several viewers share a
+single NATS read for `COSMO_WEB_CACHE_TTL` seconds, and while NATS is unreachable the UI answers at once instead of
+holding your app server's threads.
 
 **Structured logs:**
 ```
