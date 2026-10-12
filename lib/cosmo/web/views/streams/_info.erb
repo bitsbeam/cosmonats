@@ -7,6 +7,7 @@
   <div class="kpi" style="--hue:var(--c2)"><div class="kpi-label"><i></i>Size</div><div class="kpi-val"><b><%= format_bytes(@state.bytes) %></b></div></div>
   <div class="kpi" style="--hue:var(--c3)"><div class="kpi-label"><i></i>Consumers</div><div class="kpi-val"><b><%= @state.consumer_count %></b></div></div>
   <div class="kpi" style="--hue:var(--c4)"><div class="kpi-label"><i></i>Sequence range</div><div class="kpi-val"><b style="font-size:22px"><%= format_numbers(@state.first_seq) %> → <%= format_numbers(@state.last_seq) %></b></div></div>
+  <div class="kpi" style="--hue:var(--c5)"><div class="kpi-label"><i></i>Last message</div><div class="kpi-val"><b title="<%= h(@state.last_ts) %>"><%= last_message(@state) %></b></div></div>
 </div>
 
 <%= render('streams/_pause_banner', { name: @name, paused: @paused }) %>

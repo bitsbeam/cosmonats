@@ -12,6 +12,7 @@
     <div class="stat"><span class="eyebrow">Messages</span><b><%= compact_number(state.messages) %></b></div>
     <div class="stat"><span class="eyebrow">Size</span><b><%= format_bytes(state.bytes) %></b></div>
     <div class="stat"><span class="eyebrow">Retention</span><b><%= h(config.retention) %><%= " · #{format_span(max_age / 1_000_000_000)}" if max_age.positive? %></b></div>
+    <div class="stat"><span class="eyebrow">Last message</span><b title="<%= h(state.last_ts) %>"><%= last_message(state) %></b></div>
     <div class="stat"><span class="eyebrow">Replicas</span><b>R<%= h(config.num_replicas || 1) %></b></div>
     <div class="stat"><span class="eyebrow">Sequence</span><b class="ellip"><%= compact_number(state.first_seq) %> → <%= compact_number(state.last_seq) %></b></div>
   </div>

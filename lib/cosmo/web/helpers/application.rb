@@ -66,6 +66,15 @@ module Cosmo
           end
         end
 
+        # @param state [NATS::JetStream::API::StreamState]
+        # @return [String] e.g. "3m 10s ago", or "never" for a stream that has not received a message
+        def last_message(state)
+          time = Time.parse(state.last_ts.to_s)
+          time.year > 1 ? "#{elapsed(time)} ago" : "never"
+        rescue ArgumentError
+          "never"
+        end
+
         def time_until(value)
           return "N/A" unless value
 
