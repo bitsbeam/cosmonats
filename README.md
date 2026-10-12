@@ -1,4 +1,4 @@
-# 🚀 Cosmonats
+# <img src="lib/cosmo/web/assets/logo.svg" alt="" width="32" height="32"> Cosmonats
 
 Background jobs + real-time event streaming for Ruby — unified, in one gem, backed by NATS.  
 **No Redis. No DB polling. Disk-backed, horizontally scalable — no message is ever silently dropped.**
