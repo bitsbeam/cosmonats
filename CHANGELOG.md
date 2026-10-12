@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0] - 2026-10-12
 
 ### Changed
 
@@ -315,6 +315,7 @@ Upgrading needs a few manual NATS steps: see [docs/upgrading.md](docs/upgrading.
 
 - Initial release: background jobs and stream processing for Ruby, backed by NATS JetStream.
 
+[0.9.0]: https://github.com/bitsbeam/cosmonats/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/bitsbeam/cosmonats/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/bitsbeam/cosmonats/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bitsbeam/cosmonats/compare/v0.5.1...v0.6.0
