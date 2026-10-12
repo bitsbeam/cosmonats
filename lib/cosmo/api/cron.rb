@@ -38,7 +38,7 @@ module Cosmo
 
         e = Entry.new(class_name: class_name, stream: stream, expression: schedule,
                       args: args, timezone: timezone, name: name)
-        client.publish(e.schedule_subject, e.job_payload, stream: STREAM, header: e.schedule_headers)
+        client.publish(e.schedule_subject, e.job_payload, stream: STREAM, header: e.headers, schedule: e.schedule)
         build_from_nats(e.schedule_subject)
       end
 
@@ -94,8 +94,8 @@ module Cosmo
         {
           class: body[:class],
           stream: headers["X-Stream"],
-          schedule: headers["Nats-Schedule"],
-          timezone: headers["Nats-Schedule-Time-Zone"],
+          schedule: headers[NATS::JetStream::Header::SCHEDULE],
+          timezone: headers[NATS::JetStream::Header::SCHEDULE_TIME_ZONE],
           args: body[:args] || [],
           name: name_from_subject(subject),
           schedule_subject: subject,

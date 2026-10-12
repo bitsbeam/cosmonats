@@ -8,8 +8,8 @@ module Cosmo
       # Headers the scheduler consumes rather than forwards. The +X-+ ones address the dispatch
       # itself, and NATS sets +Nats-Scheduler+/+Nats-Schedule-Next+ on a message it fires and
       # rejects a publish that carries them back.
-      DISPATCH_HEADERS = %w[X-Stream X-Subject X-Execute-At Nats-Expected-Stream
-                            Nats-Scheduler Nats-Schedule-Next].freeze
+      DISPATCH_HEADERS = ["X-Stream", "X-Subject", "X-Execute-At", NATS::JetStream::Header::EXPECTED_STREAM,
+                          NATS::JetStream::Header::SCHEDULER, NATS::JetStream::Header::SCHEDULE_NEXT].freeze
 
       # @raise [UnknownJobStreamError] when --streams/--stream or COSMO_JOBS_STREAMS names an unconfigured stream
       def self.validate_options!(options)
@@ -71,8 +71,7 @@ module Cosmo
           messages&.each do |message|
             headers = message.header.except(*DISPATCH_HEADERS)
             stream, subject, execute_at = message.header.values_at("X-Stream", "X-Subject", "X-Execute-At")
-            headers["Nats-Expected-Stream"] = stream
-            scheduler = message.header["Nats-Scheduler"]
+            scheduler = message.header[NATS::JetStream::Header::SCHEDULER]
             if scheduler
               headers["X-Scheduled-By"] = scheduler
               headers["X-Enqueued-At"] = message.metadata.timestamp.to_f.to_s
@@ -80,7 +79,7 @@ module Cosmo
             execute_at = execute_at.to_i
 
             if now >= execute_at
-              client.publish(subject, message.data, header: headers)
+              client.publish(subject, message.data, header: headers, stream:)
               message.ack
             else
               message.nak(delay: Config.to_ns(execute_at - now))
@@ -262,7 +261,7 @@ module Cosmo
       def scheduled_by(message)
         header = message.header or return
 
-        header["X-Scheduled-By"] || header["Nats-Scheduler"]
+        header["X-Scheduled-By"] || header[NATS::JetStream::Header::SCHEDULER]
       end
 
       # A cron message is enqueued when NATS fires it, not when the scheduler dispatches it on, so

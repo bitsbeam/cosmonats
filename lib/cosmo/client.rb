@@ -160,7 +160,7 @@ module Cosmo
       messages = {}
       loop do
         msg = sub.next_msg(timeout: self.class.js_timeout)
-        subject = msg.header&.dig("Nats-Subject")
+        subject = msg.header&.dig(NATS::JetStream::Header::SUBJECT)
         break unless subject
 
         messages[subject] = msg.data

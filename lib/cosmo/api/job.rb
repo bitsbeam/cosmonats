@@ -62,7 +62,7 @@ module Cosmo
       end
 
       def timestamp
-        headers&.dig("Nats-Time-Stamp")
+        headers&.dig(NATS::JetStream::Header::TIME_STAMP)
       end
 
       # @return [Time, nil] when the message was stored in its stream, parsed from +Nats-Time-Stamp+

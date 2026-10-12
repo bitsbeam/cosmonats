@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unreachable it answers 503 at once instead of waiting on NATS, which kept threads of a host app's Puma busy
 - The NATS client keeps reconnecting through an outage instead of closing for good after nats-pure's 10 attempts
   (about 20s), which left workers and the web UI disconnected until restarted; `NATS_MAX_RECONNECT_ATTEMPTS` overrides it
+- `API::Cron::Entry#schedule_headers` is split into `#schedule`, the `schedule:` option of nats-pure's publish, and
+  `#headers`, the dispatch headers; Cosmo uses nats-pure 2.7's header constants and `ttl:`/`stream:` publish options
 - `API::Stats::Metrics#daily` sums every job class when called without one; `API::Stream#consumers` lists consumers
 - Requires nats-pure 2.7, which ships the concurrent `fetch` fixes and struct fields Cosmo used to patch in, so the
   patches are gone. nats-pure 2.7 now sends stream and KV settings 2.5 dropped: see its changelog if your app passes any

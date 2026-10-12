@@ -98,14 +98,14 @@ module Cosmo
         results
       end
 
-      # CAS = Compare-And-Swap: publish +value+ with a per-message Nats-TTL,
+      # CAS = Compare-And-Swap: publish +value+ with a per-message TTL of +ttl+ whole seconds (at least 1),
       # but only if the subject's current last sequence matches +last_seq+
       # (sent as the Nats-Expected-Last-Subject-Sequence header). Raises
       # NATS::KeyValue::KeyWrongLastSequenceError if it doesn't match --
       # e.g. last_seq: 0 means "only publish if nothing exists here yet".
       def publish_cas(key, value, ttl, last_seq:)
-        headers = { "Nats-Expected-Last-Subject-Sequence" => last_seq.to_s, "Nats-TTL" => "#{ttl.to_i}s" }
-        client.js.publish("$KV.#{@name}.#{key}", value, header: headers)
+        headers = { NATS::JetStream::Header::EXPECTED_LAST_SUBJECT_SEQUENCE => last_seq.to_s }
+        client.js.publish("$KV.#{@name}.#{key}", value, header: headers, ttl: [ttl.to_i, 1].max)
       rescue NATS::JetStream::Error::APIError => e
         raise NATS::KeyValue::KeyWrongLastSequenceError, e.description if e.err_code == 10_071
 

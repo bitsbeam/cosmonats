@@ -44,7 +44,7 @@ module Cosmo
 
       # @return [Hash{String => String, Integer}] dedup id, plus where to dispatch a delayed job once it is due
       def headers
-        headers = { "Nats-Msg-Id" => jid }
+        headers = { NATS::JetStream::Header::MSG_ID => jid }
         return headers unless @at
 
         target = stream(target: true)

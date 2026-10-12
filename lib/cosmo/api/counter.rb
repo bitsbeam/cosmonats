@@ -58,7 +58,7 @@ module Cosmo
       def publish(key, value, msg_id: nil)
         rescued = nil
         headers = { "Nats-Incr" => value }
-        headers["Nats-Msg-Id"] = msg_id if msg_id
+        headers[NATS::JetStream::Header::MSG_ID] = msg_id if msg_id
 
         begin
           ack = client.publish(subject(key), "", header: headers)

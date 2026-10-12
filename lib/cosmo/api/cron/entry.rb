@@ -66,17 +66,16 @@ module Cosmo
           "jobs.#{@stream}.#{job_name}"
         end
 
-        # Headers stored on the schedule template. NATS copies the +X-+ ones onto every message
-        # it fires, which is how the scheduler learns where the job belongs.
-        def schedule_headers
-          headers = {
-            "Nats-Schedule" => @expression,
-            "Nats-Schedule-Target" => target_subject,
-            "X-Stream" => @stream,
-            "X-Subject" => dispatch_subject
-          }
-          headers["Nats-Schedule-Time-Zone"] = @timezone if @timezone
-          headers
+        # The +schedule:+ option of nats-pure's JetStream#publish that makes the template a schedule.
+        # @-shortcuts (+@daily+, +@every 5m+) travel as the cron expression, which the server understands.
+        def schedule
+          { cron: @expression, target: target_subject, time_zone: @timezone }.compact
+        end
+
+        # Headers stored on the schedule template. NATS copies them onto every message it fires,
+        # which is how the scheduler learns where the job belongs.
+        def headers
+          { "X-Stream" => @stream, "X-Subject" => dispatch_subject }
         end
 
         def job_name

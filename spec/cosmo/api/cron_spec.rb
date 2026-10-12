@@ -13,28 +13,26 @@ RSpec.describe Cosmo::API::Cron do
         "cosmo.cron.default.report_job.daily_report",
         anything,
         stream: "scheduled",
-        header: hash_including("Nats-Schedule" => "@daily",
-                               "Nats-Schedule-Target" => "jobs.scheduled.report_job",
-                               "X-Stream" => "default",
-                               "X-Subject" => "jobs.default.report_job")
+        header: { "X-Stream" => "default", "X-Subject" => "jobs.default.report_job" },
+        schedule: hash_including(cron: "@daily", target: "jobs.scheduled.report_job")
       )
       api.upsert!(**schedule)
     end
 
-    it "includes timezone header when present" do
+    it "includes the timezone when present" do
       expect(client).to receive(:publish).with(
         anything, anything,
-        stream: anything,
-        header: hash_including("Nats-Schedule-Time-Zone" => "UTC")
+        stream: anything, header: anything,
+        schedule: hash_including(time_zone: "UTC")
       )
       api.upsert!(**schedule)
     end
 
-    it "omits timezone header when nil" do
+    it "omits the timezone when nil" do
       expect(client).to receive(:publish).with(
         anything, anything,
-        stream: anything,
-        header: satisfy { |h| !h.key?("Nats-Schedule-Time-Zone") }
+        stream: anything, header: anything,
+        schedule: satisfy { |s| !s.key?(:time_zone) }
       )
       api.upsert!(class_name: "ReportJob", stream: "default", schedule: "@daily")
     end
@@ -43,8 +41,8 @@ RSpec.describe Cosmo::API::Cron do
       expect(client).to receive(:publish).with(
         "cosmo.cron.default.report_job",
         anything,
-        stream: "scheduled",
-        header: hash_including("Nats-Schedule" => "@hourly")
+        stream: "scheduled", header: anything,
+        schedule: hash_including(cron: "@hourly")
       )
       api.upsert!(class_name: "ReportJob", stream: "default", schedule: "@hourly")
     end

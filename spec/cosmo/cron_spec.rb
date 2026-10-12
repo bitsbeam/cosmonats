@@ -18,20 +18,20 @@ RSpec.describe Cosmo::API::Cron::Entry do
     expect(entry.dispatch_subject).to eq("jobs.default.test_cron_job")
   end
 
-  describe "#schedule_headers" do
-    it "carries the destination so the scheduler can dispatch the fired job" do
-      expect(entry.schedule_headers).to include(
-        "Nats-Schedule" => "@daily",
-        "Nats-Schedule-Target" => "jobs.scheduled.test_cron_job",
-        "Nats-Schedule-Time-Zone" => "Europe/Amsterdam",
-        "X-Stream" => "default",
-        "X-Subject" => "jobs.default.test_cron_job"
-      )
+  describe "#schedule" do
+    it "fires the expression into the scheduled stream in its timezone" do
+      expect(entry.schedule).to eq(cron: "@daily", target: "jobs.scheduled.test_cron_job", time_zone: "Europe/Amsterdam")
     end
 
     it "omits the timezone when none is set" do
       e = described_class.new(class_name: "TestCronJob", stream: "default", expression: "@hourly")
-      expect(e.schedule_headers).not_to have_key("Nats-Schedule-Time-Zone")
+      expect(e.schedule).not_to have_key(:time_zone)
+    end
+  end
+
+  describe "#headers" do
+    it "carries the destination so the scheduler can dispatch the fired job" do
+      expect(entry.headers).to eq("X-Stream" => "default", "X-Subject" => "jobs.default.test_cron_job")
     end
   end
 
