@@ -181,8 +181,8 @@ a.kpi:hover{text-decoration:none;background:var(--panel2)}
 .qname .mono{font-size:13px}
 .dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex:none}
 .paused-tag{font-size:10.5px;color:var(--warn)}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line2);border-radius:6px;background:var(--panel);font-size:12px;color:var(--ink);white-space:nowrap}
-.btn:hover{border-color:var(--mute);text-decoration:none}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line2);border-radius:6px;background:var(--panel);font-size:12px;color:var(--ink);white-space:nowrap;cursor:pointer;user-select:none}
+.btn:hover{border-color:var(--mute);background:var(--panel2);text-decoration:none}
 .btn.quiet{color:var(--mute)}
 .btn.danger{color:var(--err)}
 .btn.danger:hover{border-color:var(--err)}
