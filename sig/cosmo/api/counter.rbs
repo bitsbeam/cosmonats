@@ -9,10 +9,16 @@ module Cosmo
 
       def initialize: (::String namespace) -> void
 
-      def increment: (Symbol key, ?by: ::Integer) -> ::Integer
+      def increment!: (Symbol | ::String key, ?by: ::Integer, ?msg_id: ::String?) -> ::Integer?
+      alias incr! increment!
+
+      def increment: (Symbol | ::String key, ?by: ::Integer, ?msg_id: ::String?) -> ::Integer?
       alias incr increment
 
-      def decrement: (Symbol key, ?by: ::Integer) -> ::Integer
+      def decrement!: (Symbol | ::String key, ?by: ::Integer, ?msg_id: ::String?) -> ::Integer?
+      alias decr! decrement!
+
+      def decrement: (Symbol | ::String key, ?by: ::Integer, ?msg_id: ::String?) -> ::Integer?
       alias decr decrement
 
       def reset: (Symbol key) -> untyped
@@ -20,6 +26,8 @@ module Cosmo
       def get: (Symbol key) -> ::Integer
 
       private
+
+      def safely: [T] (Symbol | ::String key) { () -> T } -> T?
 
       def publish: (Symbol key, ::String value) -> ::Integer
 

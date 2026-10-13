@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking:** `config.replicas` is `config.services.num_replicas`, named like the `num_replicas` each stream in
   `cosmo.yml` sets for itself; it only sizes Cosmo's own streams and buckets
+- `API::Counter#increment`/`#incr` and `#decrement`/`#decr` log a counter that can't be written and return nil;
+  `#increment!`/`#incr!` and `#decrement!`/`#decr!` raise as they used to
 - A job worker skips a configured stream that doesn't exist in NATS with a warning, instead of crashing on boot
 
 ### Fixed

@@ -24,13 +24,47 @@ module Cosmo
         @namespace = namespace
       end
 
-      def increment(key, by: 1, msg_id: nil)
+      # Adds +by+ to +key+, raising when the counter can't be written.
+      #
+      # @param key [Symbol, String]
+      # @param by [Integer]
+      # @param msg_id [String, nil] see {#publish}
+      # @return [Integer, nil] see {#publish}
+      def increment!(key, by: 1, msg_id: nil)
         publish(key, "+#{by}", msg_id: msg_id)
+      end
+      alias incr! increment!
+
+      # Adds +by+ to +key+ like {#increment!}, but logs a counter that can't be written instead of raising.
+      #
+      # @param key [Symbol, String]
+      # @param by [Integer]
+      # @param msg_id [String, nil]
+      # @return [Integer, nil] nil also when the counter can't be written
+      def increment(key, by: 1, msg_id: nil)
+        safely(key) { increment!(key, by:, msg_id:) }
       end
       alias incr increment
 
-      def decrement(key, by: 1, msg_id: nil)
+      # Subtracts +by+ from +key+, raising when the counter can't be written.
+      #
+      # @param key [Symbol, String]
+      # @param by [Integer]
+      # @param msg_id [String, nil] see {#publish}
+      # @return [Integer, nil] see {#publish}
+      def decrement!(key, by: 1, msg_id: nil)
         publish(key, "-#{by}", msg_id: msg_id)
+      end
+      alias decr! decrement!
+
+      # Subtracts +by+ from +key+ like {#decrement!}, but logs a counter that can't be written instead of raising.
+      #
+      # @param key [Symbol, String]
+      # @param by [Integer]
+      # @param msg_id [String, nil]
+      # @return [Integer, nil] nil also when the counter can't be written
+      def decrement(key, by: 1, msg_id: nil)
+        safely(key) { decrement!(key, by:, msg_id:) }
       end
       alias decr decrement
 
@@ -47,6 +81,13 @@ module Cosmo
       end
 
       private
+
+      def safely(key)
+        yield
+      rescue StandardError => e
+        Logger.debug "#{self.class::STREAM_NAME} #{key} counter error: #{e.class} #{e.message}"
+        nil
+      end
 
       # @param msg_id [String, nil] when given, sent as Nats-Msg-Id so a redelivered
       #   caller (e.g. a job whose ack was lost and retried) collapses onto the

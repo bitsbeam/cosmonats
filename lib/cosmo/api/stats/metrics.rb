@@ -54,7 +54,7 @@ module Cosmo
         def flush
           pending = @lock.synchronize { @buffer.tap { @buffer = buffer } }
           pending.each do |(day, job), totals|
-            totals.each { |field, value| increment("#{day}.#{job}.#{field}", by: value.round) if value.positive? }
+            totals.each { |field, value| increment!("#{day}.#{job}.#{field}", by: value.round) if value.positive? }
           end
         end
 

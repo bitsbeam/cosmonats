@@ -95,7 +95,7 @@ module Cosmo
     # dead-lettered/dropped. Never call this for a retry. JID is used to dedupe: if the same
     # job's ack gets lost, and it's redelivered, we don't want to count it twice.
     def self.notify(bid, jid, success:)
-      counter.increment("#{bid}.failed", msg_id: "batch.#{bid}.#{jid}.failed") unless success
+      counter.increment!("#{bid}.failed", msg_id: "batch.#{bid}.#{jid}.failed") unless success
       release_pending(bid, msg_id: "batch.#{bid}.#{jid}.pending")
     end
 
@@ -126,7 +126,7 @@ module Cosmo
     def jobs
       previous = Thread.current[:cosmo_batch]
       Thread.current[:cosmo_batch] = self
-      counter.increment("#{bid}.pending")
+      counter.increment!("#{bid}.pending")
       begin
         yield
       ensure
@@ -147,15 +147,15 @@ module Cosmo
 
     # Called by Job#perform for each job added inside #jobs.
     def register_job!
-      counter.increment("#{bid}.total")
-      counter.increment("#{bid}.pending")
+      counter.increment!("#{bid}.total")
+      counter.increment!("#{bid}.pending")
     end
 
     # Undoes #register_job! when the publish itself failed, so the job
     # never really joined the batch. Unlike a real completion, this also
     # reverts total, not just pending.
     def rollback_job!
-      counter.decrement("#{bid}.total")
+      counter.decrement!("#{bid}.total")
       release_pending
     end
 

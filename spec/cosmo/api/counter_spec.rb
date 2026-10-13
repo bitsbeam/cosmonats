@@ -64,6 +64,22 @@ RSpec.describe Cosmo::API::Counter do
     end
   end
 
+  context "when the counter can't be written" do
+    before { allow(Cosmo::Client.instance).to receive(:publish).and_raise(NATS::IO::Timeout) }
+
+    it "raises from the bang methods" do
+      expect { counter.increment!(:processed) }.to raise_error(NATS::IO::Timeout)
+      expect { counter.incr!(:processed) }.to raise_error(NATS::IO::Timeout)
+      expect { counter.decrement!(:processed) }.to raise_error(NATS::IO::Timeout)
+      expect { counter.decr!(:processed) }.to raise_error(NATS::IO::Timeout)
+    end
+
+    it "returns nil from the others" do
+      expect([counter.increment(:processed), counter.incr(:processed), counter.decrement(:processed),
+              counter.decr(:processed)]).to all(be_nil)
+    end
+  end
+
   describe "#reset" do
     it "resets the counter to 0" do
       counter.increment(:processed, by: 3)

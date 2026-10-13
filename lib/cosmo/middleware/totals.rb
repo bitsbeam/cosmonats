@@ -10,19 +10,11 @@ module Cosmo
       # @param _message [NATS::Msg]
       def call(_job, _data, _message)
         result = yield
-        increment(:processed)
+        API::Stats::Totals.instance.increment(:processed)
         result
       rescue Exception # rubocop:disable Lint/RescueException
-        increment(:failed)
+        API::Stats::Totals.instance.increment(:failed)
         raise
-      end
-
-      private
-
-      def increment(key)
-        API::Stats::Totals.instance.increment(key)
-      rescue StandardError => e
-        Logger.debug "Totals #{key} counter error: #{e.class} #{e.message}"
       end
     end
   end

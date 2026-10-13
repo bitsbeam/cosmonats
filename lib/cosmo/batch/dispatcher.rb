@@ -12,7 +12,7 @@ module Cosmo
       # lets #jobs release its placeholder slot without messing up the stats
       # we report back.
       def release_pending(bid, msg_id: nil)
-        pending = counter.decrement("#{bid}.pending", msg_id: msg_id)
+        pending = counter.decrement!("#{bid}.pending", msg_id: msg_id)
         finalize(bid) if pending.to_i.zero?
       end
 
@@ -51,8 +51,8 @@ module Cosmo
 
       # Adds this batch as one job of the parent batch.
       def link(parent_id)
-        counter.increment("#{parent_id}.total")
-        counter.increment("#{parent_id}.pending")
+        counter.increment!("#{parent_id}.total")
+        counter.increment!("#{parent_id}.pending")
       end
 
       # Fires the callback for +event+, if one is registered and the batch is
