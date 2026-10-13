@@ -40,6 +40,8 @@ module Cosmo
           next unless filter.include?(stream_name)
 
           @consumers << subscribe(stream_name, config)
+        rescue NATS::JetStream::Error::NotFound
+          Logger.warn "stream #{stream_name} does not exist, skipping it (run `cosmo --setup` to create it)"
         end
 
         log_subscriptions

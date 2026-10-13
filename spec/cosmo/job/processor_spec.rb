@@ -8,6 +8,7 @@ RSpec.describe Cosmo::Job::Processor do
   let(:processor)   { described_class.new(pool, running, {}, quiet: quiet) }
   let(:results)     { Results.instance }
   let(:scheduled_enabled) { true }
+  let(:missing_streams) { [] }
 
   before do
     Cosmo::Config.load("spec/support/cosmo.yml")
@@ -20,7 +21,7 @@ RSpec.describe Cosmo::Job::Processor do
     # processor can sleep up to 5 s after the NAK delay expires, causing
     # the retry test to exceed its timeout (16 s NAK + 5 s sleep > 20 s).
     ENV["COSMO_STREAM_EMPTY_BACKOFF_MAX"] = "0.5"
-    create_streams(Cosmo::Config.dig(:setup, :jobs))
+    create_streams(Cosmo::Config.dig(:setup, :jobs).except(*missing_streams))
     processor.run
   end
 
@@ -199,6 +200,27 @@ RSpec.describe Cosmo::Job::Processor do
         filtered = described_class.new(pool, running, { streams: %w[default nope] }, quiet: quiet)
 
         expect { filtered.run }.to raise_error(Cosmo::UnknownJobStreamError, /`nope`.+`default`/)
+      end
+    end
+
+    context "with a configured stream missing in NATS" do
+      let(:missing_streams) { [:low] }
+
+      it "skips the missing stream and processes jobs from the rest" do
+        stub_const("PresentStreamJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+
+        PresentStreamJob.perform_async("processed")
+        wait_until(timeout: 5) { results.any? }
+
+        expect(results).to eq(["processed"])
+        expect(processor.subscriptions).to include("critical", "high", "default")
+        expect(processor.subscriptions).not_to include("low")
       end
     end
 

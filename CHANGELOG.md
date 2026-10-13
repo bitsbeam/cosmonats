@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- The web UI's Streams page shows when each stream last received a message
+
+### Changed
+
+- A job worker skips a configured stream that doesn't exist in NATS with a warning, instead of crashing on boot
+
+### Fixed
+
+- Web UI buttons show a pointer cursor and a fill on hover
+
 ## [0.9.0] - 2026-10-12
 
 ### Changed
