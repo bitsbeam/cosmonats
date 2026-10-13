@@ -26,14 +26,14 @@ module Cosmo
         ::Sentry.capture_exception(error, contexts: { cosmonats: context }, hint: { background: true, integration: "cosmonats" })
       end
 
-      # @param job [Cosmo::Job]
+      # @param _job [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param data [Hash]
       # @param message [NATS::Msg]
-      def call(job, data, message)
+      def call(_job, data, message)
         return yield unless ::Sentry.initialized?
 
         scope = ::Sentry.get_current_scope
-        transaction_name = "#{NAME_PREFIX}/#{job.class.name}"
+        transaction_name = "#{NAME_PREFIX}/#{data[:class]}"
         scope.set_transaction_name(transaction_name, source: :task)
         transaction = ::Sentry.start_transaction(
           name: scope.transaction_name,

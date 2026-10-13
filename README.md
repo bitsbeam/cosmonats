@@ -632,8 +632,8 @@ a stream batch its `stream`, `processor`, and `size`. A handler that raises is l
 
 ### Middleware
 
-Every job execution on a worker runs through the server middleware chain. A middleware gets the
-job instance, its parsed payload, and the NATS message, and yields to run the rest of the chain:
+Every job execution on a worker runs through the server middleware chain. A middleware gets the job instance (`nil`
+when class can't be loaded), its parsed payload, and the NATS message, and yields to run the rest of the chain:
 ```ruby
 class TimingMiddleware
   def initialize(threshold:)

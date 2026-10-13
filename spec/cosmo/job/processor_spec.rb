@@ -640,6 +640,43 @@ RSpec.describe Cosmo::Job::Processor do
         wait_until(timeout: 5) { stream_size("default").zero? }
         expect(results).to eq([:canary_ok])
       end
+
+      it "retries a job whose class is not loaded yet and runs it once it is" do
+        allow(processor).to receive(:default_retry_delay).and_return(0.1)
+        payload = Cosmo::Utils::Json.dump({ jid: "late-1", class: "LateJob", args: ["Carol"], retry: 3, dead: true })
+
+        client.publish("jobs.default.late_job", payload, header: { "Nats-Msg-Id" => "late-1" })
+        wait_until(timeout: 5) { Cosmo::API::Stats.failed == 1 }
+        stub_const("LateJob", Class.new do
+          include Cosmo::Job
+
+          def perform(name) = Results.instance << name
+        end)
+        wait_until(timeout: 5) { results.include?("Carol") }
+
+        expect(stream_size("dead")).to eq(0)
+        expect(Cosmo::API::Stats.processed).to eq(1)
+      end
+
+      it "counts a job whose class never loads as failed on every attempt before parking it" do
+        allow(processor).to receive(:default_retry_delay).and_return(0.1)
+        payload = Cosmo::Utils::Json.dump({ jid: "ghost-2", class: "GhostJobXYZ", args: [], retry: 1, dead: true })
+
+        client.publish("jobs.default.ghost_job_xyz", payload, header: { "Nats-Msg-Id" => "ghost-2" })
+        wait_until(timeout: 10) { stream_size("dead") >= 1 }
+        Cosmo::API::Stats::Metrics.instance.flush
+
+        expect(Cosmo::API::Stats.failed).to eq(2)
+        expect(Cosmo::API::Stats::Metrics.instance.summary).to include(a_hash_including(job: "GhostJobXYZ", failed: 2))
+        expect(Cosmo::API::Stream.new("dead").messages.first.error_message).to eq("GhostJobXYZ class not found")
+      end
+
+      it "counts a malformed payload as failed and parks it at once" do
+        client.publish("jobs.default.garbage_payload", "THIS_IS_NOT_JSON", header: { "Nats-Msg-Id" => "bad-json-2" })
+        wait_until(timeout: 5) { stream_size("dead") >= 1 }
+
+        expect(Cosmo::API::Stats.failed).to eq(1)
+      end
     end
 
     context "without dead letter queue" do
@@ -772,7 +809,7 @@ RSpec.describe Cosmo::Job::Processor do
       wait_until(timeout: 5) { results.any? }
 
       expect(results.first.first).to eq("GhostJobXYZ class not found")
-      expect(results.first.last).to include(source: :reject, class: "GhostJobXYZ", stream: "default")
+      expect(results.first.last).to include(source: :job, class: "GhostJobXYZ", stream: "default")
     end
 
     it "keeps processing when an error handler raises" do

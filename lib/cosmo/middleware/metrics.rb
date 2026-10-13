@@ -6,14 +6,14 @@ module Cosmo
     # succeeds, a failure otherwise, and the wait from enqueue to the job's first delivery. ActiveJob jobs count under
     # their own class.
     class Metrics
-      # @param job [Cosmo::Job]
+      # @param job [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param data [Hash]
       # @param _message [NATS::Msg]
       def call(job, data, _message) # rubocop:disable Metrics/AbcSize
         return yield unless Config.metrics.enabled
 
         name = job_name(job, data)
-        wait_ms = (Time.now - job.enqueued_at) * 1000 if job.attempt == 1 && job.enqueued_at
+        wait_ms = (Time.now - job.enqueued_at) * 1000 if job&.attempt == 1 && job.enqueued_at
         started = clock
         result = yield
         API::Stats::Metrics.instance.record(name, exec_ms: clock - started, wait_ms:)
@@ -26,7 +26,7 @@ module Cosmo
       private
 
       def job_name(job, data)
-        return job.class.name unless defined?(ActiveJobAdapter::Executor) && job.is_a?(ActiveJobAdapter::Executor)
+        return data[:class].to_s unless defined?(ActiveJobAdapter::Executor) && job.is_a?(ActiveJobAdapter::Executor)
 
         data.dig(:args, 0, :job_class).to_s
       end

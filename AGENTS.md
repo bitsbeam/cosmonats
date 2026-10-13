@@ -71,7 +71,8 @@ CLI → Engine → ThreadPool
   `docs/active_job.md`.
 - **Server middleware** (`Config#server_middleware`, `lib/cosmo/middleware/`) — a `Middleware::Chain`, registered via
   `Cosmo.configure { |config| config.server_middleware { |chain| ... } }`, that `Job::Processor#process` invokes as
-  `call(job, data, message)` around `perform_job`, inside
+  `call(job, data, message)` around `perform_job` (`job` is nil when the worker can't load the class, which
+  `perform_job` then fails with `NameError`, retried like any failure), inside
   the retry/DLQ rescue. It starts as `[Middleware::Limit, Middleware::Busy, Middleware::Totals, Middleware::Metrics]`: Limit enforces a
   job class's `limit:` (concurrency slots via `Job::Limit`, the duration timeout) and raises `Job::Requeue` while slots
   are taken, which the processor naks with its delay instead of failing the job; Totals counts every execution, retries

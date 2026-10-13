@@ -5,7 +5,7 @@ module Cosmo
     # Counts every execution as processed or failed, so a job retried twice and then succeeding adds two failures
     # and one processed. A counter that cannot be written is logged rather than raised, so stats never fail a job.
     class Totals
-      # @param _job [Cosmo::Job]
+      # @param _job [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param _data [Hash]
       # @param _message [NATS::Msg]
       def call(_job, _data, _message)

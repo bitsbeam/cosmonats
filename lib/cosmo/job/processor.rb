@@ -105,19 +105,13 @@ module Cosmo
         data = Utils::Json.parse(message.data)
         return reject_message(message, ArgumentError.new("malformed payload")) unless data
 
-        worker_class = Utils::String.safe_constantize(data[:class])
-        unless worker_class
-          reject_message(message, ArgumentError.new("#{data[:class]} class not found"), data)
-          notify_batch(data, success: false)
-          return
-        end
-
         begin
           sw = stopwatch
           Logger.with(jid: data[:jid])
           Logger.info "start"
 
-          instance = build_worker(worker_class, data, message)
+          worker_class = Utils::String.safe_constantize(data[:class])
+          instance = build_worker(worker_class, data, message) if worker_class
           Config.server_middleware.invoke(instance, data, message) do
             perform_job(instance, data: data, message: message)
           end
@@ -202,7 +196,7 @@ module Cosmo
       end
 
       def retry_delay(worker_class, data, current_attempt, exception)
-        handler = worker_class.retry_in(data)
+        handler = worker_class&.retry_in(data)
         return default_retry_delay(current_attempt) unless handler
 
         delay = handler.call(current_attempt, exception)
@@ -232,10 +226,11 @@ module Cosmo
       end
 
       # Logs why a message can't be processed at all and parks it in the DLQ.
-      def reject_message(message, error, data = nil)
+      def reject_message(message, error)
         Logger.error error
-        Cosmo.handle_error(error, error_context(message, data, source: :reject))
-        move_message(message, data, error)
+        Cosmo.handle_error(error, error_context(message, nil, source: :reject))
+        API::Stats::Totals.instance.increment(:failed)
+        move_message(message, nil, error)
       end
 
       def error_context(message, data, source: :job)
@@ -292,12 +287,16 @@ module Cosmo
         ENV.fetch("COSMO_JOBS_FETCH_TIMEOUT", 0.1).to_f
       end
 
-      # @param job_instance [Cosmo::Job]
+      # @param job_instance [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param data [Hash]
       # @param message [NATS::Msg]
+      # @return [Object] what the job's +perform+ returns
+      # @raise [NameError] when +job_instance+ is nil
       #
       # rubocop:disable-next Lint/UnusedMethodArgument
       def perform_job(job_instance, data:, message:)
+        raise NameError, "#{data[:class]} class not found" unless job_instance
+
         job_instance.perform(*data[:args])
       end
     end

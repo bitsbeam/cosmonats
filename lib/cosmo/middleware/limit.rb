@@ -8,12 +8,12 @@ module Cosmo
     # taken, and the +duration+ timeout. Jobs without +limit:+ pass straight through. It runs first in the chain,
     # so a requeued job never reaches the stats or user middleware.
     class Limit
-      # @param job [Cosmo::Job]
+      # @param job [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param data [Hash]
       # @param _message [NATS::Msg]
       # @raise [Job::Requeue] while every concurrency slot is taken
       def call(job, data, _message, &)
-        limit = job.class.default_options[:limit]
+        limit = job.class.default_options[:limit] if job
         return yield unless limit
 
         slot = acquire(job.class, data)
