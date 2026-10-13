@@ -46,6 +46,26 @@ RSpec.describe Cosmo::API::Cron do
       )
       api.upsert!(class_name: "ReportJob", stream: "default", schedule: "@hourly")
     end
+
+    it "takes retry and dead from the job class" do
+      stub_const("ReportJob", Class.new do
+        include Cosmo::Job
+
+        options retry: false, dead: false
+      end)
+
+      expect(client).to receive(:publish) do |_, payload, **|
+        expect(Cosmo::Utils::Json.parse(payload)).to include(class: "ReportJob", args: ["weekly"], retry: 0, dead: false)
+      end
+      api.upsert!(**schedule)
+    end
+
+    it "falls back to the default retry and dead when the job class can't be loaded" do
+      expect(client).to receive(:publish) do |_, payload, **|
+        expect(Cosmo::Utils::Json.parse(payload)).to include(class: "ReportJob", retry: Cosmo::Job::Data.default_retry, dead: true)
+      end
+      api.upsert!(**schedule)
+    end
   end
 
   describe "#delete!" do

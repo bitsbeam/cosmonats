@@ -96,16 +96,12 @@ module Cosmo
           }.compact
         end
 
-        # JSON payload sent as the body of the schedule message.
-        # Mirrors the format produced by Job::Data so the job processor can handle it.
+        # JSON payload sent as the body of the schedule message, built by Job::Data from the job class's own +retry+
+        # and +dead+ options, or the defaults when the class can't be loaded here.
         def job_payload
-          Utils::Json.dump({
-                             jid: SecureRandom.hex(12),
-                             class: @class_name,
-                             args: @args,
-                             retry: ::Cosmo::Job::Data.default_retry,
-                             dead: ::Cosmo::Job::Data::DEFAULTS[:dead]
-                           })
+          job_class = Utils::String.safe_constantize(@class_name)
+          options = job_class.respond_to?(:default_options) ? job_class.default_options : {}
+          ::Cosmo::Job::Data.new(@class_name, @args, options.merge(stream: @stream)).to_json
         end
 
         def to_s
