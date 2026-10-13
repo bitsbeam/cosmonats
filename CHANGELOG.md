@@ -22,8 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - A job whose class a worker can't load, e.g. mid-deploy, runs through the server middleware with a `nil` job and
-  fails with `NameError`, so it is counted and retried as its payload's `retry` allows instead of going straight to
-  `dead`; a malformed payload still goes straight to `dead` but counts as failed
+  fails with `Cosmo::JobClassNotFoundError`, so it is counted and retried as its payload's `retry` allows instead of
+  going straight to `dead`; a malformed payload still goes straight to `dead` but counts as failed
 - A cron job takes `retry` and `dead` from its job class instead of always the defaults
 - Web UI buttons show a pointer cursor and a fill on hover
 

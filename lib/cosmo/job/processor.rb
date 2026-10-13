@@ -291,11 +291,11 @@ module Cosmo
       # @param data [Hash]
       # @param message [NATS::Msg]
       # @return [Object] what the job's +perform+ returns
-      # @raise [NameError] when +job_instance+ is nil
+      # @raise [JobClassNotFoundError] when +job_instance+ is nil
       #
       # rubocop:disable-next Lint/UnusedMethodArgument
       def perform_job(job_instance, data:, message:)
-        raise NameError, "#{data[:class]} class not found" unless job_instance
+        raise JobClassNotFoundError, data[:class] unless job_instance
 
         job_instance.perform(*data[:args])
       end

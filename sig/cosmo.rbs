@@ -29,6 +29,10 @@ module Cosmo
     def initialize: (::String stream_name) -> void
   end
 
+  class JobClassNotFoundError < Error
+    def initialize: (::String? class_name) -> void
+  end
+
   class UnknownJobStreamError < Error
     def initialize: (Array[::String] names, Array[::String] configured) -> void
   end

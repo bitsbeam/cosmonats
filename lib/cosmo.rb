@@ -78,6 +78,12 @@ module Cosmo
     end
   end
 
+  class JobClassNotFoundError < Error
+    def initialize(class_name)
+      super("#{class_name} class not found")
+    end
+  end
+
   class UnknownJobStreamError < Error
     def initialize(names, configured)
       super("Unknown job stream#{"s" if names.size > 1} #{names.map { "`#{_1}`" }.join(", ")}; " \
