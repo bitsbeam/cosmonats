@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** `config.replicas` is `config.services.num_replicas`, named like the `num_replicas` each stream in
+  `cosmo.yml` sets for itself; it only sizes Cosmo's own streams and buckets
 - A job worker skips a configured stream that doesn't exist in NATS with a warning, instead of crashing on boot
 
 ### Fixed

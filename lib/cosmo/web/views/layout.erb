@@ -39,7 +39,7 @@
           <div class="conn-title"><span class="conn-dot<%= ' down' if server.empty? %>"></span><%= server.empty? ? 'NATS unreachable' : 'NATS connected' %></div>
           <div class="conn-meta">
             <%= h(server[:url] || "unknown server") %><br>
-            <% if server[:name] -%><%= h(server[:name]) %> · <% end -%><% if server[:version] -%>v<%= h(server[:version]) %> · <% end -%>R<%= Cosmo::Config.replicas %>
+            <%= h([server[:name], ("v#{server[:version]}" if server[:version])].compact.join(' · ')) %>
           </div>
         </div>
         <div class="theme-toggle" role="group" aria-label="Theme">

@@ -17,6 +17,7 @@ stream_config: &stream_config
   duplicate_window: 120 # seconds a Nats-Msg-Id is remembered, so a resent job is stored once
   discard: new          # what to drop when the stream is full: new rejects publishes, old evicts the oldest
   allow_direct: true    # required by the web UI
+  num_replicas: 1       # copies of the stream on a NATS cluster
   subjects:
     - jobs.%{name}.>    # %{name} is the stream name
 

@@ -53,10 +53,10 @@ RSpec.describe Cosmo::API::Stats::Metrics do
   end
 
   describe ".stream_config" do
-    it "keeps the counters for config.metrics.retention on config.replicas" do
+    it "keeps the counters for config.metrics.retention on config.services.num_replicas" do
       Cosmo.configure do |config|
         config.metrics.retention = "7d"
-        config.replicas = 3
+        config.services.num_replicas = 3
       end
 
       expect(described_class.stream_config).to include(max_age: 7 * 86_400 * Cosmo::Config::NANO, num_replicas: 3)

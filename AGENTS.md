@@ -26,7 +26,7 @@ CLI → Engine → ThreadPool
   so flags always win. The one exception: a user `setup.jobs` replaces the built-in `default` job stream and consumer
   instead of merging. YAML holds user-defined things only — `scheduled`/`dead` under `setup.jobs`/`consumers.jobs`, or
   `batch_expiry`, raise `ConfigError`. `load` is the only writer of YAML keys (there is no `Config.set`). Class-level
-  `[]`, `fetch`, `dig`, `load`, `server_middleware`, `replicas`, `scheduled`, `dead`, `batches` are delegated to the
+  `[]`, `fetch`, `dig`, `load`, `server_middleware`, `services`, `scheduled`, `dead`, `batches` are delegated to the
   singleton. `Cosmo.configure { |config| }` yields the same singleton. `server_middleware` and the service settings are instance variables, not keys, so `load` keeps them.
   `config.logger=` / `config.log_level=` wrap `Logger.instance=` / `Logger.level=`; `Logger.trace` is a no-op for
   loggers without `trace`, and `Logger::Context` tags are only printed by `Logger::SimpleFormatter`.
@@ -55,7 +55,7 @@ CLI → Engine → ThreadPool
   consumer (`config.scheduled.enabled`; off → no stream, no scheduler, `perform_in`/crons raise
   `SchedulingDisabledError`), `dead` (`config.dead`: retention, or off → given-up jobs are `term`ed), and the
   `_cosmototals` totals (`API::Stats::Totals`; always on, never expire) and the `_cosmobatches` batch counters,
-  all `API::Counter` subclasses. `config.replicas` sizes these and the KV buckets.
+  all `API::Counter` subclasses. `config.services.num_replicas` sizes these and the KV buckets.
   `Services.setup!` runs in `cosmo --setup`; specs get it through `create_streams`.
 - **`Cosmo::API::Cron`** (`lib/cosmo/api/cron.rb`) — recurring jobs use **NATS 2.14 server-side message schedules**
   (`Nats-Schedule` headers on a template stored at `cosmo.cron.<target stream>.>`). Every template lives in the

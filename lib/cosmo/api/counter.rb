@@ -17,7 +17,7 @@ module Cosmo
       # @return [Hash]
       def self.stream_config
         { subjects: ["#{self::STREAM_NAME}.>"], allow_msg_counter: true, allow_direct: true, max_msgs_per_subject: 1,
-          num_replicas: Config.replicas, description: self::DESCRIPTION }
+          num_replicas: Config.services.num_replicas, description: self::DESCRIPTION }
       end
 
       def initialize(namespace)

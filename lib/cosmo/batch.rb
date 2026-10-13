@@ -104,7 +104,7 @@ module Cosmo
     end
 
     def self.kv
-      @kv ||= API::KV.new(BUCKET, ttl: Utils::Duration.parse(Config.batches.expiry), replicas: Config.replicas)
+      @kv ||= API::KV.new(BUCKET, ttl: Utils::Duration.parse(Config.batches.expiry), replicas: Config.services.num_replicas)
     end
 
     attr_reader :bid, :parent_id

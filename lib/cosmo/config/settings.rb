@@ -2,6 +2,10 @@
 
 module Cosmo
   class Config < ::Hash
+    # +config.services+ in Cosmo.configure: +num_replicas+ for Cosmo's own streams and KV buckets, e.g. 3 on a NATS
+    # cluster. Streams in cosmo.yml set their own +num_replicas+.
+    Services = Struct.new(:num_replicas, keyword_init: true)
+
     # +config.scheduled+ in Cosmo.configure. Turned off, Cosmo neither creates the scheduled stream nor runs the
     # scheduler, and delayed jobs (+perform_in+/+perform_at+) and crons raise {SchedulingDisabledError}.
     Scheduled = Struct.new(:enabled, keyword_init: true)

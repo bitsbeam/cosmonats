@@ -226,7 +226,7 @@ RSpec.describe Cosmo::Config do
     it "defaults to enabled services with one replica" do
       config = described_class.new
 
-      expect(config.replicas).to eq(1)
+      expect(config.services.num_replicas).to eq(1)
       expect(config.scheduled.enabled).to be(true)
       expect(config.dead.to_h).to eq(enabled: true, max_age: 604_800, max_msgs: 10_000, max_bytes: -1)
       expect(config.batches.expiry).to eq(259_200)
@@ -235,13 +235,13 @@ RSpec.describe Cosmo::Config do
 
     it "keeps settings from Cosmo.configure when a config file is loaded afterwards" do
       Cosmo.configure do |config|
-        config.replicas = 3
+        config.services.num_replicas = 3
         config.dead.max_age = "14d"
       end
 
       described_class.load(nil)
 
-      expect(described_class.replicas).to eq(3)
+      expect(described_class.services.num_replicas).to eq(3)
       expect(described_class.dead.max_age).to eq("14d")
     end
   end

@@ -1,5 +1,11 @@
 module Cosmo
   class Config < ::Hash[Symbol, untyped]
+    class Services
+      attr_accessor num_replicas: Integer
+
+      def self.new: (num_replicas: Integer) -> Services
+    end
+
     class Scheduled
       attr_accessor enabled: bool
 

@@ -14,7 +14,7 @@ module Cosmo
     class << self
       extend Forwardable
 
-      delegate %i[[] fetch dig load server_middleware client_middleware error_handlers replicas scheduled dead batches metrics] => :instance
+      delegate %i[[] fetch dig load server_middleware client_middleware error_handlers services scheduled dead batches metrics] => :instance
     end
 
     def self.to_ns(seconds)
@@ -120,11 +120,9 @@ module Cosmo
       replace(self.class.build(Utils::Hash.deep_merge(user, Hash(overrides))))
     end
 
-    attr_writer :replicas
-
-    # @return [Integer] replicas for every service stream and bucket, e.g. 3 on a NATS cluster
-    def replicas
-      @replicas || 1
+    # @return [Services]
+    def services
+      @services ||= Services.new(num_replicas: 1)
     end
 
     # @return [Scheduled]

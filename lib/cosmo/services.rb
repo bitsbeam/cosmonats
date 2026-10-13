@@ -20,7 +20,7 @@ module Cosmo
 
       { storage: "file", retention: "workqueue", discard: "old", allow_direct: true, allow_msg_schedules: true,
         duplicate_window: Config.to_ns(120), subjects: ["jobs.#{SCHEDULED}.>", "#{API::Cron::Entry::SUBJECT_PREFIX}.>"],
-        num_replicas: Config.replicas, description: "Scheduled jobs and cron schedules", metadata: METADATA }
+        num_replicas: Config.services.num_replicas, description: "Scheduled jobs and cron schedules", metadata: METADATA }
     end
 
     # +max_deliver+ stays above 1: the scheduler naks a message that is not yet due, and one whose dispatch failed,
@@ -40,7 +40,7 @@ module Cosmo
 
       { storage: "file", retention: "workqueue", discard: "old", allow_direct: true, duplicate_window: Config.to_ns(120),
         max_age: Config.to_ns(Utils::Duration.parse(dead.max_age)), max_msgs: dead.max_msgs, max_bytes: dead.max_bytes,
-        subjects: ["jobs.#{DEAD}.>"], num_replicas: Config.replicas, description: "Dead jobs", metadata: METADATA }
+        subjects: ["jobs.#{DEAD}.>"], num_replicas: Config.services.num_replicas, description: "Dead jobs", metadata: METADATA }
     end
 
     # Creates or updates every enabled service stream, plus the internal totals and batch counters and, while enabled,

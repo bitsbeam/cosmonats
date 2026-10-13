@@ -366,6 +366,7 @@ stream_config: &stream_config
   duplicate_window: 120 # seconds
   discard: new
   allow_direct: true    # required by the web UI
+  num_replicas: 1       # e.g. 3 on a NATS cluster
   subjects: ["jobs.%{name}.>"]
 
 consumer_config: &consumer_config
@@ -399,7 +400,7 @@ counters and KV buckets are Cosmo's own: they are not part of `cosmo.yml`, and `
 yours. Tune them in `Cosmo.configure`:
 ```ruby
 Cosmo.configure do |config|
-  config.replicas = 3                # every service stream and bucket, for a NATS cluster (default 1)
+  config.services.num_replicas = 3   # every service stream and bucket, for a NATS cluster (default 1)
   config.dead.max_age = "14d"        # dead-letter retention: max_age, max_msgs (10_000), max_bytes (-1); default 7d
   config.dead.enabled = false        # drop jobs that give up instead of parking them
   config.scheduled.enabled = false   # no scheduled stream or scheduler: perform_in/perform_at and crons raise

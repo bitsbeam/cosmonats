@@ -48,9 +48,9 @@ RSpec.describe Cosmo::Services do
     end
   end
 
-  describe "replicas" do
-    it "sizes every service stream by config.replicas" do
-      Cosmo.configure { |config| config.replicas = 3 }
+  describe "num_replicas" do
+    it "sizes every service stream by config.services.num_replicas" do
+      Cosmo.configure { |config| config.services.num_replicas = 3 }
 
       expect(described_class.scheduled_stream).to include(num_replicas: 3)
       expect(described_class.dead_stream).to include(num_replicas: 3)

@@ -34,7 +34,7 @@ module Cosmo
 
     def self.load: (?::String? path, ?overrides: Hash[Symbol, untyped]?) -> void
 
-    def self.replicas: () -> Integer
+    def self.services: () -> Services
 
     def self.scheduled: () -> Scheduled
 
@@ -64,14 +64,12 @@ module Cosmo
 
     def error_handlers: () -> Array[untyped]
 
-    @replicas: Integer?
+    @services: Services
     @scheduled: Scheduled
     @dead: Dead
     @batches: Batches
 
-    attr_writer replicas: Integer
-
-    def replicas: () -> Integer
+    def services: () -> Services
 
     def scheduled: () -> Scheduled
 
