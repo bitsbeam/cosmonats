@@ -1,9 +1,9 @@
 <div class="subbar">
   <div class="seg">
-    <% @stream_names.each do |name| -%>
+    <% @stream_sizes.each do |name, size| -%>
       <a class="<%= 'on' if @stream_name.to_s == name.to_s %>" href="<%= url_for('/jobs/enqueued', stream_name: u(name)) %>"
          hx-get="<%= url_for('/jobs/enqueued', stream_name: u(name)) %>" hx-target="#jobs-panel" hx-swap="outerHTML"
-         hx-push-url="true" hx-indicator="#global-spinner"><%= h(name) %></a>
+         hx-push-url="true" hx-indicator="#global-spinner"><%= h(name) %><span class="<%= 'has' if size.positive? %>"><%= compact_number(size) %></span></a>
     <% end -%>
   </div>
   <span class="spacer"></span>

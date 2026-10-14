@@ -52,7 +52,7 @@ module Cosmo
 
         def delete_enqueued
           seq = path.split("/").last.to_i
-          stream_name, = streams
+          stream_name = params["stream_name"]
           API::Stream.new(stream_name).delete(seq)
           ok panel("enqueued") + flash("Message ##{seq} removed from #{stream_name}")
         end
@@ -87,15 +87,15 @@ module Cosmo
         end
 
         def enqueued_locals # rubocop:disable Metrics/AbcSize
-          stream_name, stream_names = streams
+          stream_name, stream_sizes = streams
           limit = (params["limit"] || API::Stream::LIMIT).to_i
           page = [params["page"].to_i, 1].max
-          locals = { stream_name:, stream_names:, page:, limit:, total: 0, total_pages: 0, jobs: nil, polling: false,
+          locals = { stream_name:, stream_sizes:, page:, limit:, total: 0, total_pages: 0, jobs: nil, polling: false,
                      query: { stream_name: Rack::Utils.escape(stream_name.to_s), limit: } }
           return locals if stream_name.to_s.empty?
 
           stream = API::Stream.new(stream_name)
-          total = stream.total
+          total = stream_sizes.fetch(stream_name) { stream.total }
           total_pages = (total.to_f / limit).ceil
           page = page.clamp(1, [total_pages, 1].max)
           locals.merge(total:, total_pages:, page:, jobs: stream.messages(page:, limit:))
@@ -123,9 +123,9 @@ module Cosmo
         end
 
         def streams
-          stream_names = API::Stream.jobs.map(&:name)
-          stream_name = params.fetch("stream_name", stream_names.first)
-          [stream_name, stream_names]
+          stream_sizes = API::Stream.jobs.to_h { [_1.name, _1.size] }
+          stream_name = params.fetch("stream_name") { stream_sizes.find { |_, size| size.positive? }&.first || stream_sizes.keys.first }
+          [stream_name, stream_sizes]
         end
       end
     end

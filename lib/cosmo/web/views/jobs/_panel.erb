@@ -23,7 +23,7 @@
     </div>
   </div>
 
-  <%= render("jobs/_#{@tab}", { jobs: @jobs, total: @total, page: @page, limit: @limit, stream_name: @stream_name, stream_names: @stream_names }) %>
+  <%= render("jobs/_#{@tab}", { jobs: @jobs, total: @total, page: @page, limit: @limit, stream_name: @stream_name, stream_sizes: @stream_sizes }) %>
 
   <%= render('shared/_pager', { path: tab_path, query: @query, page: @page, total_pages: @total_pages, target: '#jobs-panel' }) %>
 </section>
