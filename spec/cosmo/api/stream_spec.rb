@@ -17,6 +17,19 @@ RSpec.describe Cosmo::API::Stream do
       streams = described_class.all
       expect(streams.map(&:name)).to include(stream_name)
     end
+
+    it "answers size and pause state from the listing without asking NATS per stream" do
+      client.publish("teststreamapi.job", payload)
+      described_class.new(stream_name).pause!
+      allow(client).to receive(:stream_info).and_call_original
+      allow(client).to receive(:cron_subjects_in_stream).and_call_original
+
+      stream = described_class.all.find { _1.name == stream_name }
+
+      expect([stream.size, stream.paused?]).to eq([1, true])
+      expect(client).not_to have_received(:stream_info)
+      expect(client).not_to have_received(:cron_subjects_in_stream)
+    end
   end
 
   describe ".jobs" do
@@ -59,6 +72,7 @@ RSpec.describe Cosmo::API::Stream do
       client.publish("cosmo.cron.default.report_job", payload)
       client.publish("teststreamapi.job", payload)
       expect(stream.total).to eq(1)
+      expect(described_class.all.find { _1.name == stream_name }.total).to eq(1)
     end
   end
 

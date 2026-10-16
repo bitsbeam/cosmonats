@@ -9,14 +9,16 @@ module Cosmo
 
       include Enumerable
 
+      # @return [Array<Stream>] every stream, each answering #info from this one listing
       def self.all
-        client.list_streams.map { new(_1.dig("config", "name")) }
+        client.list_streams.map { new(_1.config.name, _1) }
       end
 
+      # @return [Array<Stream>] the job streams, each answering #info from this one listing
       def self.jobs
-        client.list_streams.select { _1.dig("config", "metadata", "_cosmo.type") == "jobs" }
-              .reject { %w[scheduled dead].include?(_1.dig("config", "name")) }
-              .map { new(_1.dig("config", "name")) }
+        client.list_streams.select { _1.config.metadata&.[](:"_cosmo.type") == "jobs" }
+              .reject { %w[scheduled dead].include?(_1.config.name) }
+              .map { new(_1.config.name, _1) }
       end
 
       def self.client
@@ -25,19 +27,27 @@ module Cosmo
 
       attr_reader :name
 
-      def initialize(name)
+      # @param name [String]
+      # @param info [NATS::JetStream::API::StreamInfo, nil] the stream's info from a listing, kept instead of fetched
+      def initialize(name, info = nil)
         @name = name
+        @info = info
       end
 
+      # @return [Hash] the stream's +:state+ and +:config+ as JetStream reports them, from the listing the stream
+      #   came from or else fetched fresh on every call
       def info
-        info = client.stream_info(name)
+        info = @info || client.stream_info(name)
         { state: info.state, config: info.config }
       end
 
       def total
-        all_msgs = info[:state].messages.to_i
-        cron_count = Client.instance.cron_subjects_in_stream(name, "#{Cron::Entry::SUBJECT_PREFIX}.>").size
-        [all_msgs - cron_count, 0].max
+        state, config = info.values_at(:state, :config)
+        messages = state.messages.to_i
+        return messages unless Array(config.subjects).any? { _1.start_with?(Cron::Entry::SUBJECT_PREFIX) }
+
+        cron_count = client.cron_subjects_in_stream(name, "#{Cron::Entry::SUBJECT_PREFIX}.>").size
+        [messages - cron_count, 0].max
       rescue NATS::Error
         0
       end
@@ -122,8 +132,11 @@ module Cosmo
         client.unpause_stream(name)
       end
 
+      # @return [Boolean] false when the server doesn't answer in time
       def paused?
-        client.stream_paused?(name)
+        info[:config].metadata&.[](:"_cosmo.paused") == "true"
+      rescue NATS::IO::Timeout
+        false
       end
 
       private

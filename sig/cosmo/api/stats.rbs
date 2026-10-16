@@ -9,9 +9,9 @@ module Cosmo
 
       def self.busy: () -> ::Integer
 
-      def self.enqueued: () -> ::Integer
+      def self.enqueued: (?Array[Stream] streams) -> ::Integer
 
-      def self.retries: () -> ::Integer
+      def self.retries: (?Array[Stream] streams) -> ::Integer
 
       def self.scheduled: () -> ::Integer
 

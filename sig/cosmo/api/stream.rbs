@@ -5,6 +5,7 @@ module Cosmo
 
       self.@client: Client
       @name: ::String
+      @info: untyped
       @offset: ::Integer
 
       def self.all: () -> Array[Stream]
@@ -15,7 +16,7 @@ module Cosmo
 
       attr_reader name: ::String
 
-      def initialize: (::String name) -> void
+      def initialize: (::String name, ?untyped info) -> void
 
       def info: () -> Hash[Symbol, untyped]
 

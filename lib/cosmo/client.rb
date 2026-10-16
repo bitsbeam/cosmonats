@@ -99,12 +99,14 @@ module Cosmo
       []
     end
 
+    # @return [Array<NATS::JetStream::API::StreamInfo>] every stream's info, as {#stream_info} returns it; empty when
+    #   the request fails
     def list_streams
       response = nc.request("$JS.API.STREAM.LIST", "")
-      data = Utils::Json.parse(response.data, symbolize_names: false)
-      return [] if data.nil? || data["streams"].nil?
+      data = Utils::Json.parse(response.data)
+      return [] if data.nil? || data[:streams].nil?
 
-      data["streams"]
+      data[:streams].map { NATS::JetStream::API::StreamInfo.new(_1) }
     rescue NATS::Error
       []
     end

@@ -39,7 +39,7 @@ module Cosmo
 
     def cron_subjects_in_stream: (::String stream_name, ::String filter) -> Array[::String]
 
-    def list_streams: () -> Array[Hash[::String, untyped]]
+    def list_streams: () -> Array[untyped]
 
     def pause_stream: (::String name) -> void
 

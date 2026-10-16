@@ -42,7 +42,7 @@ RSpec.shared_context "Global helpers" do
   private
 
   def destroy_streams
-    client.list_streams.each { client.delete_stream(_1.dig("config", "name")) }
+    client.list_streams.each { client.delete_stream(_1.config.name) }
   rescue NATS::JetStream::Error::NotFound
     # nop
   end

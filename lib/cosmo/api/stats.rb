@@ -11,7 +11,8 @@ module Cosmo
       module_function
 
       def summary
-        { processed:, failed:, busy:, enqueued:, retries:, scheduled:, dead: }
+        jobs = Stream.jobs
+        { processed:, failed:, busy:, enqueued: enqueued(jobs), retries: retries(jobs), scheduled:, dead: }
       end
 
       def processed
@@ -26,12 +27,16 @@ module Cosmo
         Busy.instance.size
       end
 
-      def enqueued
-        Stream.jobs.sum(&:size)
+      # @param streams [Array<Stream>] the job streams
+      # @return [Integer]
+      def enqueued(streams = Stream.jobs)
+        streams.sum(&:size)
       end
 
-      def retries
-        Stream.jobs.sum(&:retries)
+      # @param streams [Array<Stream>] the job streams
+      # @return [Integer]
+      def retries(streams = Stream.jobs)
+        streams.sum(&:retries)
       end
 
       def scheduled

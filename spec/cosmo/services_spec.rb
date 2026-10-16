@@ -36,7 +36,7 @@ RSpec.describe Cosmo::Services do
       end
 
       expect(described_class.setup!).to eq([])
-      names = client.list_streams.map { _1.dig("config", "name") }
+      names = client.list_streams.map { _1.config.name }
       expect(names).to include("_cosmototals", "_cosmobatches")
       expect(names).not_to include("scheduled", "dead", "_cosmometrics")
     end

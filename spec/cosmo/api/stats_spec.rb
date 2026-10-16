@@ -101,5 +101,10 @@ RSpec.describe Cosmo::API::Stats do
       expect(summary[:failed]).to eq(3)
       expect(summary[:busy]).to eq(2)
     end
+
+    it "lists the job streams once" do
+      described_class.summary
+      expect(Cosmo::API::Stream).to have_received(:jobs).once
+    end
   end
 end
