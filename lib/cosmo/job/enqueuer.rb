@@ -33,6 +33,11 @@ module Cosmo
         data.jid if published
       end
 
+      # Runs the client middleware around the publish.
+      #
+      # @param class_name [String]
+      # @param data [Data]
+      # @return [Boolean] whether the job was published
       def pipe(class_name, data)
         payload = data.as_json
         published = false
@@ -43,6 +48,10 @@ module Cosmo
         published
       end
 
+      # @param data [Data]
+      # @param payload [Hash] the job's payload, possibly changed by a middleware
+      # @return [NATS::JetStream::PubAck]
+      # @raise [StreamNotFoundError] when the target stream does not exist
       def publish(data, payload)
         Client.instance.publish(data.subject, Utils::Json.dump(payload), stream: data.stream, header: data.headers)
       rescue NATS::JetStream::Error::NoStreamResponse

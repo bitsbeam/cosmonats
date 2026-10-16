@@ -23,6 +23,10 @@ module Cosmo
 
     FONT_HEADERS = { "cache-control" => "public, max-age=31536000, immutable" }.freeze
 
+    # Serves a request with a fresh instance, so the class itself is a Rack app.
+    #
+    # @param env [Hash] the Rack environment
+    # @return [Array] the Rack response
     def self.call(env)
       new.call(env)
     end
@@ -30,6 +34,9 @@ module Cosmo
     # Serves the UI. An htmx refresh is shared through Cache with concurrent and recent identical ones; any other
     # method than GET changes something, so it empties the cache. While Circuit is open, anything but an asset
     # answers 503 at once instead of waiting on NATS.
+    #
+    # @param env [Hash] the Rack environment
+    # @return [Array] the Rack response
     def call(env) # rubocop:disable Metrics/AbcSize
       @request = Rack::Request.new(env)
       return route if @request.path_info.start_with?("/assets/", "/favicon.ico")

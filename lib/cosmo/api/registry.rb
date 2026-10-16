@@ -8,6 +8,7 @@ module Cosmo
     class Registry
       LIMIT = 25
 
+      # @return [Registry]
       def self.instance
         @instance ||= new
       end

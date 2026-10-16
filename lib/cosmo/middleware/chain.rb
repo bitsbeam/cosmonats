@@ -23,6 +23,7 @@ module Cosmo
       include Enumerable
 
       Entry = Struct.new(:klass, :args, :kwargs) do
+        # @return [Object] a new instance of the middleware class
         def build
           klass.new(*args, **kwargs)
         end
@@ -35,6 +36,7 @@ module Cosmo
       end
 
       # @yieldparam entry [Entry]
+      # @return [Array<Entry>]
       def each(&)
         @entries.each(&)
       end
@@ -42,6 +44,8 @@ module Cosmo
       # Appends +klass+, so it runs innermost, closest to the job.
       #
       # @param klass [Class]
+      # @param args [Array] passed to the middleware's +new+
+      # @param kwargs [Hash] passed to the middleware's +new+
       # @return [Chain]
       def add(klass, *args, **kwargs)
         remove(klass)
@@ -52,6 +56,8 @@ module Cosmo
       # Inserts +klass+ first, so it runs outermost.
       #
       # @param klass [Class]
+      # @param args [Array] passed to the middleware's +new+
+      # @param kwargs [Hash] passed to the middleware's +new+
       # @return [Chain]
       def prepend(klass, *args, **kwargs)
         remove(klass)
@@ -63,6 +69,8 @@ module Cosmo
       #
       # @param existing [Class]
       # @param klass [Class]
+      # @param args [Array] passed to the middleware's +new+
+      # @param kwargs [Hash] passed to the middleware's +new+
       # @return [Chain]
       def insert_before(existing, klass, *args, **kwargs)
         entry = take(klass, args, kwargs)
@@ -74,6 +82,8 @@ module Cosmo
       #
       # @param existing [Class]
       # @param klass [Class]
+      # @param args [Array] passed to the middleware's +new+
+      # @param kwargs [Hash] passed to the middleware's +new+
       # @return [Chain]
       def insert_after(existing, klass, *args, **kwargs)
         entry = take(klass, args, kwargs)
@@ -109,6 +119,8 @@ module Cosmo
 
       # Runs the block wrapped in every middleware, passing +args+ to each one's +call+.
       #
+      # @param args [Array] passed to every middleware's +call+
+      # @yieldreturn [Object]
       # @return [Object] the outermost middleware's return value, normally the block's
       def invoke(*args, &)
         return yield if empty?

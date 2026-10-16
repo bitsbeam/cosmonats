@@ -13,6 +13,7 @@ module Cosmo
     class Adapter
       # Enqueue a job to be run as soon as possible.
       # @param job [ActiveJob::Base]
+      # @return [String, nil] the job id, nil when client middleware stopped the publish
       def enqueue(job)
         publish(job, nil)
       end
@@ -20,6 +21,7 @@ module Cosmo
       # Enqueue a job to be run at (or after) a given time.
       # @param job [ActiveJob::Base]
       # @param timestamp [Numeric] Unix timestamp (seconds, float)
+      # @return [String, nil] the job id, nil when client middleware stopped the publish
       def enqueue_at(job, timestamp)
         publish(job, timestamp)
       end

@@ -17,6 +17,7 @@ module Cosmo
         (elapsed_millis / 1_000).round(2)
       end
 
+      # @return [void]
       def reset
         @started_at = clock_time
       end

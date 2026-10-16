@@ -10,6 +10,7 @@ module Cosmo
       ERRORS = [NATS::IO::Timeout, NATS::IO::ConnectError, NATS::IO::ConnectionClosedError,
                 NATS::IO::StaleConnectionError].freeze
 
+      # @return [Circuit]
       def self.instance
         @instance ||= new
       end

@@ -7,6 +7,8 @@ module Cosmo
       # @param _job [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param _data [Hash]
       # @param message [NATS::Msg]
+      # @yieldreturn [Object] the job's result
+      # @return [Object] the block's result
       def call(_job, _data, message, &)
         API::Stats::Busy.instance.with(message, &)
       end

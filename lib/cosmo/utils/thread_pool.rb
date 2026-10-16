@@ -14,6 +14,7 @@ module Cosmo
 
       delegate %i[shutdown wait_for_termination] => :@pool
 
+      # @param concurrency [Integer] number of threads
       def initialize(concurrency)
         @mutex = Thread::Mutex.new
         @concurrency = concurrency
@@ -22,10 +23,17 @@ module Cosmo
         @pool = Concurrent::FixedThreadPool.new(concurrency)
       end
 
+      # Blocks until no task is running.
+      #
+      # @return [void]
       def wait_idle
         @mutex.synchronize { @cond.wait(@mutex) until @available == @concurrency }
       end
 
+      # Runs the block on a pool thread, blocking until one is free.
+      #
+      # @yield the task
+      # @return [void]
       def post
         @mutex.synchronize do
           @cond.wait(@mutex) while @available <= 0

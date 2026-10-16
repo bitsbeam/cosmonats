@@ -11,6 +11,11 @@ module Cosmo
         @app = app
       end
 
+      # Runs the Rack app for +req+ and writes its response to +res+.
+      #
+      # @param req [WEBrick::HTTPRequest]
+      # @param res [WEBrick::HTTPResponse]
+      # @return [void]
       def service(req, res)
         status, headers, body = @app.call(env_for(req))
         res.status = status

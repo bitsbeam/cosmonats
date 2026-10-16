@@ -22,6 +22,8 @@ module Cosmo
     module Options
       VALID_OPTIONS = %i[retry dead stream retry_in].freeze
 
+      # @param base [Class]
+      # @return [void]
       def self.included(base)
         base.extend(ClassMethods)
       end
@@ -30,6 +32,9 @@ module Cosmo
         # Set Cosmo-specific options for this job class.
         # Merges with any options inherited from a superclass.
         # Raises +ArgumentError+ for unknown keys.
+        #
+        # @param opts [Hash] see {Options}
+        # @return [Hash] the class's options
         def cosmo_options(**opts)
           unknown = opts.keys - Cosmo::ActiveJobAdapter::Options::VALID_OPTIONS
           raise ::ArgumentError, "Unknown cosmo_options key(s): #{unknown.join(", ")}" if unknown.any?
@@ -38,6 +43,7 @@ module Cosmo
         end
 
         # Returns the resolved options, walking up the inheritance chain.
+        # @return [Hash]
         def get_cosmo_options # rubocop:disable Naming/AccessorMethodName
           if @cosmo_options
             @cosmo_options.dup

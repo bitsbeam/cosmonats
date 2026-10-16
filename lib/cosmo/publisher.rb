@@ -10,6 +10,7 @@ module Cosmo
       delegate %i[publish] => :instance
     end
 
+    # @return [Publisher]
     def self.instance
       @instance ||= new
     end
@@ -18,6 +19,13 @@ module Cosmo
       @client = Client.instance
     end
 
+    # Serializes +data+ and publishes it to +subject+.
+    #
+    # @param subject [String]
+    # @param data [Object]
+    # @param serializer [#serialize, nil] defaults to {Stream::Serializer}
+    # @param options [Hash] JetStream publish options, e.g. +header:+
+    # @return [NATS::JetStream::PubAck]
     def publish(subject, data, serializer: nil, **options)
       payload = (serializer || Stream::Serializer).serialize(data)
       @client.publish(subject, payload, **options)

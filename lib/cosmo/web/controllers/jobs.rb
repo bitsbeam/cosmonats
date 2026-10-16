@@ -6,34 +6,55 @@ module Cosmo
   class Web
     module Controllers
       class Jobs < Application
+        # Renders the jobs page on the busy tab.
+        #
+        # @return [Array] the Rack response
         def index
           tab("busy")
         end
 
+        # Renders the busy tab.
+        #
+        # @return [Array] the Rack response
         def busy
           tab("busy")
         end
 
+        # Renders the enqueued tab.
+        #
+        # @return [Array] the Rack response
         def enqueued
           tab("enqueued")
         end
 
+        # Renders the scheduled tab, or 404 while scheduling is disabled.
+        #
+        # @return [Array] the Rack response
         def scheduled
           return not_found unless Config.scheduled.enabled
 
           tab("scheduled")
         end
 
+        # Renders the dead tab, or 404 while the dead stream is disabled.
+        #
+        # @return [Array] the Rack response
         def dead
           return not_found unless Config.dead.enabled
 
           tab("dead")
         end
 
+        # Renders the queues table.
+        #
+        # @return [Array] the Rack response
         def _queues
           ok render("jobs/_queues", { queues: API::Stats.queues, compact: params["compact"].to_s == "1" })
         end
 
+        # Sends a dead job back to its queue.
+        #
+        # @return [Array] the Rack response
         def retry
           return not_found unless Config.dead.enabled
 
@@ -42,6 +63,9 @@ module Cosmo
           ok flash("Dead job ##{seq} sent back to its queue")
         end
 
+        # Deletes a dead job.
+        #
+        # @return [Array] the Rack response
         def delete
           return not_found unless Config.dead.enabled
 
@@ -50,6 +74,9 @@ module Cosmo
           ok flash("Dead job ##{seq} deleted")
         end
 
+        # Removes an enqueued message from its stream and renders the enqueued tab.
+        #
+        # @return [Array] the Rack response
         def delete_enqueued
           seq = path.split("/").last.to_i
           stream_name = params["stream_name"]

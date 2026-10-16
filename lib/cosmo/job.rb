@@ -10,6 +10,8 @@ require "cosmo/job/processor"
 
 module Cosmo
   module Job
+    # @param base [Class] the job class including Job
+    # @return [void]
     def self.included(base)
       base.extend(ClassMethods)
     end
@@ -50,6 +52,8 @@ module Cosmo
       #   +limit[:retry_in]+) or actually ran and failed. So a job that gets turned away twice for lack of a
       #   slot, then finally runs and fails, calls this handler with +count == 3+, not 1. Don't read +count+ as
       #   "how many times perform has actually run and failed" when concurrency limits are in play.
+      # @return [Hash{Symbol => Object}] the class's merged options
+      # @raise [ArgumentError] when +limit[:concurrency]+ lacks a +duration+ or +retry_in+ is not callable
       def options(**config)
         if config[:limit] && config.dig(:limit, :concurrency) && !config.dig(:limit, :duration).to_i.positive?
           raise ArgumentError, "limit: duration is required when concurrency is set"
@@ -61,6 +65,7 @@ module Cosmo
       end
       alias cosmo_options options
 
+      # @return [Boolean] whether +limit[:concurrency]+ is configured
       def limits_concurrency?
         !!concurrency_options
       end
@@ -68,12 +73,17 @@ module Cosmo
       # Returns the +retry_in+ Proc/lambda (taking +(count, exception)+) configured for this job class, or
       # +nil+ when unset. Overridable by wrapper job classes (e.g. the ActiveJob executor) that need to
       # resolve it from something other than +self+.
+      #
+      # @param _data [Hash, nil] the job payload, unused here
+      # @return [Proc, nil]
       def retry_in(_data = nil)
         default_options[:retry_in]
       end
 
       # Returns a normalized concurrency config hash, or +nil+ when not configured.
       # Always contains +:limit+, +:key+, +:duration+, and +:retry_in+.
+      #
+      # @return [Hash{Symbol => Object}, nil]
       def concurrency_options
         value = default_options.dig(:limit, :concurrency)
         return unless value
@@ -88,6 +98,9 @@ module Cosmo
       end
 
       # Derive the fully-scoped concurrency key for a given args array.
+      #
+      # @param args [Array] the job's arguments
+      # @return [String, nil] nil when concurrency is not limited
       def concurrency_key(args)
         config = concurrency_options
         return unless config
@@ -97,6 +110,12 @@ module Cosmo
         suffix ? "#{base}/#{suffix}" : base
       end
 
+      # Enqueues the job, or runs it inline when +async+ is false.
+      #
+      # @param args [Array] arguments passed to the job's +perform+
+      # @param async [Boolean] false runs the job in the current thread, without NATS
+      # @param options [Hash] job options merged over {#default_options}, e.g. +at:+ or +in:+
+      # @return [String, nil] the job's jid, or nil when run inline or a client middleware stopped the publish
       def perform(*args, async: true, **options)
         options = default_options.merge(options)
         return Enqueuer.enqueue(name, args, options, batch: Batch.current) if async
@@ -108,22 +127,37 @@ module Cosmo
         nil
       end
 
+      # @param args [Array] arguments passed to the job's +perform+
+      # @return [String, nil] the job's jid, or nil when a client middleware stopped the publish
       def perform_async(*args)
         perform(*args)
       end
 
+      # @param timestamp [Time, Integer] when the job runs
+      # @param args [Array] arguments passed to the job's +perform+
+      # @return [String, nil] the job's jid, or nil when a client middleware stopped the publish
       def perform_at(timestamp, *args)
         perform(*args, at: timestamp)
       end
 
+      # @param interval [Numeric] seconds from now until the job runs
+      # @param args [Array] arguments passed to the job's +perform+
+      # @return [String, nil] the job's jid, or nil when a client middleware stopped the publish
       def perform_in(interval, *args)
         perform(*args, in: interval)
       end
 
+      # Runs the job inline, without NATS.
+      #
+      # @param args [Array] arguments passed to the job's +perform+
+      # @return [nil]
       def perform_sync(*args)
         perform(*args, async: false)
       end
 
+      # Options inherited from the superclass job, or the built-in defaults.
+      #
+      # @return [Hash{Symbol => Object}]
       def default_options
         @default_options ||= (superclass.respond_to?(:default_options) ? superclass.default_options : Data::DEFAULTS.merge(retry: Data.default_retry)).dup
       end
@@ -137,10 +171,15 @@ module Cosmo
 
     attr_accessor :jid, :batch_id, :enqueued_at, :attempt, :scheduled_by
 
+    # Runs the job with the arguments it was enqueued with.
+    #
+    # @return [Object]
+    # @raise [NotImplementedError] unless the job class overrides it
     def perform(...)
       raise NotImplementedError, "#{self.class}#perform must be implemented"
     end
 
+    # @return [::Logger]
     def logger
       Logger.instance
     end

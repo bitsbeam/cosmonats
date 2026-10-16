@@ -8,6 +8,11 @@ module Cosmo
     class Callback
       include Cosmo::Job
 
+      # @param class_name [String] the class given to {Batch#on}
+      # @param event [String, Symbol] +success+ or +complete+
+      # @param status [Hash] +bid+, +total+, +succeeded+, and +failed+
+      # @param opts [Hash] the options given to {Batch#on}
+      # @return [void]
       def perform(class_name, event, status, opts)
         klass = Utils::String.safe_constantize(class_name)
         klass&.new&.public_send("on_#{event}", status, opts)

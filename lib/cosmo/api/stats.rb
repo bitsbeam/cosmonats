@@ -10,19 +10,24 @@ module Cosmo
     module Stats
       module_function
 
+      # @return [Hash{Symbol => Integer}] the dashboard counts: +:processed+, +:failed+, +:busy+, +:enqueued+,
+      #   +:retries+, +:scheduled+ and +:dead+
       def summary
         jobs = Stream.jobs
         { processed:, failed:, busy:, enqueued: enqueued(jobs), retries: retries(jobs), scheduled:, dead: }
       end
 
+      # @return [Integer] jobs run successfully, ever
       def processed
         Totals.instance.processed
       end
 
+      # @return [Integer] failed job attempts, ever
       def failed
         Totals.instance.failed
       end
 
+      # @return [Integer] jobs running right now across all workers
       def busy
         Busy.instance.size
       end
@@ -39,10 +44,12 @@ module Cosmo
         streams.sum(&:retries)
       end
 
+      # @return [Integer] messages in the +scheduled+ stream, 0 while scheduling is off
       def scheduled
         Config.scheduled.enabled ? Stream.new("scheduled").size : 0
       end
 
+      # @return [Integer] messages in the +dead+ stream, 0 while it is off
       def dead
         Config.dead.enabled ? Stream.new("dead").size : 0
       end

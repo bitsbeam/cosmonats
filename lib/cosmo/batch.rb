@@ -87,6 +87,7 @@ module Cosmo
     BUCKET = "_cosmobatches"
     EVENTS = %i[success complete].freeze
 
+    # @return [Batch, nil] the batch whose #jobs block runs on this thread
     def self.current
       Thread.current[:cosmo_batch]
     end
@@ -94,15 +95,22 @@ module Cosmo
     # Called by Job::Processor when a job is done for good - acked, or
     # dead-lettered/dropped. Never call this for a retry. JID is used to dedupe: if the same
     # job's ack gets lost, and it's redelivered, we don't want to count it twice.
+    #
+    # @param bid [String]
+    # @param jid [String]
+    # @param success [Boolean] false when the job was dead-lettered or dropped
+    # @return [void]
     def self.notify(bid, jid, success:)
       counter.increment!("#{bid}.failed", msg_id: "batch.#{bid}.#{jid}.failed") unless success
       release_pending(bid, msg_id: "batch.#{bid}.#{jid}.pending")
     end
 
+    # @return [Counters]
     def self.counter
       @counter ||= Counters.new("batch")
     end
 
+    # @return [API::KV] the bucket holding every batch's metadata, callbacks, and results
     def self.kv
       @kv ||= API::KV.new(BUCKET, ttl: Utils::Duration.parse(Config.batches.expiry), replicas: Config.services.num_replicas)
     end
@@ -123,6 +131,9 @@ module Cosmo
     # toward total, so it doesn't skew the stats. Safe to call more than
     # once. If the block raises, we still release the placeholder (so the
     # batch isn't stuck) and let the error propagate as normal.
+    #
+    # @yieldreturn [Object]
+    # @return [Object] the block's result
     def jobs
       previous = Thread.current[:cosmo_batch]
       Thread.current[:cosmo_batch] = self
@@ -138,6 +149,12 @@ module Cosmo
     # Registers a callback for +event+ (:success or :complete). Can be
     # called before or after #jobs - if the batch already finished, it
     # fires right away.
+    #
+    # @param event [Symbol] +:success+ or +:complete+
+    # @param klass [Class] a class whose instances respond to +on_success+/+on_complete+ with +(status, options)+
+    # @param opts [Hash] passed to the callback as +options+
+    # @return [void]
+    # @raise [ArgumentError] for any other event
     def on(event, klass, **opts)
       raise ArgumentError, "event must be :success or :complete" unless EVENTS.include?(event)
 
@@ -146,6 +163,7 @@ module Cosmo
     end
 
     # Called by Job#perform for each job added inside #jobs.
+    # @return [void]
     def register_job!
       counter.increment!("#{bid}.total")
       counter.increment!("#{bid}.pending")
@@ -154,6 +172,7 @@ module Cosmo
     # Undoes #register_job! when the publish itself failed, so the job
     # never really joined the batch. Unlike a real completion, this also
     # reverts total, not just pending.
+    # @return [void]
     def rollback_job!
       counter.decrement!("#{bid}.total")
       release_pending

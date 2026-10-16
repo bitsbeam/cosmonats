@@ -11,6 +11,8 @@ module Cosmo
       DISPATCH_HEADERS = ["X-Stream", "X-Subject", "X-Execute-At", NATS::JetStream::Header::EXPECTED_STREAM,
                           NATS::JetStream::Header::SCHEDULER, NATS::JetStream::Header::SCHEDULE_NEXT].freeze
 
+      # @param options [Hash] the CLI options
+      # @return [void]
       # @raise [UnknownJobStreamError] when --streams/--stream or COSMO_JOBS_STREAMS names an unconfigured stream
       def self.validate_options!(options)
         StreamFilter.from(options[:streams]).validate!

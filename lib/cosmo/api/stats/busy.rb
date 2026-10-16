@@ -16,6 +16,11 @@ module Cosmo
           @messages = {}
         end
 
+        # Keeps +message+ listed as busy while the block runs.
+        #
+        # @param message [NATS::Msg] a fetched JetStream message
+        # @yieldreturn [Object]
+        # @return [Object] the block's result
         def with(message)
           add(message)
           yield
@@ -23,6 +28,10 @@ module Cosmo
           delete(message)
         end
 
+        # Lists +message+ as busy and keeps refreshing it until {#delete}.
+        #
+        # @param message [NATS::Msg] a fetched JetStream message
+        # @return [void]
         def add(message)
           @thread ||= Thread.new { heartbeat_loop }
           meta = message.metadata
@@ -33,12 +42,17 @@ module Cosmo
           put(seq, entry)
         end
 
+        # @param message [NATS::Msg] a fetched JetStream message
+        # @return [void]
         def delete(message)
           seq = message.metadata.sequence.stream
           @messages.delete(seq)
           remove(seq)
         end
 
+        # Takes the same +page:+ and +limit:+ as {Registry#list}.
+        #
+        # @return [Array<Hash>] the busy entries, each with its job payload parsed under +:data+
         def list(...)
           super.map { _1.merge(data: Utils::Json.parse(_1[:data])) }
         end

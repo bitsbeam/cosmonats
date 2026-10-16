@@ -5,6 +5,8 @@ module Cosmo
     module String
       module_function
 
+      # @param value [String, Symbol, Class] e.g. "Cosmo::SendEmailJob"
+      # @return [String] e.g. "cosmo-send_email_job"
       def underscore(value)
         value
           .to_s
@@ -14,6 +16,8 @@ module Cosmo
           .downcase
       end
 
+      # @param value [String] a constant name
+      # @return [Object, nil] the constant, or nil when it is not defined
       def safe_constantize(value)
         Object.const_get(value)
       rescue NameError

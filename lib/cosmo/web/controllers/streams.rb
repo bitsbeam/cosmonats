@@ -6,6 +6,9 @@ module Cosmo
   class Web
     module Controllers
       class Streams < Application
+        # Renders the streams page, or only the stream list for htmx.
+        #
+        # @return [Array] the Rack response
         def index
           return ok(list) if hx_request?
 
@@ -14,6 +17,9 @@ module Cosmo
           ok render("streams/index", layout: true)
         end
 
+        # Renders a stream's configuration.
+        #
+        # @return [Array] the Rack response
         def info
           return ok(render("streams/_info", info_locals(API::Stream.new(name)))) if hx_request?
 
@@ -22,12 +28,18 @@ module Cosmo
           ok render("streams/info", { name: }, layout: true)
         end
 
+        # Pauses a stream, so workers stop fetching from it.
+        #
+        # @return [Array] the Rack response
         def pause
           stream = API::Stream.new(name)
           stream.pause!
           toggled(stream, "paused")
         end
 
+        # Resumes a paused stream.
+        #
+        # @return [Array] the Rack response
         def unpause
           stream = API::Stream.new(name)
           stream.unpause!

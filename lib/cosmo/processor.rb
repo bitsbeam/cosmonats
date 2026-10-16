@@ -7,13 +7,16 @@ module Cosmo
     STREAM_EMPTY_BACKOFF_MAX = "5s"  # Max sleep between empty fetches (override via COSMO_STREAM_EMPTY_BACKOFF_MAX)
     QUIET_SLEEP = "5s"               # How long to sleep between checks while in quiet mode (override via COSMO_QUIET_IDLE_SLEEP)
 
+    # Builds a processor and starts it, see {#run}.
+    #
+    # @return [Processor]
     def self.run(...)
       new(...).tap(&:run)
     end
 
     # Checks the command-line options this processor understands, before anything is booted or connected.
     #
-    # @param options [Hash]
+    # @param _options [Hash]
     # @return [void]
     def self.validate_options!(_options); end
 
@@ -30,6 +33,9 @@ module Cosmo
       @busy = Concurrent::AtomicFixnum.new
     end
 
+    # Subscribes the consumers and, when there are any, starts fetching in the background.
+    #
+    # @return [void]
     def run
       setup
       return unless @consumers.any?
@@ -45,6 +51,10 @@ module Cosmo
       @busy.value
     end
 
+    # Stops fetching, unsubscribes, and waits up to +timeout+ seconds for in-flight work.
+    #
+    # @param timeout [Numeric]
+    # @return [void]
     def stop(timeout = Config[:timeout])
       @running.make_false
       @pool.shutdown

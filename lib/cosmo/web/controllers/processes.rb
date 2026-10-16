@@ -6,6 +6,9 @@ module Cosmo
   class Web
     module Controllers
       class Processes < Application
+        # Renders the processes page, or only its table for htmx.
+        #
+        # @return [Array] the Rack response
         def index
           return ok(table) if hx_request?
 

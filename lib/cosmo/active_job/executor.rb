@@ -10,6 +10,9 @@ module Cosmo
 
       # Resolves +retry_in+ from the underlying ActiveJob class (declared via +cosmo_options+),
       # since the processor only ever sees +Executor+ as the worker class for ActiveJob-dispatched jobs.
+      #
+      # @param data [Hash] the job's payload
+      # @return [Proc, nil]
       def self.retry_in(data)
         job_class = Utils::String.safe_constantize(data.dig(:args, 0, :job_class))
         return super unless job_class.respond_to?(:get_cosmo_options)
@@ -17,6 +20,10 @@ module Cosmo
         job_class.get_cosmo_options[:retry_in] || super
       end
 
+      # Runs the serialized ActiveJob.
+      #
+      # @param job_data [Hash] what +ActiveJob::Base#serialize+ returned
+      # @return [void]
       def perform(job_data)
         ::ActiveJob::Base.execute(Utils::Hash.stringify_keys(job_data))
       end

@@ -22,10 +22,19 @@ module Cosmo
         end
       end
 
+      # @param url [String] an internal route
+      # @param status [Integer]
+      # @return [Array] the Rack response
       def redirect_to(url, status = 302)
         [status, { "location" => url_for(url) }, []]
       end
 
+      # Sends a file from ASSETS_ROOT, or 404 when it is missing.
+      #
+      # @param filename [String] relative to ASSETS_ROOT
+      # @param content_type [String]
+      # @param headers [Hash{String => String}, nil] extra response headers
+      # @return [Array] the Rack response
       def serve(filename, content_type, headers = nil)
         path = File.join(ASSETS_ROOT, filename)
         return not_found unless File.exist?(path)
@@ -33,15 +42,19 @@ module Cosmo
         respond_with 200, body: File.binread(path), headers: { "content-type" => content_type }.merge(headers || {})
       end
 
+      # @param body [String] the HTML to send
+      # @return [Array] the Rack response
       def ok(body = "")
         headers = { "content-type" => "text/html; charset=utf-8" }
         respond_with 200, body:, headers:
       end
 
+      # @return [Array] the Rack response
       def no_content
         respond_with 204, body: ""
       end
 
+      # @return [Array] the Rack response
       def not_found
         body = "<div class=\"empty\"><b>404</b>Not found</div>"
         headers = { "content-type" => "text/html; charset=utf-8" }
@@ -51,6 +64,10 @@ module Cosmo
       # Prepend the mount prefix to an internal route.
       #   url_for("/jobs")  # => "/admin/cosmo/jobs"  (mounted)
       #   url_for("/jobs")  # => "/jobs"              (standalone)
+      #
+      # @param path [String]
+      # @param params [Hash, nil] appended as the query string
+      # @return [String]
       def url_for(path, params = nil)
         url = "#{@request.script_name}#{path}"
         url = "#{url}?#{params.to_a.map { _1.join("=") }.join("&")}" if params

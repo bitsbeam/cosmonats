@@ -13,6 +13,8 @@ module Cosmo
         @check = check || method(:default_check)
       end
 
+      # @param env [Hash] the Rack env
+      # @return [Array] the Rack response
       def call(env)
         return @app.call(env) unless env[Rack::PATH_INFO] == PATH
         return [405, HEADERS.merge("allow" => "GET, HEAD"), []] unless %w[GET HEAD].include?(env[Rack::REQUEST_METHOD])

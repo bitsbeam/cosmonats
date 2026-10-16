@@ -7,10 +7,12 @@ require "fileutils"
 module Cosmo
   # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
   class CLI
+    # @return [void]
     def self.run
       instance.run
     end
 
+    # @return [CLI]
     def self.instance
       @instance ||= new
     end
@@ -18,6 +20,9 @@ module Cosmo
     # @return [Array<String>, nil] the arguments the process was started with, before parsing consumed them
     attr_reader :argv
 
+    # Parses the command line, then runs +--init+ or +--setup+, or loads the config and the app and starts the {Engine}.
+    #
+    # @return [void]
     def run
       @argv = ARGV.dup
       flags, command, options = parse
@@ -252,6 +257,7 @@ module Cosmo
       require path
     end
 
+    # @return [String] the logo printed on start
     # rubocop:disable-next Layout/TrailingWhitespace,Lint/IneffectiveAccessModifier
     def self.banner
       <<-TEXT

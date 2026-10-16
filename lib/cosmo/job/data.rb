@@ -7,12 +7,17 @@ module Cosmo
     class Data
       DEFAULTS = { stream: :default, retry: 3, dead: true, limit: nil }.freeze
 
+      # @return [Integer] +max_retries+ from the config, or the built-in default
       def self.default_retry
         Config[:max_retries] || DEFAULTS[:retry]
       end
 
       attr_reader :jid
 
+      # @param class_name [String]
+      # @param args [Array]
+      # @param options [Hash, nil] job options, +stream:+ is required
+      # @raise [ArgumentError] when no stream is given
       def initialize(class_name, args, options = nil)
         @class_name = class_name
         @args = args
@@ -26,10 +31,13 @@ module Cosmo
         @jid = SecureRandom.hex(12)
       end
 
+      # @return [String, nil] the id of the batch the job belongs to
       def batch_id
         @options[:batch_id]
       end
 
+      # @param target [Boolean] true returns the job's own stream even when it is delayed
+      # @return [Symbol] the stream the job is published to: +scheduled+ for a delayed job unless +target+
       def stream(target: false)
         return @options[:stream] if target
 
@@ -51,11 +59,14 @@ module Cosmo
         headers.merge("X-Execute-At" => @at.to_i, "X-Stream" => target, "X-Subject" => subject_for(target))
       end
 
+      # @return [Hash{Symbol => Object}] the published payload
       def as_json
         json = { jid: jid, class: @class_name, args: @args, retry: retries, dead: dead }
         batch_id ? json.merge(batch_id: batch_id) : json
       end
 
+      # @param _args [Array] ignored, accepted for +JSON.generate+ compatibility
+      # @return [String, nil]
       def to_json(*_args)
         Utils::Json.dump(as_json)
       end

@@ -19,6 +19,7 @@ module Cosmo
     class Cron
       STREAM = ::Cosmo::Job::StreamFilter::SCHEDULED.to_s
 
+      # @return [Cron]
       def self.instance
         @instance ||= new
       end
@@ -31,6 +32,12 @@ module Cosmo
       end
 
       # Publish (or replace) a schedule message in NATS.
+      # @param class_name [String, nil] the job class to run
+      # @param stream [String, nil] the job stream that runs it
+      # @param schedule [String, nil] the cron expression or @-shortcut, see {Entry.normalize_expression}
+      # @param args [Array] arguments passed to the job's +perform+
+      # @param timezone [String, nil] IANA timezone name for cron expressions
+      # @param name [String, Symbol, nil] disambiguates several schedules of one class
       # @return [Hash, nil] the persisted schedule as a hash, or nil on failure
       # @raise [SchedulingDisabledError] when scheduling is turned off
       def upsert!(class_name: nil, stream: nil, schedule: nil, args: [], timezone: nil, name: nil)
@@ -44,6 +51,7 @@ module Cosmo
 
       # Purge the schedule message from NATS (stops future firings).
       # @param subject [String]
+      # @return [void]
       def delete!(subject)
         client.purge(STREAM, subject)
       rescue NATS::JetStream::Error::NotFound, NATS::IO::Timeout
@@ -52,6 +60,7 @@ module Cosmo
 
       # Dispatch the job immediately to the target stream, bypassing the timer.
       # @param schedule_subject [String] e.g. "cosmo.cron.default.report_job.daily"
+      # @return [void]
       def run_now!(schedule_subject) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         msg = client.get_message(STREAM, subject: schedule_subject)
         return unless msg

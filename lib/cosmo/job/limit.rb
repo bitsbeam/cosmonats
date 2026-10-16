@@ -15,6 +15,7 @@ module Cosmo
     class Limit
       BUCKET = "_cosmolimits"
 
+      # @return [Limit]
       def self.instance
         @instance ||= new
       end
@@ -45,6 +46,9 @@ module Cosmo
       # tombstone left behind) so a released slot looks identical to one
       # reclaimed by Nats-TTL expiry -- callers never have to special-case a
       # delete marker.
+      #
+      # @param slot [String] the slot key returned by {#acquire}
+      # @return [void]
       def release(slot)
         @kv.erase(slot)
       rescue NATS::Error

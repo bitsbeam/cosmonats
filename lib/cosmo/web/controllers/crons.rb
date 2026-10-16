@@ -6,6 +6,9 @@ module Cosmo
   class Web
     module Controllers
       class Crons < Application
+        # Renders the crons page, or 404 while scheduling is disabled.
+        #
+        # @return [Array] the Rack response
         def index
           return not_found unless Config.scheduled.enabled
 
@@ -14,6 +17,9 @@ module Cosmo
           ok render("crons/index", layout: true)
         end
 
+        # Renders the crons table.
+        #
+        # @return [Array] the Rack response
         def _table
           return not_found unless Config.scheduled.enabled
 
@@ -22,6 +28,8 @@ module Cosmo
 
         # Dispatch the job immediately, bypassing the schedule timer.
         # Expects params["subject"] = the schedule subject stored in NATS.
+        #
+        # @return [Array] the Rack response
         def run_now
           return not_found unless Config.scheduled.enabled
 
@@ -31,6 +39,8 @@ module Cosmo
         end
 
         # Purge the schedule from NATS so it stops firing.
+        #
+        # @return [Array] the Rack response
         def delete
           return not_found unless Config.scheduled.enabled
 

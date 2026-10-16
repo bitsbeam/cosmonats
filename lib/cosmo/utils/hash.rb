@@ -5,6 +5,11 @@ module Cosmo
     module Hash
       module_function
 
+      # Symbolizes hash keys in place, recursing into nested hashes and arrays.
+      #
+      # @param obj [Object]
+      # @return [Object] +obj+, mutated
+      # @raise [ArgumentError] when a key cannot be converted to a symbol
       def symbolize_keys!(obj)
         case obj
         when ::Hash
@@ -23,6 +28,10 @@ module Cosmo
         end
       end
 
+      # Stringifies hash keys, recursing into nested hashes and arrays.
+      #
+      # @param obj [Object]
+      # @return [Object] a copy of +obj+
       def stringify_keys(obj)
         case obj
         when ::Hash
@@ -46,6 +55,9 @@ module Cosmo
       end
 
       # deep dup
+      #
+      # @param hash [Object] a Marshal-able value
+      # @return [Object] a deep copy of +hash+
       def dup(hash)
         Marshal.load(Marshal.dump(hash))
       end

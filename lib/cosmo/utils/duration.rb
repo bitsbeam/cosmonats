@@ -18,6 +18,9 @@ module Cosmo
 
       module_function
 
+      # @param value [Numeric, String] seconds, or a duration such as "20s", "1h", "7d"
+      # @return [Numeric] seconds
+      # @raise [ArgumentError] when +value+ is not a valid duration
       def parse(value)
         return value if value.is_a?(Numeric)
 

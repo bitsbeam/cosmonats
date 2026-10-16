@@ -9,6 +9,9 @@ module Cosmo
       streams: Stream::Processor
     }.freeze
 
+    # Runs the {.instance}, see {#run}.
+    #
+    # @return [void]
     def self.run(...)
       instance.run(...)
     end
@@ -21,6 +24,7 @@ module Cosmo
       type && PROCESSORS.key?(type.to_sym) ? [PROCESSORS[type.to_sym]] : PROCESSORS.values
     end
 
+    # @return [Engine]
     def self.instance
       @instance ||= new
     end
@@ -36,6 +40,11 @@ module Cosmo
       @heartbeat = nil
     end
 
+    # Starts the processors for +type+, blocks until a shutdown signal arrives, then shuts down.
+    #
+    # @param type [String, nil] +jobs+, +streams+, or nil for both
+    # @param options [Hash] the parsed command options
+    # @return [void]
     def run(type, options)
       handler = Utils::Signal.trap(:INT, :TERM, :TSTP, :CONT, :USR1, :TTIN)
       Logger.info "Starting processing, hit Ctrl-C to stop [concurrency=#{@concurrency}]"
@@ -54,6 +63,7 @@ module Cosmo
       shutdown
     end
 
+    # @return [Boolean]
     def running?
       @running.true?
     end
@@ -75,6 +85,9 @@ module Cosmo
       Array(@processors).to_h { [PROCESSORS.key(_1.class), _1.subscriptions] }
     end
 
+    # Stops fetching, waits up to +Config[:timeout]+ seconds for in-flight work, and unregisters the process.
+    #
+    # @return [void]
     def shutdown
       @running.make_false
       @heartbeat&.beat

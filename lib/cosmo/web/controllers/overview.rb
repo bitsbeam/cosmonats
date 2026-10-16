@@ -12,16 +12,25 @@ module Cosmo
         RUNNING = 9
         PROCESSES = 5
 
+        # Renders the overview page.
+        #
+        # @return [Array] the Rack response
         def index
           content_for :title, "Overview"
           content_for :subtitle, "Everything beamed through NATS, live."
           ok render("overview/index", { metrics: Config.metrics.enabled }, layout: true)
         end
 
+        # Renders the overview's KPI cards.
+        #
+        # @return [Array] the Rack response
         def _kpis
           ok render("overview/_kpis", API::Stats.summary)
         end
 
+        # Renders the throughput chart for the requested range, or 404 while metrics are disabled.
+        #
+        # @return [Array] the Rack response
         def _throughput
           return not_found unless Config.metrics.enabled
 
@@ -30,6 +39,9 @@ module Cosmo
           ok render("overview/_throughput", { chart:, days:, ranges: RANGES })
         end
 
+        # Renders the worker processes and a cell per thread, busy or idle.
+        #
+        # @return [Array] the Rack response
         def _workers # rubocop:disable Metrics/AbcSize
           processes = API::Stats::Processes.instance.list(limit: API::Stats::Processes.instance.size.clamp(1, nil))
           busy = API::Stats::Busy.instance.all.group_by { _1[:worker] }
@@ -39,12 +51,18 @@ module Cosmo
                                            busy: cells.count(&:itself), threads: cells.size })
         end
 
+        # Renders the longest running jobs.
+        #
+        # @return [Array] the Rack response
         def _running
           jobs = API::Stats::Busy.instance.all.sort_by { _1[:started_at].to_i }.first(RUNNING)
           jobs = jobs.map { _1.merge(data: Utils::Json.parse(_1[:data]) || {}) }
           ok render("overview/_running", { jobs:, total: API::Stats::Busy.instance.size })
         end
 
+        # Renders the sidebar's count badges.
+        #
+        # @return [Array] the Rack response
         def _badges
           badges = { jobs: API::Stats.enqueued, streams: visible_streams.size }
           badges[:crons] = API::Cron.instance.all.size if Config.scheduled.enabled

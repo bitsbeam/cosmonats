@@ -11,16 +11,24 @@ module Cosmo
         # Seconds between htmx auto-refreshes. Override with COSMO_WEB_POLL_INTERVAL.
         POLL_INTERVAL = 5
 
+        # @return [Integer] seconds between htmx auto-refreshes
         def poll_interval
           @poll_interval ||= ENV.fetch("COSMO_WEB_POLL_INTERVAL", POLL_INTERVAL).to_i
         end
 
+        # Renders a partial from within a view.
+        #
+        # @param template [String] the view, relative to Renderer::VIEWS_ROOT and without +.erb+
+        # @param locals [Hash{Symbol => Object}, nil] the partial's instance variables
+        # @return [String] the rendered HTML
         def render(template, locals = nil)
           defaults = { request: @request }
           locals = Hash(locals).merge(defaults)
           erb(template, locals)
         end
 
+        # @param bytes [Integer, String, nil]
+        # @return [String] e.g. "0 B", "1.5 KB", "2.25 GB"
         def format_bytes(bytes)
           b = bytes.to_i
           return "0 B" if b.zero?
@@ -30,10 +38,14 @@ module Cosmo
           "#{(b / (1024.0**i)).round(2)} #{sizes[i]}"
         end
 
+        # @param num [Integer, String]
+        # @return [String] e.g. "1,234,567"
         def format_numbers(num)
           num.to_s.reverse.gsub(/(\d{3})(?=\d)/, "\\1,").reverse
         end
 
+        # @param value [Numeric, String, nil] Unix seconds
+        # @return [String] e.g. "2026-10-16 13:22:16", or "N/A" without a value
         def format_timestamp(value)
           return "N/A" unless value
 
@@ -52,6 +64,8 @@ module Cosmo
           "#{(millis / 60_000).floor}m #{((millis % 60_000) / 1_000).round}s"
         end
 
+        # @param value [Time, Integer, String] the start, as a Time or Unix seconds
+        # @return [String] the time since then, e.g. "45s", "3m 10s", "2h 5m", "1d 4h"
         def elapsed(value)
           elapsed = Time.now.to_i - value.to_i
 
@@ -75,6 +89,8 @@ module Cosmo
           "never"
         end
 
+        # @param value [Numeric, String, nil] Unix seconds
+        # @return [String] the time left, e.g. "45s", "3m", "2h", "1d", "Ready" once passed, or "N/A" without a value
         def time_until(value)
           return "N/A" unless value
 
@@ -87,6 +103,7 @@ module Cosmo
           "#{(diff / 86_400).to_i}d"
         end
 
+        # @param num [Integer, String, nil]
         # @return [String] e.g. "940", "18.9k", "1.28M"
         def compact_number(num)
           n = num.to_i
@@ -108,6 +125,9 @@ module Cosmo
 
         # A stable chart color per name, one of the palette's five hues: job streams take them in name order, so the
         # first five never share one, anything else by a hash of its name.
+        #
+        # @param name [String, Symbol]
+        # @return [String] a CSS color, e.g. "var(--c2)"
         def hue(name)
           @hues ||= API::Stream.jobs.map(&:name).sort.each_with_index.to_h
           index = @hues.fetch(name.to_s) { Zlib.crc32(name.to_s) }
@@ -144,10 +164,14 @@ module Cosmo
           {}
         end
 
+        # @param value [Object]
+        # @return [String] the value, HTML-escaped
         def h(value)
           Rack::Utils.escape_html(value.to_s)
         end
 
+        # @param value [Object]
+        # @return [String] the value, URL-escaped
         def u(value)
           Rack::Utils.escape(value.to_s)
         end
@@ -155,6 +179,11 @@ module Cosmo
         # Build the list of page numbers to render around the current page, with
         # `:gap` markers where numbers are skipped.
         #   pages(5, 20) # => [1, :gap, 3, 4, 5, 6, 7, :gap, 20]
+        #
+        # @param page [Integer] the current page
+        # @param total_pages [Integer]
+        # @param window [Integer] pages shown on each side of the current one
+        # @return [Array<Integer, Symbol>] empty for a single page
         def pages(page, total_pages, window: 2)
           return [] if total_pages <= 1
 
@@ -167,16 +196,22 @@ module Cosmo
           end
         end
 
+        # @param path [String] a mount-relative route
+        # @return [Boolean] whether the request is for exactly this route
         def current_page?(path)
           request_path = @request.path_info
           request_path = "/" if request_path.empty?
           request_path == path
         end
 
+        # @param values [Array<String>] mount-relative route prefixes
+        # @return [Boolean] whether the request path starts with any of them
         def path_prefix?(*values)
           values.any? { |v| @request.path_info.start_with?(v) }
         end
 
+        # @param path [String] a mount-relative route
+        # @return [Boolean] whether the request's referrer is this route
         def referrer?(path)
           referrer_uri  = URI(@request.referrer)
           referrer_path = referrer_uri.path

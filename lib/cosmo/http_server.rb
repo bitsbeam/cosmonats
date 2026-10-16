@@ -19,6 +19,8 @@ module Cosmo
     NOT_FOUND = [404, { "content-type" => "application/json" }, ['{"error":"not found"}']].freeze
 
     # Routing is done by middlewares, anything unmatched falls through to 404.
+    #
+    # @return [#call] the Rack app
     def self.app
       Rack::Builder.app do
         use Health
@@ -33,6 +35,9 @@ module Cosmo
       @port = port
     end
 
+    # Starts serving in a background thread.
+    #
+    # @return [self]
     def start
       @server = ::WEBrick::HTTPServer.new(
         BindAddress: @host,
@@ -46,6 +51,7 @@ module Cosmo
       self
     end
 
+    # @return [void]
     def stop
       return unless @server
 
@@ -55,6 +61,8 @@ module Cosmo
     end
 
     # Actual bound port, useful when started with port 0.
+    #
+    # @return [Integer]
     def port
       @server ? @server.listeners.first.addr[1] : @port
     end

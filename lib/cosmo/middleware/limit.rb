@@ -11,6 +11,8 @@ module Cosmo
       # @param job [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param data [Hash]
       # @param _message [NATS::Msg]
+      # @yieldreturn [Object] the job's result
+      # @return [Object] the block's result
       # @raise [Job::Requeue] while every concurrency slot is taken
       def call(job, data, _message, &)
         limit = job.class.default_options[:limit] if job

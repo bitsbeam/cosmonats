@@ -21,6 +21,10 @@ module Cosmo
       class Entry
         SUBJECT_PREFIX = "cosmo.cron"
 
+        # Prepends the seconds field to a 5-field cron expression, leaving @-shortcuts and 6-field ones as they are.
+        #
+        # @param expr [String, nil]
+        # @return [String]
         def self.normalize_expression(expr)
           str = expr.to_s.strip
           return str if str.start_with?("@")
@@ -48,6 +52,8 @@ module Cosmo
 
         # Subject where the schedule message lives in NATS (one per unique schedule).
         # e.g. "cosmo.cron.default.report_job" or "cosmo.cron.default.report_job.monthly"
+        #
+        # @return [String]
         def schedule_subject
           parts = [SUBJECT_PREFIX, @stream, job_name]
           parts << @name if @name
@@ -57,31 +63,41 @@ module Cosmo
         # Subject where NATS fires the generated job message. A schedule may only target a
         # subject its own stream covers, so every schedule fires into the scheduled stream and
         # the scheduler forwards the job on to {#dispatch_subject}.
+        #
+        # @return [String]
         def target_subject
           "jobs.#{::Cosmo::Job::StreamFilter::SCHEDULED}.#{job_name}"
         end
 
         # Subject the scheduler dispatches the fired job to, on the stream that runs it.
+        #
+        # @return [String]
         def dispatch_subject
           "jobs.#{@stream}.#{job_name}"
         end
 
         # The +schedule:+ option of nats-pure's JetStream#publish that makes the template a schedule.
         # @-shortcuts (+@daily+, +@every 5m+) travel as the cron expression, which the server understands.
+        #
+        # @return [Hash{Symbol => String}]
         def schedule
           { cron: @expression, target: target_subject, time_zone: @timezone }.compact
         end
 
         # Headers stored on the schedule template. NATS copies them onto every message it fires,
         # which is how the scheduler learns where the job belongs.
+        #
+        # @return [Hash{String => String}]
         def headers
           { "X-Stream" => @stream, "X-Subject" => dispatch_subject }
         end
 
+        # @return [String] the underscored job class name used in subjects
         def job_name
           @job_name ||= Utils::String.underscore(@class_name)
         end
 
+        # @return [Hash] the entry's attributes and subjects, without nil values
         def as_json
           {
             class: @class_name,
@@ -98,12 +114,15 @@ module Cosmo
 
         # JSON payload sent as the body of the schedule message, built by Job::Data from the job class's own +retry+
         # and +dead+ options, or the defaults when the class can't be loaded here.
+        #
+        # @return [String]
         def job_payload
           job_class = Utils::String.safe_constantize(@class_name)
           options = job_class.respond_to?(:default_options) ? job_class.default_options : {}
           ::Cosmo::Job::Data.new(@class_name, @args, options.merge(stream: @stream)).to_json
         end
 
+        # @return [String]
         def to_s
           "#<Cosmo::API::Cron::Entry class=#{@class_name} expression=#{@expression} stream=#{@stream}>"
         end

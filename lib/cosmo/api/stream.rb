@@ -21,6 +21,7 @@ module Cosmo
               .map { new(_1.config.name, _1) }
       end
 
+      # @return [Client]
       def self.client
         @client ||= Client.instance
       end
@@ -41,6 +42,7 @@ module Cosmo
         { state: info.state, config: info.config }
       end
 
+      # @return [Integer] the stream's messages, not counting cron schedule templates; 0 when NATS can't be read
       def total
         state, config = info.values_at(:state, :config)
         messages = state.messages.to_i
@@ -53,6 +55,7 @@ module Cosmo
       end
       alias size total
 
+      # @return [Integer] redeliveries across the stream's consumers
       def retries
         consumers.sum { _1["num_redelivered"].to_i }
       end
@@ -64,6 +67,10 @@ module Cosmo
         []
       end
 
+      # Walks the stream's job messages in sequence order, from {#offset} or the first message.
+      #
+      # @yieldparam job [Job]
+      # @return [void]
       def each
         return if total.zero?
 
@@ -83,11 +90,18 @@ module Cosmo
         end
       end
 
+      # Sets the sequence {#each} starts at.
+      #
+      # @param value [Integer]
+      # @return [self]
       def offset(value)
         @offset = value.to_i
         self
       end
 
+      # @param page [Integer, nil] 1-based page, counted in sequences from the first message
+      # @param limit [Integer, nil] jobs per page, {LIMIT} when nil
+      # @return [Array<Job>]
       def messages(page: nil, limit: nil)
         jobs = []
         limit = (limit || LIMIT).to_i
@@ -103,6 +117,8 @@ module Cosmo
         jobs
       end
 
+      # @param seq [Integer]
+      # @return [Job, nil] nil when the message is gone or is a cron schedule template
       def message(seq)
         job = Job.new(name, client.get_message(name, seq: seq, direct: true))
         return if job.subject.to_s.start_with?(Cron::Entry::SUBJECT_PREFIX)
@@ -112,6 +128,10 @@ module Cosmo
         # nop, acked/nacked
       end
 
+      # Republishes the job at +seq+ to its +X-Subject+ and deletes it here.
+      #
+      # @param seq [Integer]
+      # @return [void]
       def retry(seq)
         job = message(seq)
         return unless job
@@ -120,14 +140,20 @@ module Cosmo
         delete(seq)
       end
 
+      # @param seq [Integer]
+      # @return [Hash] the JetStream API response
       def delete(seq)
         client.delete_message(name, seq)
       end
 
+      # Marks the stream paused, so workers stop fetching from it.
+      #
+      # @return [void]
       def pause!
         client.pause_stream(name)
       end
 
+      # @return [void]
       def unpause!
         client.unpause_stream(name)
       end

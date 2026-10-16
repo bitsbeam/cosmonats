@@ -9,6 +9,8 @@ module Cosmo
       # @param job [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param data [Hash]
       # @param _message [NATS::Msg]
+      # @yieldreturn [Object] the job's result
+      # @return [Object] the block's result
       def call(job, data, _message) # rubocop:disable Metrics/AbcSize
         return yield unless Config.metrics.enabled
 

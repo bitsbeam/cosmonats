@@ -8,6 +8,8 @@ module Cosmo
       # @param _job [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param _data [Hash]
       # @param _message [NATS::Msg]
+      # @yieldreturn [Object] the job's result
+      # @return [Object] the block's result
       def call(_job, _data, _message)
         result = yield
         API::Stats::Totals.instance.increment(:processed)

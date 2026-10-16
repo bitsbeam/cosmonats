@@ -9,6 +9,9 @@ module Cosmo
       class Metrics < Application
         RANGES = { 1 => "Today", 7 => "7 days", 30 => "30 days" }.freeze
 
+        # Renders the metrics page, or 404 while metrics are disabled.
+        #
+        # @return [Array] the Rack response
         def index
           return not_found unless Config.metrics.enabled
 
@@ -18,6 +21,8 @@ module Cosmo
         end
 
         # The chart and the table together, so the charted job stays highlighted across refreshes.
+        #
+        # @return [Array] the Rack response
         def _panel
           return not_found unless Config.metrics.enabled
 

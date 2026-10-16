@@ -8,6 +8,7 @@ module Cosmo
         STREAM_NAME = "_cosmototals"
         DESCRIPTION = "Cosmo statistics"
 
+        # @return [Totals]
         def self.instance
           @instance ||= new("jobs")
         end

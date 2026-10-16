@@ -9,10 +9,12 @@ module Cosmo
       TTL = 2
       LIMIT = 256
 
+      # @return [Cache]
       def self.instance
         @instance ||= new
       end
 
+      # @param ttl [Numeric] seconds a response is shared
       def initialize(ttl: ENV.fetch("COSMO_WEB_CACHE_TTL", TTL).to_f)
         @ttl = ttl
         @lock = Mutex.new

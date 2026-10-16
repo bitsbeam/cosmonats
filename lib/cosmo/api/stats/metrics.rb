@@ -11,6 +11,7 @@ module Cosmo
         DESCRIPTION = "Cosmo metrics"
         DAY = 86_400
 
+        # @return [Metrics]
         def self.instance
           @instance ||= new
         end

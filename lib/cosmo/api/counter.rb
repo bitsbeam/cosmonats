@@ -20,6 +20,7 @@ module Cosmo
           num_replicas: Config.services.num_replicas, description: self::DESCRIPTION }
       end
 
+      # @param namespace [String] the subject segment every key of this instance counts under
       def initialize(namespace)
         @namespace = namespace
       end
@@ -68,11 +69,17 @@ module Cosmo
       end
       alias decr decrement
 
+      # Drops +key+'s counter, so it reads 0 again.
+      #
+      # @param key [Symbol, String]
+      # @return [Integer, nil] the number of messages purged
       def reset(key)
         client.purge(self.class::STREAM_NAME, subject(key))
       end
       alias purge reset
 
+      # @param key [Symbol, String]
+      # @return [Integer] the counter's value, 0 when it was never written or can't be read
       def get(key)
         raw = client.get_message(self.class::STREAM_NAME, direct: true, subject: subject(key))
         Utils::Json.parse(raw.data, default: { "val" => 0 })[:val].to_i

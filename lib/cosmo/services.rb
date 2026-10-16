@@ -56,6 +56,11 @@ module Cosmo
       streams.keys
     end
 
+    # Creates or updates the +name+ stream.
+    #
+    # @param name [String]
+    # @param config [Hash]
+    # @return [void]
     # @raise [Error] when an existing stream has another retention policy, which NATS can't change in place
     def setup_stream(name, config)
       Client.instance.setup_stream(name, config)

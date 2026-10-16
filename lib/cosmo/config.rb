@@ -17,14 +17,22 @@ module Cosmo
       delegate %i[[] fetch dig load server_middleware client_middleware error_handlers services scheduled dead batches metrics] => :instance
     end
 
+    # @param seconds [Numeric]
+    # @return [Integer] nanoseconds
     def self.to_ns(seconds)
       (seconds.to_f * NANO).to_i
     end
 
+    # Parses the YAML file at +path+ as is, without normalizing it.
+    #
+    # @param path [String]
+    # @return [Hash]
     def self.read(path)
       Utils::Hash.symbolize_keys!(YAML.load_file(path, aliases: true) || {})
     end
 
+    # @param path [String]
+    # @return [Hash] the file's config, normalized
     def self.parse_file(path)
       read(path).tap { normalize!(_1) }
     end
@@ -46,6 +54,9 @@ module Cosmo
       Utils::Hash.deep_merge(defaults, user).tap { normalize!(_1) }
     end
 
+    # @param config [Hash] a parsed config file
+    # @return [void]
+    # @raise [ConfigError] when +config+ sets a service stream or +batch_expiry+, which Cosmo.configure owns
     def self.validate!(config)
       %i[setup consumers].each do |section|
         jobs = config.dig(section, :jobs)
@@ -60,6 +71,10 @@ module Cosmo
       raise ConfigError, "`batch_expiry` moved out of cosmo.yml: Cosmo.configure { |config| config.batches.expiry = ... }"
     end
 
+    # Parses durations (+max_age+ and +duplicate_window+ into nanoseconds) and interpolates +%{name}+ in subjects, in place.
+    #
+    # @param config [Hash]
+    # @return [void]
     def self.normalize!(config) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       Utils::Hash.symbolize_keys!(config)
 
@@ -87,6 +102,10 @@ module Cosmo
       end
     end
 
+    # The consumer delivery options for a stream processor's +start_position+.
+    #
+    # @param start_position [Symbol, String, Time, nil] +:last+, +:new+, a start time, or anything else for every message
+    # @return [Hash]
     def self.deliver_policy(start_position)
       case start_position
       when "last", :last
@@ -102,10 +121,14 @@ module Cosmo
       end
     end
 
+    # @return [Config]
     def self.instance
       @instance ||= new
     end
 
+    # Registrations made at runtime rather than read from YAML, e.g. the stream classes under +:streams+.
+    #
+    # @return [Hash]
     def self.internal
       @internal ||= {}
     end
@@ -115,6 +138,7 @@ module Cosmo
     #
     # @param path [String, nil]
     # @param overrides [Hash, nil] e.g. +{ concurrency: 5 }+
+    # @return [void]
     def load(path = nil, overrides: nil)
       user = path ? self.class.read(path) : {}
       replace(self.class.build(Utils::Hash.deep_merge(user, Hash(overrides))))
@@ -167,6 +191,7 @@ module Cosmo
     # Cosmo's +jid+/+elapsed+ context in each line.
     #
     # @param logger [::Logger]
+    # @return [void]
     def logger=(logger)
       Logger.instance = logger
     end
@@ -174,6 +199,7 @@ module Cosmo
     # Ignored when +COSMO_LOG_LEVEL+ is set, which always wins.
     #
     # @param level [Symbol, String, Integer] +:trace+, +:debug+, +:info+, +:warn+, +:error+, or +:fatal+
+    # @return [void]
     def log_level=(level)
       Logger.level = level
     end
