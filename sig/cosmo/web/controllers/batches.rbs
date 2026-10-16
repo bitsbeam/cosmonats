@@ -1,0 +1,11 @@
+module Cosmo
+  class Web
+    module Controllers
+      class Batches < Application
+        def index: () -> Web::response
+
+        def _table: () -> Web::response
+      end
+    end
+  end
+end

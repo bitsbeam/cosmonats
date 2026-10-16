@@ -1,11 +1,11 @@
 module Cosmo
   module Utils
     module String
-      def self.underscore: (::String | Symbol value) -> ::String
+      def self.underscore: (untyped value) -> ::String
 
       def self.safe_constantize: (::String value) -> Class?
 
-      def underscore: (::String | Symbol value) -> ::String
+      def underscore: (untyped value) -> ::String
 
       def safe_constantize: (::String value) -> Class?
     end

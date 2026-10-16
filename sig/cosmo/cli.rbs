@@ -22,6 +22,8 @@ module Cosmo
 
     def run_init: () -> void
 
+    def run_setup: (Hash[Symbol, untyped] flags) -> void
+
     def boot_application: () -> void
 
     def require_path: (::String? path) -> void

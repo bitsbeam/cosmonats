@@ -23,9 +23,9 @@ module Cosmo
 
     attr_reader parent_id: ::String?
 
-    def initialize: (?parent: ::String?) -> void
+    def initialize: (?bid: ::String?, ?parent: ::String?) -> void
 
-    def jobs: () { () -> void } -> void
+    def jobs: [T] () { () -> T } -> T
 
     def on: (Symbol event, Class klass, **untyped) -> void
 

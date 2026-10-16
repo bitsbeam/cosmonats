@@ -1,12 +1,12 @@
 module Cosmo
   module ActiveJobAdapter
     class Adapter
-      def enqueue: (untyped job) -> String
-      def enqueue_at: (untyped job, Numeric timestamp) -> String
+      def enqueue: (untyped job) -> String?
+      def enqueue_at: (untyped job, Numeric timestamp) -> String?
 
       private
 
-      def publish: (untyped job, Numeric? timestamp) -> String
+      def publish: (untyped job, Numeric? timestamp) -> String?
       def job_cosmo_options: (untyped job) -> Hash[Symbol, untyped]
     end
   end

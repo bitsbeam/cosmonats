@@ -3,7 +3,7 @@ module Cosmo
     class Callback
       include Cosmo::Job
 
-      def perform: (::String class_name, Symbol event, Hash[Symbol, untyped] status, Hash[Symbol, untyped] opts) -> void
+      def perform: (::String class_name, ::String | Symbol event, Hash[Symbol, untyped] status, Hash[Symbol, untyped] opts) -> void
     end
   end
 end

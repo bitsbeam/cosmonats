@@ -3,11 +3,11 @@ module Cosmo
     class Batch
       LIMIT: ::Integer
 
-      def self.all: (?limit: ::Integer) -> Array[Batch]
+      def self.all: (?limit: ::Integer?) -> Array[Batch]
 
       def self.kv: () -> KV
 
-      def self.counter: () -> Counter
+      def self.counter: () -> Cosmo::Batch::Counters
 
       @bid: ::String
 
@@ -37,7 +37,7 @@ module Cosmo
 
       def kv: () -> KV
 
-      def counter: () -> Counter
+      def counter: () -> Cosmo::Batch::Counters
     end
   end
 end

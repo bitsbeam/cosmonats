@@ -1,0 +1,21 @@
+module Cosmo
+  class Web
+    module Controllers
+      class Metrics < Application
+        RANGES: ::Hash[::Integer, ::String]
+
+        def index: () -> Web::response
+
+        def _panel: () -> Web::response
+
+        private
+
+        def charted: (::Array[::Hash[::Symbol, untyped]] rows) -> ::String?
+
+        def days: () -> ::Integer
+
+        def metrics: () -> API::Stats::Metrics
+      end
+    end
+  end
+end

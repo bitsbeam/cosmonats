@@ -6,7 +6,7 @@ module Cosmo
       @default_options: Hash[Symbol, untyped]
 
       def options: (
-        ?stream: Symbol?,
+        ?stream: (Symbol | ::String)?,
         ?consumer_name: ::String?,
         ?batch_size: Integer?,
         ?fetch_timeout: (Integer | Float)?,
@@ -14,8 +14,9 @@ module Cosmo
         ?consumer: Hash[Symbol, untyped]?,
         ?publisher: Hash[Symbol, untyped]?
       ) -> Hash[Symbol, untyped]
+      alias cosmo_options options
 
-      def publish: (untyped data, ?subject: ::String?, **untyped options) -> bool
+      def publish: (untyped data, ?subject: ::String?, **untyped options) -> untyped
 
       def default_options: () -> Hash[Symbol, untyped]
 
@@ -34,6 +35,6 @@ module Cosmo
 
     def message: () -> Message?
 
-    def publish: (untyped data, ::String subject, **untyped options) -> bool
+    def publish: (untyped data, ::String? subject, **untyped options) -> untyped
   end
 end

@@ -1,0 +1,23 @@
+module Cosmo
+  class Web
+    module Controllers
+      class Crons < Application
+        @cron: API::Cron?
+
+        def index: () -> Web::response
+
+        def _table: () -> Web::response
+
+        def run_now: () -> Web::response
+
+        def delete: () -> Web::response
+
+        private
+
+        def cron: () -> API::Cron
+
+        def label: (::String subject) -> ::String?
+      end
+    end
+  end
+end

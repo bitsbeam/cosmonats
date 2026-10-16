@@ -6,7 +6,7 @@ module Cosmo
       self.@client: Client
       @name: ::String
       @info: untyped
-      @offset: ::Integer
+      @offset: ::Integer?
 
       def self.all: () -> Array[Stream]
 
@@ -20,7 +20,7 @@ module Cosmo
 
       def info: () -> Hash[Symbol, untyped]
 
-      def offset: (::Integer) -> self
+      def offset: (::Integer value) -> self
 
       def total: () -> ::Integer
       alias size total
@@ -37,7 +37,7 @@ module Cosmo
 
       def retry: (::Integer seq) -> void
 
-      def delete: (::Integer seq) -> untyped
+      def delete: (::Integer seq) -> Hash[::String, untyped]
 
       def pause!: () -> untyped
 

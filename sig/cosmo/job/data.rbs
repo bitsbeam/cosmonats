@@ -15,13 +15,15 @@ module Cosmo
 
       def initialize: (::String class_name, Array[untyped] args, ?Hash[Symbol, untyped]? options) -> void
 
+      def batch_id: () -> ::String?
+
       def stream: (?target: bool) -> Symbol
 
       def subject: () -> ::String
 
       def headers: () -> Hash[::String, untyped]
 
-      def as_json: () -> { jid: ::String, class: ::String, args: Array[untyped], retry: Integer, dead: bool }
+      def as_json: () -> { jid: ::String, class: ::String, args: Array[untyped], retry: Integer, dead: bool, ?batch_id: ::String }
 
       def to_json: (*untyped _args) -> ::String?
 

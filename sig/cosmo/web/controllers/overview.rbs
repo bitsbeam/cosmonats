@@ -1,0 +1,30 @@
+module Cosmo
+  class Web
+    module Controllers
+      class Overview < Application
+        RANGES: ::Array[::Integer]
+        CELLS: ::Integer
+        RUNNING: ::Integer
+        PROCESSES: ::Integer
+
+        def index: () -> Web::response
+
+        def _kpis: () -> Web::response
+
+        def _throughput: () -> Web::response
+
+        def _workers: () -> Web::response
+
+        def _running: () -> Web::response
+
+        def _badges: () -> Web::response
+
+        private
+
+        def worker_cells: (::Hash[::Symbol, untyped] process, ::Hash[untyped, ::Array[::Hash[::Symbol, untyped]]] busy) -> ::Array[::String?]
+
+        def visible_streams: () -> ::Array[API::Stream]
+      end
+    end
+  end
+end

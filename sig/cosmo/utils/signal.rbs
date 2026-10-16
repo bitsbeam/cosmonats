@@ -1,15 +1,15 @@
 module Cosmo
   module Utils
     class Signal
-      @queue: Queue[Symbol]
+      @queue: Thread::Queue[Symbol | ::String]
 
-      def self.trap: (*Symbol signals) -> Signal
+      def self.trap: (*(Symbol | ::String) signals) -> Signal
 
-      def initialize: (*Symbol signals) -> void
+      def initialize: (*(Symbol | ::String) signals) -> void
 
-      def push: (Symbol) -> void
+      def push: (Symbol | ::String signal) -> void
 
-      def wait: () -> Symbol
+      def wait: () -> (Symbol | ::String)
     end
   end
 end

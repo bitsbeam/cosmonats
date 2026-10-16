@@ -1,0 +1,48 @@
+module Cosmo
+  class Web
+    class Chart
+      WIDTH: ::Integer
+      HEIGHT: ::Integer
+      PLOT: ::Integer
+      TICKS: ::Integer
+      LABELS: ::Integer
+      BAR: ::Integer
+
+      @series: ::Array[::Hash[::Symbol, untyped]]
+      @count_top: ::Numeric
+      @exec_top: ::Numeric
+
+      def initialize: (::Array[::Hash[::Symbol, untyped]] series) -> void
+
+      def empty?: () -> bool
+
+      def bars: () -> ::String
+
+      def line: () -> ::String
+
+      def grid: () -> ::String
+
+      def ticks: () -> ::Array[::Hash[::Symbol, ::Integer]]
+
+      def labels: () -> ::Array[::Hash[::Symbol, ::Float | ::String]]
+
+      def points: () -> ::Array[::Hash[::Symbol, untyped]]
+
+      private
+
+      def slot: () -> ::Float
+
+      def center: (::Integer index) -> ::Float
+
+      def exec_y: (::Numeric value) -> ::Float
+
+      def scale: (::Numeric value, ::Numeric top) -> ::Numeric
+
+      def percent: (::Numeric value, ?::Numeric total) -> ::Float
+
+      def top: (::Numeric max) -> ::Numeric
+
+      def label: (::String date) -> ::String
+    end
+  end
+end

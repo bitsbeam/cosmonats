@@ -5,7 +5,7 @@ module Cosmo
     module Context
       KEY: Symbol
 
-      def self.with: (**untyped options) ?{ () -> void } -> (nil | Hash[Symbol, untyped])
+      def self.with: [T] (**untyped options) ?{ () -> T } -> T?
 
       def self.without: (*Symbol keys) -> nil
 
@@ -38,11 +38,13 @@ module Cosmo
 
     def self.fatal: (::String) -> void
 
-    def self.trace: (::String | Exception) -> void
+    def self.trace: (?(::String | Exception)? progname) ?{ () -> ::String } -> void
 
-    def self.with: (**untyped) ?{ () -> void } -> void
+    def self.with: [T] (**untyped options) ?{ () -> T } -> T?
 
     def self.without: (*Symbol) -> nil
+
+    self.@instance: untyped
 
     def self.instance: () -> untyped
 

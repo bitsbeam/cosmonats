@@ -1,0 +1,25 @@
+module Cosmo
+  class Web
+    type response = [::Integer, ::Hash[::String, ::String], ::Array[::String]]
+
+    include Renderer
+
+    FONT_HEADERS: ::Hash[::String, ::String]
+
+    @request: untyped
+
+    def self.call: (::Hash[::String, untyped] env) -> response
+
+    def call: (::Hash[::String, untyped] env) -> response
+
+    private
+
+    def route: () -> response
+
+    def guarded: () -> response
+
+    def unavailable: () -> response
+
+    def handler: ([singleton(Controllers::Application), ::Symbol] | response route) -> response
+  end
+end

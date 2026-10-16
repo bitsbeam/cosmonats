@@ -1,0 +1,28 @@
+module Cosmo
+  class Web
+    module Controllers
+      class Application
+        include Renderer
+
+        @request: untyped
+        @content_for: ::Hash[::Symbol, ::String]?
+
+        def initialize: (untyped request) -> void
+
+        def content_for: (::Symbol name, ::String content) -> ::String
+
+        def render: (::String template, ?::Hash[::Symbol, untyped]? locals, ?layout: bool) -> ::String
+
+        def params: () -> ::Hash[::String, untyped]
+
+        def path: () -> ::String
+
+        def hx_request?: () -> bool
+
+        def unavailable: () -> Web::response
+
+        def flash: (::String message) -> ::String
+      end
+    end
+  end
+end

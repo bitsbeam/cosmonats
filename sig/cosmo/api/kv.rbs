@@ -11,11 +11,13 @@ module Cosmo
 
       def initialize: (::String name, ?Hash[Symbol, untyped]? options) -> void
 
-      def set: (::String | ::Integer key, untyped value, ?ttl: ::Integer?) -> untyped
+      def set: (::String | ::Integer key, untyped value, ?ttl: ::Integer?) -> ::Integer
 
       def get: (::String | ::Integer key) -> untyped
 
-      def delete: (::String | ::Integer key) -> untyped
+      def create: (::String | ::Integer key, untyped value) -> ::Integer
+
+      def delete: (::String | ::Integer key) -> ::Integer
 
       def keys: (?::String? subject, ?limit: ::Integer?, ?offset: ::Integer) -> Array[::String]
 
@@ -25,7 +27,7 @@ module Cosmo
 
       def erase: (::String | ::Integer key) -> ::Integer?
 
-      def clean: () -> untyped
+      def clean: () -> ::Integer?
 
       def count: () -> ::Integer
       alias size count
@@ -34,7 +36,7 @@ module Cosmo
 
       def walk: (::String? subject, limit: ::Integer?, offset: ::Integer, meta_only: bool) -> Array[[::String, ::String]]
 
-      def publish_cas: (::String | ::Integer key, ::String value, ::Integer? ttl, last_seq: ::Integer) -> untyped
+      def publish_cas: (::String | ::Integer key, ::String value, ::Integer ttl, last_seq: ::Integer) -> untyped
 
       def client: () -> Client
     end

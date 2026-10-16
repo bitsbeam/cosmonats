@@ -1,0 +1,47 @@
+module Cosmo
+  class Web
+    module Controllers
+      class Jobs < Application
+        def index: () -> Web::response
+
+        def busy: () -> Web::response
+
+        def enqueued: () -> Web::response
+
+        def scheduled: () -> Web::response
+
+        def dead: () -> Web::response
+
+        def _queues: () -> Web::response
+
+        def retry: () -> Web::response
+
+        def delete: () -> Web::response
+
+        def delete_enqueued: () -> Web::response
+
+        private
+
+        def tab: (::String name) -> Web::response
+
+        def panel: (::String name) -> ::String
+
+        def counts: () -> ::Hash[::Symbol, ::Integer]
+
+        def busy_locals: () -> ::Hash[::Symbol, untyped]
+
+        def enqueued_locals: () -> ::Hash[::Symbol, untyped]
+
+        def scheduled_locals: () -> ::Hash[::Symbol, untyped]
+
+        def dead_locals: () -> ::Hash[::Symbol, untyped]
+
+        def stored_locals: (::String name) -> ::Hash[::Symbol, untyped]
+
+        def paginate: (::Integer total, ::Integer default_limit) -> [::Integer, ::Integer, ::Integer]
+
+        def streams: () -> [::String?, ::Hash[::String, ::Integer]]
+      end
+    end
+  end
+end

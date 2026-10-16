@@ -1,0 +1,27 @@
+module Cosmo
+  class Web
+    module Controllers
+      class Streams < Application
+        def index: () -> Web::response
+
+        def info: () -> Web::response
+
+        def pause: () -> Web::response
+
+        def unpause: () -> Web::response
+
+        private
+
+        def name: () -> ::String
+
+        def list: () -> ::String
+
+        def toggled: (API::Stream stream, ::String verb) -> Web::response
+
+        def card: (API::Stream stream) -> ::Hash[::Symbol, untyped]
+
+        def info_locals: (API::Stream stream) -> ::Hash[::Symbol, untyped]
+      end
+    end
+  end
+end

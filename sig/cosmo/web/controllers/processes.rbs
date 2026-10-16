@@ -1,0 +1,13 @@
+module Cosmo
+  class Web
+    module Controllers
+      class Processes < Application
+        def index: () -> Web::response
+
+        private
+
+        def table: () -> ::String
+      end
+    end
+  end
+end

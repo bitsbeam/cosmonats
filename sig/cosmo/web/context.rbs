@@ -1,0 +1,15 @@
+module Cosmo
+  class Web
+    class Context
+      include Helpers::Application
+
+      @content_for: ::Hash[::Symbol, ::String]
+
+      def initialize: (::Hash[::Symbol, untyped] locals, ?::Hash[::Symbol, ::String]? content_for) -> void
+
+      def content_for: (::Symbol name) -> ::String?
+
+      def content_for?: (::Symbol name) -> bool
+    end
+  end
+end

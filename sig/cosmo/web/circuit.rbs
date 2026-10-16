@@ -1,0 +1,29 @@
+module Cosmo
+  class Web
+    class Circuit
+      OPEN_FOR: ::Integer
+      ERRORS: ::Array[singleton(::StandardError)]
+
+      self.@instance: Circuit
+
+      @lock: Thread::Mutex
+      @tripped_at: ::Float?
+
+      def self.instance: () -> Circuit
+
+      def initialize: () -> void
+
+      def open?: () -> bool
+
+      def trip!: () -> void
+
+      private
+
+      def tripped?: () -> bool?
+
+      def connected?: () -> bool
+
+      def clock: () -> ::Float
+    end
+  end
+end

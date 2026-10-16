@@ -1,0 +1,35 @@
+module Cosmo
+  class Web
+    class Cache
+      TTL: ::Integer
+      LIMIT: ::Integer
+
+      self.@instance: Cache
+
+      @ttl: ::Numeric
+      @lock: Thread::Mutex
+      @entries: ::Hash[untyped, [untyped, ::Float]]
+      @gates: ::Hash[untyped, Thread::Mutex]
+
+      def self.instance: () -> Cache
+
+      def initialize: (?ttl: ::Numeric) -> void
+
+      def fetch: (untyped key) { () -> untyped } -> untyped
+
+      def clear: () -> void
+
+      private
+
+      def gate: (untyped key) -> Thread::Mutex
+
+      def read: (untyped key) -> [untyped, ::Float]?
+
+      def write: (untyped key, untyped value) -> [untyped, ::Float]
+
+      def prune: () -> void
+
+      def clock: () -> ::Float
+    end
+  end
+end

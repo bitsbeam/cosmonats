@@ -49,11 +49,11 @@ module Cosmo
 
     def list_consumers: (::String stream_name) -> Array[Hash[::String, untyped]]
 
-    def consumer_info: (::String stream_name, ::String consumer_name) -> NATS::JetStream::API::ConsumerInfo
+    def consumer_info: (::String stream_name, ::String consumer_name) -> untyped
 
     def delete_consumer: (::String stream_name, ::String consumer_name) -> bool
 
-    def get_message: (::String | Symbol name, **untyped options) -> NATS::JetStream::API::RawStreamMsg
+    def get_message: (::String | Symbol name, **untyped options) -> untyped
 
     def last_messages: (::String stream_name, Array[::String] filters) -> Hash[::String, ::String]
 

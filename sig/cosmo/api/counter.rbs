@@ -2,6 +2,7 @@ module Cosmo
   module API
     class Counter
       @namespace: ::String
+      @client: Client
 
       def self.setup!: () -> void
 
@@ -21,17 +22,18 @@ module Cosmo
       def decrement: (Symbol | ::String key, ?by: ::Integer, ?msg_id: ::String?) -> ::Integer?
       alias decr decrement
 
-      def reset: (Symbol key) -> untyped
+      def reset: (Symbol | ::String key) -> ::Integer?
+      alias purge reset
 
-      def get: (Symbol key) -> ::Integer
+      def get: (Symbol | ::String key) -> ::Integer
 
       private
 
       def safely: [T] (Symbol | ::String key) { () -> T } -> T?
 
-      def publish: (Symbol key, ::String value) -> ::Integer
+      def publish: (Symbol | ::String key, ::String value, ?msg_id: ::String?) -> ::Integer?
 
-      def subject: (Symbol key) -> ::String
+      def subject: (Symbol | ::String key) -> ::String
 
       def client: () -> Client
     end

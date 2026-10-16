@@ -53,7 +53,7 @@ module Cosmo
 
     def quiet?: () -> bool
 
-    def fetch: (untyped subscription, batch_size: Integer, timeout: Float) ?{ (Array[untyped]) -> void } -> void
+    def fetch: (untyped subscription, batch_size: Integer?, timeout: Numeric) -> Array[untyped]?
 
     def client: () -> Client
 

@@ -15,7 +15,7 @@ module Cosmo
 
       def shutdown: () -> void
 
-      def wait_for_termination: (Integer? timeout) -> bool
+      def wait_for_termination: (?(Integer | Float)? timeout) -> bool
     end
   end
 end

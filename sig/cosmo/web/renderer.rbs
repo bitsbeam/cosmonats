@@ -1,0 +1,33 @@
+module Cosmo
+  class Web
+    module Renderer
+      ASSETS_ROOT: ::String
+      VIEWS_ROOT: ::String
+
+      self.@templates: ::Hash[::String, ::String]
+      self.@lock: Thread::Mutex
+
+      @request: untyped
+
+      def self.template: (::String path) -> ::String
+
+      def redirect_to: (::String url, ?::Integer status) -> Web::response
+
+      def serve: (::String filename, ::String content_type, ?::Hash[::String, ::String]? headers) -> Web::response
+
+      def ok: (?::String body) -> Web::response
+
+      def no_content: () -> Web::response
+
+      def not_found: () -> Web::response
+
+      def url_for: (::String path, ?::Hash[untyped, untyped]? params) -> ::String
+
+      private
+
+      def respond_with: (::Integer status, ?headers: ::Hash[::String, ::String]?, ?body: ::String) -> Web::response
+
+      def erb: (::String path, ::Hash[::Symbol, untyped] locals, ?::Hash[::Symbol, ::String]? content_for) -> ::String
+    end
+  end
+end

@@ -1,0 +1,45 @@
+module Cosmo
+  class Web
+    class Throughput
+      WIDTH: ::Integer
+      HEIGHT: ::Integer
+      PLOT: ::Integer
+      FAILED: ::Integer
+      BAR: ::Integer
+      TICKS: ::Integer
+      LABELS: ::Integer
+
+      @series: ::Array[::Hash[::Symbol, untyped]]
+      @top: ::Numeric
+      @failed_top: ::Integer
+
+      def initialize: (::Array[::Hash[::Symbol, untyped]] series) -> void
+
+      def empty?: () -> bool
+
+      def line: () -> ::String
+
+      def area: () -> ::String
+
+      def failures: () -> ::String
+
+      def grid: () -> ::String
+
+      def ticks: () -> ::Array[::Integer]
+
+      def labels: () -> ::Array[::String]
+
+      def points: () -> ::Array[::Hash[::Symbol, untyped]]
+
+      private
+
+      def x: (::Integer index) -> ::Float
+
+      def y: (::Numeric value) -> ::Float
+
+      def top: (::Numeric max) -> ::Numeric
+
+      def label: (::String date) -> ::String
+    end
+  end
+end

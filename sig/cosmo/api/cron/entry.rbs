@@ -11,9 +11,11 @@ module Cosmo
         attr_reader timezone: ::String?
         attr_reader name: ::String?
 
-        def self.normalize_expression: (untyped expr) -> ::String
+        @job_name: ::String
 
-        def initialize: (class_name: ::String, stream: ::String, expression: ::String,
+        def self.normalize_expression: (::String? expr) -> ::String
+
+        def initialize: (class_name: ::String?, stream: ::String?, expression: ::String?,
                           ?args: ::Array[untyped], ?timezone: ::String?, ?name: (::String | ::Symbol)?) -> void
 
         def schedule_subject: () -> ::String

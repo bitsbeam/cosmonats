@@ -3,15 +3,19 @@ module Cosmo
     class Cron
       STREAM: ::String
 
+      self.@instance: Cron
+      @client: Client
+
+      def self.instance: () -> Cron
+
       def all: () -> ::Array[Hash[Symbol, untyped]]
 
-      def upsert!: (?Cosmo::API::Cron::Entry schedule_obj,
-                    ?class_name: ::String?,
+      def upsert!: (?class_name: ::String?,
                     ?stream: ::String?,
-                    ?expression: ::String?,
+                    ?schedule: ::String?,
                     ?args: ::Array[untyped],
                     ?timezone: ::String?,
-                    ?name: ::String?) -> Hash[Symbol, untyped]?
+                    ?name: (::String | ::Symbol)?) -> Hash[Symbol, untyped]?
 
       def delete!: (::String subject) -> void
 
@@ -19,6 +23,7 @@ module Cosmo
 
       private
 
+      def client: () -> Client
       def schedules: () -> ::Array[Hash[Symbol, untyped]]
       def build_from_nats: (::String subject) -> Hash[Symbol, untyped]?
       def name_from_subject: (::String subject) -> ::String?

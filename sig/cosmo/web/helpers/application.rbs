@@ -1,0 +1,61 @@
+module Cosmo
+  class Web
+    module Helpers
+      module Application
+        include Renderer
+
+        POLL_INTERVAL: ::Integer
+
+        @poll_interval: ::Integer?
+        @hues: ::Hash[::String, ::Integer]?
+        @request: untyped
+
+        def poll_interval: () -> ::Integer
+
+        def render: (::String template, ?::Hash[::Symbol, untyped]? locals) -> ::String
+
+        def format_bytes: (untyped bytes) -> ::String
+
+        def format_numbers: (untyped num) -> ::String
+
+        def format_timestamp: (untyped value) -> ::String
+
+        def duration: (::Numeric? millis) -> ::String
+
+        def elapsed: (untyped value) -> ::String
+
+        def last_message: (untyped state) -> ::String
+
+        def time_until: (untyped value) -> ::String
+
+        def compact_number: (untyped num) -> ::String
+
+        def format_span: (::Numeric? seconds) -> ::String
+
+        def hue: (untyped name) -> ::String
+
+        def nav_items: () -> ::Array[::Hash[::Symbol, ::String]]
+
+        def current_section: () -> ::String
+
+        def nats_server: () -> ::Hash[::Symbol, ::String]
+
+        def h: (untyped value) -> ::String
+
+        def u: (untyped value) -> ::String
+
+        def pages: (::Integer page, ::Integer total_pages, ?window: ::Integer) -> ::Array[::Integer | :gap]
+
+        def current_page?: (::String path) -> bool
+
+        def path_prefix?: (*::String values) -> bool
+
+        def referrer?: (::String path) -> bool
+
+        private
+
+        def pagination_fill_gap: (::Array[::Integer | :gap] result, ::Integer? previous, ::Integer page) -> void
+      end
+    end
+  end
+end

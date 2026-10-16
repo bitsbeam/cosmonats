@@ -8,7 +8,7 @@ module Cosmo
       def options: (**untyped config) -> Hash[Symbol, untyped]
       alias cosmo_options options
 
-      def concurrency_options: () -> { limit: Integer, key: Proc?, duration: Integer }?
+      def concurrency_options: () -> { limit: Integer, key: Proc?, duration: Integer, retry_in: Integer }?
 
       def concurrency_key: (Array[untyped] args) -> ::String?
 
@@ -18,11 +18,11 @@ module Cosmo
 
       def perform: (*untyped args, ?async: bool, **untyped options) -> (::String | nil)
 
-      def perform_async: (*untyped args) -> ::String
+      def perform_async: (*untyped args) -> ::String?
 
-      def perform_at: (Integer | Time timestamp, *untyped args) -> ::String
+      def perform_at: (Integer | Time timestamp, *untyped args) -> ::String?
 
-      def perform_in: (Integer | Float interval, *untyped args) -> ::String
+      def perform_in: (Numeric interval, *untyped args) -> ::String?
 
       def perform_sync: (*untyped args) -> void
 
@@ -34,6 +34,8 @@ module Cosmo
     end
 
     attr_accessor jid: ::String
+
+    attr_accessor batch_id: ::String?
 
     attr_accessor enqueued_at: ::Time?
 
