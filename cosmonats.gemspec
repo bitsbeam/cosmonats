@@ -25,7 +25,7 @@ Gem::Specification.new do |s|
     "rubygems_mfa_required" => "true"
   }
 
-  s.required_ruby_version = ">= 3.1.0"
+  s.required_ruby_version = ">= 3.2.0"
 
   s.add_dependency "concurrent-ruby", "~> 1.3"
   s.add_dependency "logger", ">= 1.7"
