@@ -2,7 +2,7 @@
 
 ## Overview
 **cosmonats** is a Ruby gem (module namespace `Cosmo`) providing background job and stream processing backed by
-**NATS JetStream**. Requires Ruby ≥ 3.1. No Rails dependency — works with any framework.
+**NATS JetStream**. Requires Ruby ≥ 3.2. No Rails dependency — works with any framework.
 
 ---
 

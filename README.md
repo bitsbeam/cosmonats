@@ -9,7 +9,7 @@ Background jobs + real-time event streaming for Ruby — unified, in one gem, ba
 
 [![Gem Version](https://badge.fury.io/rb/cosmonats.svg)](https://rubygems.org/gems/cosmonats)
 [![Downloads](https://img.shields.io/gem/dt/cosmonats.svg)](https://rubygems.org/gems/cosmonats)
-[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.1-red)](https://www.ruby-lang.org)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.2-red)](https://www.ruby-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
 [![Build Status](https://github.com/bitsbeam/cosmonats/actions/workflows/ci.yml/badge.svg)](https://github.com/bitsbeam/cosmonats/actions)
 
@@ -165,7 +165,7 @@ nothing else to run.
 gem "cosmonats"
 ```
 
-**Requirements:** Ruby ≥ 3.1, NATS Server ≥ 2.14 with JetStream enabled ([install guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
+**Requirements:** Ruby ≥ 3.2, NATS Server ≥ 2.14 with JetStream enabled ([install guide](https://docs.nats.io/running-a-nats-service/introduction/installation))
 
 **Optional gems** — not installed with `cosmonats`, add them only for the features you use:
 
