@@ -31,7 +31,7 @@ module Cosmo
 
       def each: () { (Job) -> void } -> void
 
-      def messages: (?page: ::Integer?, ?limit: ::Integer?) -> Array[Job]
+      def messages: (?page: ::Integer?, ?limit: ::Integer?, ?order: :asc | :desc) -> Array[Job]
 
       def message: (::Integer seq) -> Job?
 
@@ -46,6 +46,10 @@ module Cosmo
       def paused?: () -> bool
 
       private
+
+      def messages_asc: (::Integer page, ::Integer limit) -> Array[Job]
+
+      def messages_desc: (::Integer page, ::Integer limit) -> Array[Job]
 
       def scan_range: () -> [::Integer, ::Integer, Array[::String]]
 

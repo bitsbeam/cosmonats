@@ -99,22 +99,14 @@ module Cosmo
         self
       end
 
-      # @param page [Integer, nil] 1-based page, counted in sequences from the first message
+      # @param page [Integer, nil] 1-based page, counted in sequences from the first message (or the last, for +:desc+)
       # @param limit [Integer, nil] jobs per page, {LIMIT} when nil
+      # @param order [Symbol] +:asc+ for oldest first, +:desc+ for newest first
       # @return [Array<Job>]
-      def messages(page: nil, limit: nil)
-        jobs = []
+      def messages(page: nil, limit: nil, order: :asc)
         limit = (limit || LIMIT).to_i
-        state = info[:state]
-        start = state.first_seq.to_i
-        start += (page.to_i - 1) * limit if page
-
-        offset(start).each do |message|
-          jobs << message
-          break if jobs.size >= limit
-        end
-
-        jobs
+        page = [page.to_i, 1].max
+        order == :desc ? messages_desc(page, limit) : messages_asc(page, limit)
       end
 
       # @param seq [Integer]
@@ -166,6 +158,19 @@ module Cosmo
       end
 
       private
+
+      # Page +page+ holds the first +limit+ jobs from +(page - 1) * limit+ sequences after the first one.
+      def messages_asc(page, limit)
+        offset(info[:state].first_seq.to_i + ((page - 1) * limit)).first(limit)
+      end
+
+      # Page +page+ covers the +limit+ sequences ending +(page - 1) * limit+ below the last one, read forward and
+      # reversed, as direct gets can't walk a stream backwards.
+      def messages_desc(page, limit) # rubocop:disable Metrics/AbcSize
+        state = info[:state]
+        upto = state.last_seq.to_i - ((page - 1) * limit)
+        offset([upto - limit + 1, state.first_seq.to_i].max).take_while { _1.seq.to_i <= upto }.reverse
+      end
 
       def scan_range
         data = info
