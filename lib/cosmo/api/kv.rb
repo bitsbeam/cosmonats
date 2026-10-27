@@ -121,17 +121,34 @@ module Cosmo
       def walk(subject, limit:, offset:, meta_only:)
         results = []
         skipped = 0
-        watcher = kv.watch(subject || ">", ignore_deletes: true, meta_only:)
+        seen = 0
+        watcher = kv.watch(subject || ">", meta_only:)
         watcher.each do |entry|
-          break unless entry
+          if entry.nil?
+            break if drained?(watcher, seen)
 
-          next skipped += 1 if skipped < offset.to_i
+            next
+          end
 
-          results << [entry.key, entry.value]
-          break if limit && results.size >= limit
+          seen += 1
+          unless entry.operation
+            next skipped += 1 if skipped < offset.to_i
+
+            results << [entry.key, entry.value]
+            break if limit && results.size >= limit
+          end
+          break if entry.delta.zero?
         end
         watcher.stop
         results
+      end
+
+      # nats-pure ends the initial walk with a nil once consumer info reports nothing pending and
+      # nothing received yet, but the server can answer that info before the pushed entries arrive.
+      # The nil is only trustworthy when the consumer really delivered no more than was seen.
+      # https://github.com/nats-io/nats-pure.rb/issues/197
+      def drained?(watcher, seen)
+        watcher._sub.consumer_info.delivered.consumer_seq <= seen
       end
 
       # CAS = Compare-And-Swap: publish +value+ with a per-message TTL of +ttl+ whole seconds (at least 1),

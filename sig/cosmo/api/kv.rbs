@@ -36,6 +36,8 @@ module Cosmo
 
       def walk: (::String? subject, limit: ::Integer?, offset: ::Integer, meta_only: bool) -> Array[[::String, ::String]]
 
+      def drained?: (untyped watcher, ::Integer seen) -> bool
+
       def publish_cas: (::String | ::Integer key, ::String value, ::Integer ttl, last_seq: ::Integer) -> untyped
 
       def client: () -> Client
