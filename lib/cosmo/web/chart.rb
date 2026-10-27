@@ -26,7 +26,7 @@ module Cosmo
       end
 
       # @return [String] the path of the run bars, one per day with runs
-      def bars # rubocop:disable Metrics/AbcSize
+      def bars
         width = (slot * 0.6).clamp(2, BAR).round(1)
         @series.each_with_index.filter_map do |day, index|
           next if day[:count].zero?

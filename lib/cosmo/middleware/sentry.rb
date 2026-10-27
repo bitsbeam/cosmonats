@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize
+# rubocop:disable-next Metrics/AbcSize
 module Cosmo
   module Middleware
     # Wraps every job execution in a Sentry transaction. Errors reach Sentry through {ERROR_HANDLER}, which also

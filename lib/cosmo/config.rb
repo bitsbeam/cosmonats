@@ -75,7 +75,7 @@ module Cosmo
     #
     # @param config [Hash]
     # @return [void]
-    def self.normalize!(config) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def self.normalize!(config) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       Utils::Hash.symbolize_keys!(config)
 
       config[:timeout] = Utils::Duration.parse(config[:timeout]) if config[:timeout]

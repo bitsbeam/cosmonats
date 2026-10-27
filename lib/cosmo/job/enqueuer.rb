@@ -17,7 +17,7 @@ module Cosmo
       # @return [String, nil] the job's jid, or nil when a client middleware stopped the publish
       # @raise [StreamNotFoundError] when the target stream does not exist
       # @raise [SchedulingDisabledError] for a delayed job while scheduling is turned off
-      def enqueue(class_name, args, options, batch: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
+      def enqueue(class_name, args, options, batch: nil)
         options = options.merge(batch_id: batch.bid) if batch
         data = Data.new(class_name, args, options)
         raise SchedulingDisabledError if data.stream.to_s == Services::SCHEDULED && !Config.scheduled.enabled

@@ -166,7 +166,7 @@ module Cosmo
 
       # Page +page+ covers the +limit+ sequences ending +(page - 1) * limit+ below the last one, read forward and
       # reversed, as direct gets can't walk a stream backwards.
-      def messages_desc(page, limit) # rubocop:disable Metrics/AbcSize
+      def messages_desc(page, limit)
         state = info[:state]
         upto = state.last_seq.to_i - ((page - 1) * limit)
         offset([upto - limit + 1, state.first_seq.to_i].max).take_while { _1.seq.to_i <= upto }.reverse

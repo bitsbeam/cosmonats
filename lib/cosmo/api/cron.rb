@@ -61,7 +61,7 @@ module Cosmo
       # Dispatch the job immediately to the target stream, bypassing the timer.
       # @param schedule_subject [String] e.g. "cosmo.cron.default.report_job.daily"
       # @return [void]
-      def run_now!(schedule_subject) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def run_now!(schedule_subject) # rubocop:disable Metrics/AbcSize
         msg = client.get_message(STREAM, subject: schedule_subject)
         return unless msg
 

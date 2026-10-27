@@ -201,7 +201,7 @@ module Cosmo
     # @param stream_name [String]
     # @param filters [Array<String>] subject filters, wildcards allowed
     # @return [Hash{String => String}] message data by subject
-    def last_messages(stream_name, filters) # rubocop:disable Metrics/AbcSize
+    def last_messages(stream_name, filters)
       inbox = nc.new_inbox
       sub = nc.subscribe(inbox)
       nc.publish("$JS.API.DIRECT.GET.#{stream_name}", Utils::Json.dump({ multi_last: filters, batch: 10_000 }), inbox)
@@ -265,7 +265,7 @@ module Cosmo
     # NOTE: nats-pure's #pull_subscribe can't create a true ephemeral pull consumer: its rescue branch
     # unconditionally sets `config[:durable_name] = durable` (jetstream.rb). So the consumer is created
     # here, and #pull_subscribe only binds to it by name.
-    def ephemeral_subscribe(subject, config) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def ephemeral_subscribe(subject, config) # rubocop:disable Metrics/AbcSize
       config = config.dup
       stream = config.delete(:stream) or raise ArgumentError, "stream required for ephemeral consumers"
       raise ArgumentError, "inactive_threshold required for ephemeral consumers" unless config[:inactive_threshold]

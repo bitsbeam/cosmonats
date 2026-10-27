@@ -31,7 +31,7 @@ Layout/LineLength:
   Max: 160
 
 Metrics/MethodLength:
-  Max: 15
+  Max: 20
   CountAsOne:
     - array
     - hash
@@ -48,8 +48,15 @@ Metrics/BlockLength:
     - cosmonats.gemspec
 
 Metrics/AbcSize:
+  Max: 20
   Exclude:
     - spec/**/*
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
 
 Metrics/ParameterLists:
   Enabled: false
