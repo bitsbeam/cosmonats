@@ -133,14 +133,14 @@ module Cosmo
         end
 
         def dead_locals
-          stored_locals("dead").merge(polling: false)
+          stored_locals("dead", order: :desc).merge(polling: false)
         end
 
-        def stored_locals(name)
+        def stored_locals(name, order: :asc)
           stream = API::Stream.new(name)
           total = stream.total
           page, limit, total_pages = paginate(total, API::Stream::LIMIT)
-          { jobs: stream.messages(page:, limit:), total:, page:, limit:, total_pages:, query: { limit: } }
+          { jobs: stream.messages(page:, limit:, order:), total:, page:, limit:, total_pages:, query: { limit: } }
         end
 
         def paginate(total, default_limit)

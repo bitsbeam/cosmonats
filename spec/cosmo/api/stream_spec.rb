@@ -115,6 +115,15 @@ RSpec.describe Cosmo::API::Stream do
     it "respects limit" do
       expect(stream.messages(limit: 2).size).to eq(2)
     end
+
+    it "returns newest first with order: :desc" do
+      expect(stream.messages(order: :desc).map { _1.data[:jid] }).to eq(%w[j2 j1 j0])
+    end
+
+    it "pages backwards from the last message with order: :desc" do
+      expect(stream.messages(limit: 2, order: :desc).map { _1.data[:jid] }).to eq(%w[j2 j1])
+      expect(stream.messages(page: 2, limit: 2, order: :desc).map { _1.data[:jid] }).to eq(%w[j0])
+    end
   end
 
   describe "#each" do
