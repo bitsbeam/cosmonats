@@ -8,9 +8,9 @@ module Cosmo
     module Controllers
       class Overview < Application
         RANGES = [7, 30].freeze
-        CELLS = 256
+        CELLS = 64
         RUNNING = 9
-        PROCESSES = 5
+        PROCESSES = 3
 
         # Renders the overview page.
         #
@@ -45,7 +45,7 @@ module Cosmo
         def _workers # rubocop:disable Metrics/AbcSize
           processes = API::Stats::Processes.instance.list(limit: API::Stats::Processes.instance.size.clamp(1, nil))
           busy = API::Stats::Busy.instance.all.group_by { _1[:worker] }
-          cells = processes.flat_map { worker_cells(_1, busy) }
+          cells = processes.flat_map { worker_cells(_1, busy) }.partition(&:itself).flatten(1)
           ok render("overview/_workers", { processes: processes.first(PROCESSES), total: processes.size,
                                            cells: cells.first(CELLS), hidden: [cells.size - CELLS, 0].max,
                                            busy: cells.count(&:itself), threads: cells.size })
