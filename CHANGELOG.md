@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A worker whose shutdown times out releases the messages it's still processing before it exits instead of leaving
+  them for `ack_wait`: a job counts as a failed attempt with `Cosmo::JobInterruptedError`, retried after its usual
+  delay or moved to `dead` without attempts left; stream messages are NAK'd and redelivered after 10s
+  (`COSMO_STREAMS_RELEASE_DELAY`). The interrupted threads are then killed and get up to 5s to unwind while NATS is
+  still connected, so a worker exits right after its shutdown timeout instead of waiting out a JetStream request
+  timeout per busy job, and their busy entries are cleared
 - **Breaking:** `config.replicas` is `config.services.num_replicas`, named like the `num_replicas` each stream in
   `cosmo.yml` sets for itself; it only sizes Cosmo's own streams and buckets
 - `API::Counter#increment`/`#incr` and `#decrement`/`#decr` log a counter that can't be written and return nil;

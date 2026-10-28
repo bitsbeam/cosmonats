@@ -84,6 +84,12 @@ module Cosmo
     end
   end
 
+  class JobInterruptedError < Error
+    def initialize
+      super("Job was still running when the worker shutdown timed out")
+    end
+  end
+
   class UnknownJobStreamError < Error
     def initialize(names, configured)
       super("Unknown job stream#{"s" if names.size > 1} #{names.map { "`#{_1}`" }.join(", ")}; " \

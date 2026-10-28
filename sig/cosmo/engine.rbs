@@ -1,6 +1,7 @@
 module Cosmo
   class Engine
     PROCESSORS: Hash[Symbol, Class]
+    INTERRUPT_TIMEOUT: Integer
 
     self.@instance: Engine
     @concurrency: Integer
@@ -44,6 +45,8 @@ module Cosmo
     def unquiet: () -> void
 
     def drain_and_exit: (Utils::Signal handler) -> void
+
+    def terminate: () -> void
 
     def dump_threads: () -> void
   end

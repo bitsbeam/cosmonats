@@ -31,6 +31,7 @@ module Cosmo
       @consumers = []
       @cache = Utils::TTLCache.new
       @busy = Concurrent::AtomicFixnum.new
+      @in_flight = Concurrent::Map.new
     end
 
     # Subscribes the consumers and, when there are any, starts fetching in the background.
@@ -49,6 +50,26 @@ module Cosmo
     # @return [Integer]
     def busy
       @busy.value
+    end
+
+    # Hands every message still being processed back to NATS instead of leaving it for +ack_wait+: a job
+    # fails its attempt as usual, a stream message is NAK'd with a delay. Meant for a shutdown that timed
+    # out, right before the process exits; a job that finishes afterwards can't ack its released message.
+    #
+    # @return [Integer] number of messages released
+    def release
+      @in_flight.values.flatten.count { release_message(_1) }
+    end
+
+    # Kills the threads still processing messages and waits up to +timeout+ seconds for each to unwind,
+    # so their +ensure+ blocks run while the NATS connection is still up instead of during process exit.
+    #
+    # @param timeout [Numeric]
+    # @return [void]
+    def interrupt(timeout)
+      threads = @in_flight.keys
+      threads.each(&:kill)
+      threads.each { _1.join(timeout) }
     end
 
     # Stops fetching, unsubscribes, and waits up to +timeout+ seconds for in-flight work.
@@ -117,7 +138,7 @@ module Cosmo
               Logger.trace "fetched (#{messages&.size.to_i}) messages"
               if messages&.any?
                 consumer_state.delete(key)
-                track_busy { process(messages, processor) }
+                track_busy(messages) { process(messages, processor) }
               else
                 max_backoff = Utils::Duration.parse(ENV.fetch("COSMO_STREAM_EMPTY_BACKOFF_MAX", STREAM_EMPTY_BACKOFF_MAX))
                 consumer_state.compute(key) do |(count, wake_at)|
@@ -164,11 +185,27 @@ module Cosmo
       raise NotImplementedError
     end
 
-    def track_busy
+    def track_busy(messages)
       @busy.increment
+      @in_flight[Thread.current] = messages
       yield
     ensure
+      @in_flight.delete(Thread.current)
       @busy.decrement
+    end
+
+    def release_message(message)
+      abandon(message)
+      true
+    rescue NATS::JetStream::Error::MsgAlreadyAckd
+      false
+    rescue StandardError => e
+      Logger.error "Failed to release message #{message.subject}: #{e.class}: #{e.message}"
+      false
+    end
+
+    def abandon(...)
+      raise NotImplementedError
     end
 
     def running?

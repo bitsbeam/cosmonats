@@ -10,7 +10,7 @@ RSpec.describe Cosmo::Engine do
     allow(Cosmo::Config).to receive(:[]).with(:timeout).and_return(10)
     allow(Cosmo::Utils::ThreadPool).to receive(:new).and_return(pool)
     allow(pool).to receive(:shutdown)
-    allow(pool).to receive(:wait_for_termination)
+    allow(pool).to receive(:wait_for_termination).and_return(true)
     allow(Cosmo::Heartbeat).to receive(:new).and_return(heartbeat)
   end
 
@@ -242,6 +242,26 @@ RSpec.describe Cosmo::Engine do
       http_server = instance_double(Cosmo::HTTPServer)
       engine.instance_variable_set(:@http_server, http_server)
       expect(http_server).to receive(:stop)
+      engine.shutdown
+    end
+
+    it "releases in-flight messages of every processor, then interrupts them, when the pool doesn't drain in time" do
+      jobs = instance_double(Cosmo::Job::Processor)
+      streams = instance_double(Cosmo::Stream::Processor)
+      engine.instance_variable_set(:@processors, [jobs, streams])
+      allow(pool).to receive(:wait_for_termination).and_return(false)
+      expect(jobs).to receive(:release).ordered.and_return(1)
+      expect(streams).to receive(:release).ordered.and_return(1)
+      expect(jobs).to receive(:interrupt).with(described_class::INTERRUPT_TIMEOUT).ordered
+      expect(streams).to receive(:interrupt).with(described_class::INTERRUPT_TIMEOUT).ordered
+      engine.shutdown
+    end
+
+    it "releases and interrupts nothing when the pool drains in time" do
+      processor = instance_double(Cosmo::Job::Processor)
+      engine.instance_variable_set(:@processors, [processor])
+      expect(processor).not_to receive(:release)
+      expect(processor).not_to receive(:interrupt)
       engine.shutdown
     end
   end

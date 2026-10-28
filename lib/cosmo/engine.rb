@@ -9,6 +9,8 @@ module Cosmo
       streams: Stream::Processor
     }.freeze
 
+    INTERRUPT_TIMEOUT = 5 # Seconds each interrupted thread gets to run its ensure blocks after a timed out shutdown
+
     # Runs the {.instance}, see {#run}.
     #
     # @return [void]
@@ -85,7 +87,8 @@ module Cosmo
       Array(@processors).to_h { [PROCESSORS.key(_1.class), _1.subscriptions] }
     end
 
-    # Stops fetching, waits up to +Config[:timeout]+ seconds for in-flight work, and unregisters the process.
+    # Stops fetching, waits up to +Config[:timeout]+ seconds for in-flight work, hands whatever is still
+    # running back to NATS and interrupts it, and unregisters the process.
     #
     # @return [void]
     def shutdown
@@ -94,7 +97,7 @@ module Cosmo
       @http_server&.stop
       @pool.shutdown
       Logger.info "Pausing to allow jobs to finish..."
-      @pool.wait_for_termination(Config[:timeout])
+      terminate unless @pool.wait_for_termination(Config[:timeout])
       @heartbeat&.stop
       Logger.info "Bye!"
     end
@@ -147,6 +150,12 @@ module Cosmo
         @pool.wait_idle
         handler.push(:TERM)
       end
+    end
+
+    def terminate
+      released = Array(@processors).sum(&:release)
+      Logger.warn "Shutdown timed out after #{Config[:timeout]}s, released #{released} unfinished message(s) for redelivery"
+      Array(@processors).each { _1.interrupt(INTERRUPT_TIMEOUT) }
     end
 
     def dump_threads

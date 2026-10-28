@@ -488,6 +488,67 @@ RSpec.describe Cosmo::Job::Processor do
     end
   end
 
+  context "with a shutdown that timed out" do
+    let(:retries) { 1 }
+
+    before do
+      stub_const("SlowJob", Class.new do
+        include Cosmo::Job
+
+        def perform(name)
+          Results.instance << [name, attempt]
+          sleep 1 if attempt == 1
+        end
+      end)
+      SlowJob.options(stream: :default, retry: retries, retry_in: ->(*) { 0.2 })
+    end
+
+    it "retries a released job after its retry delay and counts the interrupted run as failed" do
+      SlowJob.perform_async("Alice")
+      wait_until(timeout: 5) { processor.busy == 1 }
+
+      expect(processor.release).to eq(1)
+      wait_until(timeout: 5) { results.include?(["Alice", 2]) }
+      wait_until(timeout: 5) { processor.busy.zero? }
+
+      expect(Cosmo::API::Stats.failed).to eq(1)
+      expect(stream_size("dead")).to eq(0)
+    end
+
+    context "without attempts left" do
+      let(:retries) { 0 }
+
+      it "moves the released job to the DLQ" do
+        SlowJob.perform_async("Alice")
+        wait_until(timeout: 5) { processor.busy == 1 }
+
+        expect(processor.release).to eq(1)
+        wait_until(timeout: 5) { stream_size("dead") == 1 }
+        wait_until(timeout: 5) { processor.busy.zero? }
+
+        expect(results).not_to include(["Alice", 2])
+      end
+    end
+
+    it "releases nothing when no job is running" do
+      expect(processor.release).to eq(0)
+    end
+
+    it "interrupts a released job right away and drops it from the busy list" do
+      SlowJob.perform_async("Alice")
+      wait_until(timeout: 5) { processor.busy == 1 }
+      wait_until(timeout: 5) { Cosmo::API::Stats::Busy.instance.all.any? }
+
+      processor.release
+      started = Time.now
+      processor.interrupt(5)
+
+      expect(Time.now - started).to be < 1
+      expect(processor.busy).to eq(0)
+      expect(Cosmo::API::Stats::Busy.instance.all).to be_empty
+    end
+  end
+
   context "with failed job execution" do
     context "with dead letter queue" do
       it "moves the failing job to DLQ" do

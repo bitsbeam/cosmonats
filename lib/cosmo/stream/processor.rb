@@ -3,12 +3,19 @@
 module Cosmo
   module Stream
     class Processor < ::Cosmo::Processor
+      RELEASE_DELAY = "10s" # How long NATS holds a message released by a timed out shutdown before redelivering it (override via COSMO_STREAMS_RELEASE_DELAY)
+
       # @return [Array<String>] names of the stream classes being processed
       def subscriptions
         @consumers.map { |(_, config, _)| config[:class].name }
       end
 
       private
+
+      def abandon(message)
+        delay = Utils::Duration.parse(ENV.fetch("COSMO_STREAMS_RELEASE_DELAY", RELEASE_DELAY))
+        message.nak(delay: Config.to_ns(delay))
+      end
 
       def setup
         @configs ||= []

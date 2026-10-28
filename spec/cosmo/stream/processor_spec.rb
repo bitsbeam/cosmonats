@@ -564,4 +564,41 @@ RSpec.describe Cosmo::Stream::Processor do
       expect(busy_fetches.value).to be > 10
     end
   end
+
+  context "with a shutdown that timed out" do
+    before do
+      ENV["COSMO_STREAMS_RELEASE_DELAY"] = "1"
+      stub_const("SlowProcessor", Class.new do
+        include Cosmo::Stream
+
+        options stream: :test_events,
+                fetch_timeout: 1.0,
+                consumer: { subjects: ["test_events.>"], max_deliver: 3 }
+
+        def process_one
+          Results.instance << [message.data["name"], message.metadata.num_delivered]
+          sleep 2 if message.metadata.num_delivered == 1
+          message.ack
+        end
+      end)
+      create_stream("test_events")
+      processor.run
+    end
+
+    after do
+      processor.stop
+      ENV.delete("COSMO_STREAMS_RELEASE_DELAY")
+    end
+
+    it "redelivers released messages after the release delay instead of right away" do
+      SlowProcessor.publish({ name: "Alice" }, subject: "test_events.hello")
+      wait_until(timeout: 5) { processor.busy == 1 }
+
+      released_at = Time.now
+      expect(processor.release).to eq(1)
+      wait_until(timeout: 5) { results.include?(["Alice", 2]) }
+
+      expect(Time.now - released_at).to be >= 1
+    end
+  end
 end

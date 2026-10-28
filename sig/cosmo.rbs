@@ -33,6 +33,10 @@ module Cosmo
     def initialize: (::String? class_name) -> void
   end
 
+  class JobInterruptedError < Error
+    def initialize: () -> void
+  end
+
   class UnknownJobStreamError < Error
     def initialize: (Array[::String] names, Array[::String] configured) -> void
   end

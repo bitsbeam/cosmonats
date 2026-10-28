@@ -12,6 +12,7 @@ module Cosmo
     @threads: Array[Thread]
     @cache: Utils::TTLCache
     @busy: untyped
+    @in_flight: untyped
     @options: Hash[Symbol, untyped]
     @consumer_state: untyped
 
@@ -26,6 +27,10 @@ module Cosmo
     def run: () -> void
 
     def busy: () -> Integer
+
+    def release: () -> Integer
+
+    def interrupt: (::Integer | ::Float timeout) -> void
 
     def stop: (?::Integer | ::Float timeout) -> void
 
@@ -47,7 +52,11 @@ module Cosmo
 
     def fetch_subjects: (Hash[Symbol, untyped] config) -> untyped
 
-    def track_busy: [T] () { () -> T } -> T
+    def track_busy: [T] (Array[untyped] messages) { () -> T } -> T
+
+    def release_message: (untyped message) -> bool
+
+    def abandon: (untyped message) -> void
 
     def running?: () -> bool
 

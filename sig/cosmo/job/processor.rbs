@@ -37,6 +37,8 @@ module Cosmo
 
       def build_worker: (untyped worker_class, Hash[Symbol, untyped] data, untyped message) -> Cosmo::Job
 
+      def abandon: (untyped message) -> bool
+
       def notify_batch: (Hash[Symbol, untyped] data, success: bool) -> void
 
       def handle_failure: (untyped worker_class, untyped message, Hash[Symbol, untyped] data, Exception? exception) -> bool

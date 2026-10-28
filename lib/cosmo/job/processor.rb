@@ -124,6 +124,8 @@ module Cosmo
         rescue Requeue => e
           message.nak(delay: Config.to_ns(e.delay))
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "requeue[#{e.delay}s]" }
+        rescue NATS::JetStream::Error::MsgAlreadyAckd
+          Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "released[shutdown]" }
         rescue Timeout::Error => e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[timeout]" }
           Cosmo.handle_error(e, error_context(message, data))
@@ -166,6 +168,16 @@ module Cosmo
         data[:dead] ? move_message(message, data, exception) : drop_message(message, data)
         notify_batch(data, success: false)
         true
+      end
+
+      # A job still running when the shutdown timed out counts as a failed attempt: it's retried after the
+      # usual delay, or moved to the DLQ (dropped when +dead+ is off) once it has no attempts left.
+      def abandon(message)
+        data = Utils::Json.parse(message.data)
+        return super unless data
+
+        API::Stats::Totals.instance.increment(:failed)
+        handle_failure(Utils::String.safe_constantize(data[:class]), message, data, JobInterruptedError.new)
       end
 
       def notify_batch(data, success:)
