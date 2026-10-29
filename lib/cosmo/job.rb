@@ -2,6 +2,7 @@
 
 require "cosmo/job/data"
 require "cosmo/job/enqueuer"
+require "cosmo/job/setter"
 require "cosmo/job/requeue"
 require "cosmo/job/failure"
 require "cosmo/job/stream_filter"
@@ -125,6 +126,17 @@ module Cosmo
 
         new.perform(*payload[:args])
         nil
+      end
+
+      # Options for a single enqueue, merged over the class options.
+      #
+      #   ReportJob.set(stream: :critical, retry: 0).perform_async(42)
+      #
+      # @param options [Hash] +stream+, +retry+, +dead+ or +subject+, see {#options}
+      # @return [Setter]
+      # @raise [ArgumentError] for any other option
+      def set(**options)
+        Setter.new(self, options)
       end
 
       # @param args [Array] arguments passed to the job's +perform+

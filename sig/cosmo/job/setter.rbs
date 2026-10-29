@@ -1,0 +1,18 @@
+module Cosmo
+  module Job
+    class Setter
+      OPTIONS: Array[Symbol]
+
+      @job_class: ClassMethods
+      @options: Hash[Symbol, untyped]
+
+      def initialize: (ClassMethods job_class, Hash[Symbol, untyped] options) -> void
+
+      def perform_async: (*untyped args) -> ::String?
+
+      def perform_at: (Integer | Time timestamp, *untyped args) -> ::String?
+
+      def perform_in: (Numeric interval, *untyped args) -> ::String?
+    end
+  end
+end

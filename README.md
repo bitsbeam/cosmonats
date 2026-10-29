@@ -296,6 +296,7 @@ ReportJob.perform_async(42)                              # Enqueue now
 ReportJob.perform_in(30.minutes, 42)                     # Delayed
 ReportJob.perform_at(Time.parse("2026-01-25 10:00"), 42) # Scheduled
 ReportJob.perform_sync(42)                               # Inline, no NATS (great for tests)
+ReportJob.set(stream: :critical, retry: 0).perform_async(42) # Per-call stream, retry, dead or subject
 ```
 
 Inside `perform`, the job instance knows about the message it came from:

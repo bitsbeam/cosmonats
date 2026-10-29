@@ -37,7 +37,8 @@ CLI → Engine → ThreadPool
 - **`Cosmo::Publisher`** (`lib/cosmo/publisher.rb`) — singleton; serializes and publishes stream messages via
   `publish(subject, data, ...)`.
 - **`Cosmo::Job::Enqueuer`** (`lib/cosmo/job/enqueuer.rb`) — `enqueue(class_name, args, options, batch:)`, the one
-  path a job takes onto its stream, for `perform_async`/`perform_in`/`perform_at` and the ActiveJob adapter. Only
+  path a job takes onto its stream, for `perform_async`/`perform_in`/`perform_at` (also via `set(...)`, `Job::Setter`, which only takes the options the
+  message carries: `stream`, `retry`, `dead`, `subject`) and the ActiveJob adapter. Only
   `Cosmo::Job` passes `batch: Batch.current`; ActiveJob jobs never join a Cosmo batch.
 - **`Cosmo::Web`** (`lib/cosmo/web.rb`) — Rack app for the monitoring UI (HTMX), served via `config.ru` or mounted
   (routes match `request.path_info`, which is mount-relative, and `Renderer#url_for` prepends `script_name`). It

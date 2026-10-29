@@ -18,6 +18,8 @@ module Cosmo
 
       def perform: (*untyped args, ?async: bool, **untyped options) -> (::String | nil)
 
+      def set: (**untyped options) -> Setter
+
       def perform_async: (*untyped args) -> ::String?
 
       def perform_at: (Integer | Time timestamp, *untyped args) -> ::String?
