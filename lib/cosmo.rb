@@ -78,6 +78,21 @@ module Cosmo
     end
   end
 
+  class BulkEnqueueError < Error
+    # @return [Array<String, nil>] each job's jid, nil for one that was not enqueued
+    attr_reader :jids
+    # @return [Hash{Integer => StandardError}] why each failed job was not enqueued, by its index
+    attr_reader :errors
+
+    # @param jids [Array<String, nil>]
+    # @param errors [Hash{Integer => StandardError}]
+    def initialize(jids, errors)
+      @jids = jids
+      @errors = errors
+      super("#{errors.size} of #{jids.size} jobs were not enqueued: #{errors.values.first.message}")
+    end
+  end
+
   class JobClassNotFoundError < Error
     def initialize(class_name)
       super("#{class_name} class not found")

@@ -11,8 +11,8 @@ module Cosmo
       # finalize the batch. This never touches total or failed - that's what
       # lets #jobs release its placeholder slot without messing up the stats
       # we report back.
-      def release_pending(bid, msg_id: nil)
-        pending = counter.decrement!("#{bid}.pending", msg_id: msg_id)
+      def release_pending(bid, by: 1, msg_id: nil)
+        pending = counter.decrement!("#{bid}.pending", by: by, msg_id: msg_id)
         finalize(bid) if pending.to_i.zero?
       end
 

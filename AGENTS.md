@@ -38,7 +38,9 @@ CLI → Engine → ThreadPool
   `publish(subject, data, ...)`.
 - **`Cosmo::Job::Enqueuer`** (`lib/cosmo/job/enqueuer.rb`) — `enqueue(class_name, args, options, batch:)`, the one
   path a job takes onto its stream, for `perform_async`/`perform_in`/`perform_at` (also via `set(...)`, `Job::Setter`, which only takes the options the
-  message carries: `stream`, `retry`, `dead`, `subject`) and the ActiveJob adapter. Only
+  message carries: `stream`, `retry`, `dead`, `subject`) and the ActiveJob adapter. `enqueue_many` is `perform_bulk`:
+  chunks of `CHUNK_SIZE` through `Client#publish_many` (pipelined, one ack wait per chunk), raising
+  `BulkEnqueueError` (`jids`, `errors` by index) when the stream refuses jobs. Only
   `Cosmo::Job` passes `batch: Batch.current`; ActiveJob jobs never join a Cosmo batch.
 - **`Cosmo::Web`** (`lib/cosmo/web.rb`) — Rack app for the monitoring UI (HTMX), served via `config.ru` or mounted
   (routes match `request.path_info`, which is mount-relative, and `Renderer#url_for` prepends `script_name`). It
@@ -89,7 +91,8 @@ CLI → Engine → ThreadPool
 - **Client middleware** (`Config#client_middleware`) — an initially empty `Middleware::Chain` that
   `Job::Enqueuer.enqueue` invokes as `call(job_class_name, payload, stream)` around the publish (so for
   `perform_*` and the ActiveJob adapter, never `perform_sync`). `payload` is the Hash that gets published; not
-  yielding stops the publish (`enqueue` returns nil) and releases the batch slot. `stream` is the target stream.
+  yielding stops the publish (`enqueue` returns nil) and releases the batch slot. In `enqueue_many` the block only
+  marks the job; its chunk is published after the whole chunk went through the chain. `stream` is the target stream.
 - **Error handlers** (`Config#error_handlers`, `Cosmo.handle_error`) — callables given `(error, context)` for every
   error Cosmo rescues: failed job attempts and rejected messages (`Job::Processor`), failing stream batches
   (`Stream::Processor`, now logged at error level), fetch, scheduler, `retry_in` and limit-slot errors. `context` has

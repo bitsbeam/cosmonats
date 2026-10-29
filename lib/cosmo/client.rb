@@ -63,6 +63,23 @@ module Cosmo
       js.publish(subject, payload, **params)
     end
 
+    # Publishes every message before waiting for any ack, so the batch costs about one round trip instead of one each.
+    # Unlike #publish, a message the stream refuses doesn't raise: its error takes the ack's place in the result.
+    #
+    # @param messages [Array<Hash>] each with +:subject+, +:payload+ and +:header+
+    # @return [Array<NATS::JetStream::PubAck, StandardError>] each message's ack, or why it was not stored, in order;
+    #   +NATS::Timeout+ for one whose ack didn't arrive within the JetStream timeout
+    def publish_many(messages)
+      inbox = nc.new_inbox
+      subscription = nc.subscribe("#{inbox}.*")
+      messages.each_with_index { |m, i| nc.publish(m[:subject], m[:payload], "#{inbox}.#{i}", header: m[:header]) }
+      nc.flush(self.class.js_timeout)
+
+      acks(subscription, messages.size)
+    ensure
+      subscription&.unsubscribe
+    end
+
     # Create a pull subscription. Durable with +consumer_name+, and ephemeral without.
     # @param config [Hash] Consumer config. Ephemeral consumers additionally require
     #   +:stream+ and +:inactive_threshold+ (seconds the consumer survives without a fetch).
@@ -262,10 +279,34 @@ module Cosmo
 
     private
 
+    def acks(subscription, count)
+      results = Array.new(count)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + self.class.js_timeout
+      count.times do
+        reply = next_reply(subscription, deadline) or break
+        results[reply.subject.split(".").last.to_i] = pub_ack(reply)
+      end
+      results.map { _1 || NATS::Timeout.new("nats: timeout") }
+    end
+
+    def next_reply(subscription, deadline)
+      timeout = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      subscription.next_msg(timeout: timeout) if timeout.positive?
+    rescue NATS::Timeout
+      nil
+    end
+
+    def pub_ack(reply)
+      return NATS::JetStream::Error::NoStreamResponse.new("nats: no response from stream") if reply.header&.dig("Status") == "503"
+
+      result = JSON.parse(reply.data, symbolize_names: true)
+      result[:error] ? NATS::JetStream::Error::APIError.new(result[:error]) : NATS::JetStream::PubAck.new(result)
+    end
+
     # NOTE: nats-pure's #pull_subscribe can't create a true ephemeral pull consumer: its rescue branch
     # unconditionally sets `config[:durable_name] = durable` (jetstream.rb). So the consumer is created
     # here, and #pull_subscribe only binds to it by name.
-    def ephemeral_subscribe(subject, config) # rubocop:disable Metrics/AbcSize
+    def ephemeral_subscribe(subject, config)
       config = config.dup
       stream = config.delete(:stream) or raise ArgumentError, "stream required for ephemeral consumers"
       raise ArgumentError, "inactive_threshold required for ephemeral consumers" unless config[:inactive_threshold]

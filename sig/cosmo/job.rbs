@@ -22,6 +22,8 @@ module Cosmo
 
       def perform_async: (*untyped args) -> ::String?
 
+      def perform_bulk: (Array[Array[untyped]] list, **untyped options) -> Array[::String?]
+
       def perform_at: (Integer | Time timestamp, *untyped args) -> ::String?
 
       def perform_in: (Numeric interval, *untyped args) -> ::String?

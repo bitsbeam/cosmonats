@@ -101,9 +101,54 @@ RSpec.describe Cosmo::Job do
       expect(MyJob.default_options[:stream]).to eq(:default)
     end
 
+    it "enqueues in bulk with the given options" do
+      MyJob.set(stream: :critical, retry: 0).perform_bulk([[1], [2]])
+
+      expect(payload("critical", 2).last).to include(args: [2], retry: 0)
+    end
+
     it "rejects options the message does not carry" do
       expect { MyJob.set(limit: { duration: 5 }) }.to raise_error(Cosmo::ArgumentError, /unknown job options limit/)
       expect { MyJob.set(queue: :critical) }.to raise_error(Cosmo::ArgumentError, /use stream: instead of queue:/)
+    end
+  end
+
+  describe "#perform_bulk" do
+    before do
+      Cosmo::Config.load("spec/support/cosmo.yml")
+      create_streams(Cosmo::Config.dig(:setup, :jobs))
+    end
+
+    def payloads(stream, count)
+      (1..count).map { Cosmo::Utils::Json.parse(client.get_message(stream, seq: _1).data) }
+    end
+
+    it "enqueues one job per argument list, in order, across chunks" do
+      stub_const("Cosmo::Job::Enqueuer::CHUNK_SIZE", 2)
+
+      jids = MyJob.perform_bulk([[1], [2], [3, { url: "https://example.com" }]])
+
+      expect(payloads("default", 3).map { _1[:args] }).to eq([[1], [2], [3, { url: "https://example.com" }]])
+      expect(payloads("default", 3).map { _1[:jid] }).to eq(jids)
+    end
+
+    it "delays every job" do
+      MyJob.perform_bulk([[1], [2]], in: 60)
+
+      expect(stream_size("scheduled")).to eq(2)
+      expect(client.get_message("scheduled", seq: 2).headers).to include("X-Stream" => "default")
+    end
+
+    it "counts every job in the current batch" do
+      batch = Cosmo::Batch.new
+      batch.jobs { MyJob.perform_bulk([[1], [2], [3]]) }
+
+      expect(Cosmo::API::Batch.new(batch.bid).stats).to include(total: 3)
+    end
+
+    it "rejects anything but a list of argument arrays" do
+      expect { MyJob.perform_bulk([1, 2]) }.to raise_error(Cosmo::ArgumentError, /array of argument arrays/)
+      expect(stream_size("default")).to eq(0)
     end
   end
 end

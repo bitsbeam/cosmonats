@@ -162,20 +162,24 @@ module Cosmo
       try_fire(event)
     end
 
-    # Called by Job#perform for each job added inside #jobs.
+    # Called by Job#perform for each job added inside #jobs, and once per chunk by perform_bulk.
+    # @param count [Integer] how many jobs join the batch
     # @return [void]
-    def register_job!
-      counter.increment!("#{bid}.total")
-      counter.increment!("#{bid}.pending")
+    def register_job!(count = 1)
+      counter.increment!("#{bid}.total", by: count)
+      counter.increment!("#{bid}.pending", by: count)
     end
 
     # Undoes #register_job! when the publish itself failed, so the job
     # never really joined the batch. Unlike a real completion, this also
     # reverts total, not just pending.
+    # @param count [Integer] how many registered jobs were not published
     # @return [void]
-    def rollback_job!
-      counter.decrement!("#{bid}.total")
-      release_pending
+    def rollback_job!(count = 1)
+      return unless count.positive?
+
+      counter.decrement!("#{bid}.total", by: count)
+      release_pending(count)
     end
 
     private
@@ -184,7 +188,7 @@ module Cosmo
     def counter = self.class.counter
     def kv = self.class.kv
     def link(parent_id) = self.class.send(:link, parent_id)
-    def release_pending = self.class.send(:release_pending, bid)
+    def release_pending(count = 1) = self.class.send(:release_pending, bid, by: count)
     def try_fire(event) = self.class.send(:try_fire, bid, event)
   end
 end

@@ -11,7 +11,7 @@ module Cosmo
       # @param _message [NATS::Msg]
       # @yieldreturn [Object] the job's result
       # @return [Object] the block's result
-      def call(job, data, _message) # rubocop:disable Metrics/AbcSize
+      def call(job, data, _message)
         return yield unless Config.metrics.enabled
 
         name = job_name(job, data)

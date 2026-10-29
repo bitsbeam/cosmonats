@@ -1,7 +1,19 @@
 module Cosmo
   module Job
     module Enqueuer
+      CHUNK_SIZE: Integer
+
       def self.enqueue: (::String class_name, Array[untyped] args, Hash[Symbol, untyped] options, ?batch: Batch?) -> ::String?
+
+      def self.enqueue_many: (::String class_name, Array[Array[untyped]] list, Hash[Symbol, untyped] options, ?batch: Batch?) -> Array[::String?]
+
+      def self.publish_chunk: (::String class_name, Array[Array[untyped]] chunk, Hash[Symbol, untyped] options, Batch? batch) -> [Array[::String?], Hash[Integer, StandardError]]
+
+      def self.through_middleware: (::String class_name, Data data) -> [Data, Hash[Symbol, untyped]]?
+
+      def self.publish_all: (Array[[Data, Hash[Symbol, untyped]]] jobs, Batch? batch) -> Array[untyped]
+
+      def self.collect: (Array[[Data, Hash[Symbol, untyped]]?] jobs, Array[untyped] results) -> [Array[::String?], Hash[Integer, StandardError]]
 
       def self.pipe: (::String class_name, Data data) -> bool
 

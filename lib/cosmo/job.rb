@@ -145,6 +145,18 @@ module Cosmo
         perform(*args)
       end
 
+      # Enqueues one job per argument list, publishing a thousand at a time without waiting on each ack.
+      #
+      #   ReportJob.perform_bulk([[1], [2], [3]])
+      #
+      # @param list [Array<Array>] each job's arguments
+      # @param options [Hash] job options for every job, merged over {#default_options}, e.g. +in:+
+      # @return [Array<String, nil>] each job's jid, nil for one a client middleware stopped
+      # @raise [BulkEnqueueError] when the stream refused some jobs; its +jids+ tell which were enqueued
+      def perform_bulk(list, **options)
+        Enqueuer.enqueue_many(name, list, default_options.merge(options), batch: Batch.current)
+      end
+
       # @param timestamp [Time, Integer] when the job runs
       # @param args [Array] arguments passed to the job's +perform+
       # @return [String, nil] the job's jid, or nil when a client middleware stopped the publish

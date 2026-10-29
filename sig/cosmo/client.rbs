@@ -25,6 +25,8 @@ module Cosmo
 
     def publish: (::String subject, ::String payload, **untyped params) -> untyped
 
+    def publish_many: (Array[{ subject: ::String, payload: ::String, header: Hash[::String, untyped] }] messages) -> Array[untyped]
+
     def subscribe: (::String | Array[::String] subject, ::String? consumer_name, Hash[Symbol, untyped] config) -> untyped
 
     def stream_info: (::String | Symbol name) -> untyped
@@ -66,6 +68,12 @@ module Cosmo
     def close: -> void
 
     private
+
+    def acks: (untyped subscription, Integer count) -> Array[untyped]
+
+    def next_reply: (untyped subscription, Float deadline) -> untyped
+
+    def pub_ack: (untyped reply) -> untyped
 
     def ephemeral_subscribe: (::String | Array[::String] subject, Hash[Symbol, untyped] config) -> untyped
 

@@ -29,6 +29,12 @@ module Cosmo
         @job_class.perform(*args, **@options)
       end
 
+      # @param list [Array<Array>] each job's arguments
+      # @return [Array<String, nil>] each job's jid, nil for one a client middleware stopped
+      def perform_bulk(list)
+        @job_class.perform_bulk(list, **@options)
+      end
+
       # @param timestamp [Time, Integer] when the job runs
       # @param args [Array] arguments passed to the job's +perform+
       # @return [String, nil] the job's jid, or nil when a client middleware stopped the publish

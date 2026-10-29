@@ -73,7 +73,7 @@ module Cosmo
 
       # @return [Array<Hash>] per day the hover column +left+/+width+, its +center+, the execution time dot +dot+
       #   (nil without one) and the bar top +top+, in percent, with the day's numbers
-      def points # rubocop:disable Metrics/AbcSize
+      def points
         @series.each_with_index.map do |day, index|
           bar_top = HEIGHT - scale(day[:count], @count_top)
           day.merge(left: percent(slot * index), width: percent(slot), center: percent(center(index)),

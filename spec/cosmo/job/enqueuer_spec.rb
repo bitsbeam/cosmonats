@@ -29,6 +29,52 @@ RSpec.describe Cosmo::Job::Enqueuer do
     end
   end
 
+  describe ".enqueue_many" do
+    it "leaves out the jobs a middleware stops, outside the batch too" do
+      Cosmo.configure { |config| config.client_middleware.add(Class.new { def call(_, payload, _) = (yield unless payload[:args] == [2]) }) }
+      batch = Cosmo::Batch.new
+
+      jids = described_class.enqueue_many("ReportJob", [[1], [2], [3]], { stream: :default }, batch: batch)
+
+      expect(jids).to match([String, nil, String])
+      expect(stream_size("default")).to eq(2)
+      expect(Cosmo::API::Batch.new(batch.bid).stats).to include(total: 2, pending: 2)
+    end
+
+    it "reports the jobs a full stream refused, and stops before the next chunk" do
+      stub_const("Cosmo::Job::Enqueuer::CHUNK_SIZE", 3)
+      client.create_stream("tiny", subjects: ["jobs.tiny.>"], max_msgs: 2, discard: "new")
+      batch = Cosmo::Batch.new
+
+      expect { described_class.enqueue_many("ReportJob", [[1], [2], [3], [4], [5]], { stream: :tiny }, batch: batch) }
+        .to raise_error(Cosmo::BulkEnqueueError, /1 of 5 jobs were not enqueued/) { |error|
+          expect(error.jids).to match([String, String, nil, nil, nil])
+          expect(error.errors.keys).to eq([2])
+        }
+      expect(stream_size("tiny")).to eq(2)
+      expect(Cosmo::API::Batch.new(batch.bid).stats).to include(total: 2, pending: 2)
+    end
+
+    it "refuses jobs that another stream's subjects would capture" do
+      client.create_stream("audit", subjects: ["jobs.audited.>"])
+
+      expect { described_class.enqueue_many("ReportJob", [[1]], { stream: :audited }) }
+        .to raise_error(Cosmo::BulkEnqueueError) { |error| expect(error.errors[0].description).to match(/expected stream/i) }
+      expect(stream_size("audit")).to eq(0)
+    end
+
+    it "raises StreamNotFoundError for each job when the stream does not exist" do
+      batch = Cosmo::Batch.new
+
+      expect { described_class.enqueue_many("ReportJob", [[1], [2]], { stream: :missing }, batch: batch) }
+        .to raise_error(Cosmo::BulkEnqueueError) { |error|
+          expect(error.jids).to eq([nil, nil])
+          expect(error.errors.values).to all(be_a(Cosmo::StreamNotFoundError))
+        }
+      expect(Cosmo::API::Batch.new(batch.bid).stats).to include(total: 0, pending: 0)
+    end
+  end
+
   describe "with client middleware" do
     let(:results) { Results.instance }
 

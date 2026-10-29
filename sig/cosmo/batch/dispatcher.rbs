@@ -3,7 +3,7 @@ module Cosmo
     module Dispatcher
       private
 
-      def release_pending: (::String bid, ?msg_id: ::String?) -> void
+      def release_pending: (::String bid, ?by: Integer, ?msg_id: ::String?) -> void
 
       def finalize: (::String bid) -> void
 

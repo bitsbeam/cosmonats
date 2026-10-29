@@ -29,9 +29,9 @@ module Cosmo
 
     def on: (Symbol event, Class klass, **untyped) -> void
 
-    def register_job!: () -> void
+    def register_job!: (?Integer count) -> void
 
-    def rollback_job!: () -> void
+    def rollback_job!: (?Integer count) -> void
 
     private
 
@@ -41,7 +41,7 @@ module Cosmo
 
     def link: (::String parent_id) -> void
 
-    def release_pending: () -> void
+    def release_pending: (?Integer count) -> void
 
     def try_fire: (Symbol event) -> void
   end

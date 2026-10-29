@@ -29,6 +29,13 @@ module Cosmo
     def initialize: (::String stream_name) -> void
   end
 
+  class BulkEnqueueError < Error
+    attr_reader jids: Array[::String?]
+    attr_reader errors: Hash[Integer, StandardError]
+
+    def initialize: (Array[::String?] jids, Hash[Integer, StandardError] errors) -> void
+  end
+
   class JobClassNotFoundError < Error
     def initialize: (::String? class_name) -> void
   end
