@@ -172,7 +172,7 @@ a.kpi:hover{text-decoration:none;background:var(--panel2)}
 .t-jobs.actions{grid-template-columns:110px 1.4fr 1.5fr .8fr 100px 110px 90px}
 .t-jobs.plain{grid-template-columns:110px 1.4fr 1.5fr .8fr 100px 150px}
 .t-cons{grid-template-columns:1.5fr .8fr .8fr .7fr .7fr 1.4fr}
-.t-crons{grid-template-columns:1.5fr 1.2fr .8fr 1.2fr 190px;gap:14px}
+.t-crons{grid-template-columns:1.5fr 1.2fr 1.2fr 190px;gap:14px}
 .trow.t-crons{padding-top:13px;padding-bottom:13px}
 .t-procs{grid-template-columns:1.4fr 1.5fr 1.3fr 50px 80px 64px 56px 76px 64px 72px}
 .t-metrics{grid-template-columns:2fr .8fr .8fr 1fr 1fr}

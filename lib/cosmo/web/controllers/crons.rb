@@ -23,7 +23,7 @@ module Cosmo
         def _table
           return not_found unless Config.scheduled.enabled
 
-          ok render("crons/_table", { schedules: cron.all })
+          ok render("crons/_table", { groups: groups })
         end
 
         # Dispatch the job immediately, bypassing the schedule timer.
@@ -46,13 +46,17 @@ module Cosmo
 
           subject = Rack::Utils.unescape(params["subject"].to_s)
           cron.delete!(subject)
-          ok render("crons/_table", { schedules: cron.all }) + flash("#{label(subject)} deleted")
+          ok render("crons/_table", { groups: groups }) + flash("#{label(subject)} deleted")
         end
 
         private
 
         def cron
           @cron ||= API::Cron.instance
+        end
+
+        def groups
+          cron.all.group_by { _1[:stream] }
         end
 
         # "cosmo.cron.default.report_job.monthly" → "monthly", "cosmo.cron.default.report_job" → "report_job"
