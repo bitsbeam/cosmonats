@@ -484,6 +484,32 @@ RSpec.describe Cosmo::Job::Processor do
           expect(job.error_message).to eq("execution expired after the 1s duration limit")
           expect(job.error_backtrace).not_to be_nil
         end
+
+        context "when the job rescues Timeout::Error itself" do
+          before do
+            stub_const("RescuingJob", Class.new do
+              include Cosmo::Job
+
+              options stream: :default, retry: 0, dead: true, limit: { duration: 1 }
+
+              def perform
+                sleep(30)
+              rescue Timeout::Error
+                Results.instance << :rescued
+                sleep(30)
+              end
+            end)
+          end
+
+          it "still kills the job after duration" do
+            started_at = Time.now
+            RescuingJob.perform_async
+            wait_until(timeout: 8) { stream_size("dead") >= 1 }
+
+            expect(Time.now - started_at).to be < 5
+            expect(results).not_to include(:rescued)
+          end
+        end
       end
     end
   end

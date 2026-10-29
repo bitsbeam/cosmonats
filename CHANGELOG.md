@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A job's `limit: { duration: }` can't be swallowed by job code rescuing `Timeout::Error` or `StandardError`
+  anymore; the job is interrupted with Ruby's internal timeout exception and fails with `Timeout::Error` as before
 - A job whose class a worker can't load, e.g. mid-deploy, runs through the server middleware with a `nil` job and
   fails with `Cosmo::JobClassNotFoundError`, so it is counted and retried as its payload's `retry` allows instead of
   going straight to `dead`; a malformed payload still goes straight to `dead` but counts as failed

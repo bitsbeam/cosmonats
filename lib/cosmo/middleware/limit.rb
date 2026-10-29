@@ -41,11 +41,14 @@ module Cosmo
         raise Job::Requeue
       end
 
+      # No exception class is passed on purpose: Timeout then interrupts the job with its internal
+      # Timeout::ExitException, which job code rescuing Timeout::Error or StandardError can't swallow,
+      # and turns it into Timeout::Error only once it leaves the block.
       def timeout(duration, &)
         return yield unless duration
 
         seconds = duration.to_i
-        Timeout.timeout(seconds, Timeout::Error, "execution expired after the #{seconds}s duration limit", &)
+        Timeout.timeout(seconds, nil, "execution expired after the #{seconds}s duration limit", &)
       end
     end
   end
