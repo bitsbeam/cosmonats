@@ -65,7 +65,7 @@ module Cosmo
       end
 
       # @return [Array<Hash>] per day the hover column +left+/+width+ and the dot +top+, in percent, with the numbers
-      def points # rubocop:disable Metrics/AbcSize
+      def points
         slot = 100.0 / [@series.size, 1].max
         @series.each_with_index.map do |day, index|
           center = @series.size == 1 ? 50.0 : x(index) / WIDTH * 100

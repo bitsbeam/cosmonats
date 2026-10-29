@@ -48,7 +48,7 @@ Metrics/BlockLength:
     - cosmonats.gemspec
 
 Metrics/AbcSize:
-  Max: 21
+  Max: 22
   Exclude:
     - spec/**/*
 

@@ -50,7 +50,7 @@ module Cosmo
       # Adds the class to the processed streams and derives its stream, consumer and subjects from its name.
       #
       # @return [void]
-      def register # rubocop:disable Metrics/AbcSize
+      def register
         Config.internal[:streams] ||= []
         Config.internal[:streams] << self
 

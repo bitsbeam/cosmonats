@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The web UI's Streams page shows when each stream last received a message
+- `limit: { duration:, retry_in: }` accept duration strings such as `"82m"`, not only seconds
 - `Job.perform_bulk(list)` enqueues one job per argument list, pipelining the publishes a thousand at a time
 - `Job.set(stream:, retry:, dead:, subject:)` overrides job options for a single `perform_async`/`perform_in`/`perform_at`
 - `consumers.jobs` in `cosmo.yml` can be a list of groups, flattened on load, to organize consumers by worker fleet

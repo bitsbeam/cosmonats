@@ -31,14 +31,15 @@ module Cosmo
       #   limit: { duration: 30, concurrency: { to: 3, key: ->(id) { id } } }
       #   limit: { duration: 30, concurrency: 3, retry_in: 5 }
       #
-      # @option config [Integer] :"limit[:duration]" hard execution timeout in seconds. The job thread is
+      # @option config [Integer, String] :"limit[:duration]" hard execution timeout in seconds, or a duration such as
+      #   +"82m"+ (see {Utils::Duration.parse}). The job thread is
       #   killed after this many seconds and counts as a failed attempt (retried with exponential backoff,
       #   moved to DLQ after retries exhausted).
       # @option config [Integer, Hash] :"limit[:concurrency]" caps how many instances run at once across all
       #   workers. Jobs that cannot acquire a slot are NAK'd (see +retry_in+) so they are not re-delivered until
       #   the slot is likely free. Requires +duration+.
       #   Pass an Integer for a class-wide cap, or <tt>{ to: N, key: ->(args) {} }</tt> to scope per key.
-      # @option config [Integer] :"limit[:retry_in]" seconds to wait before NATS redelivers a job that was
+      # @option config [Integer, String] :"limit[:retry_in]" seconds, or a duration such as +"30s"+, to wait before NATS redelivers a job that was
       #   NAK'd for lack of a concurrency slot (default: half of +duration+). Counts against the same delivery
       #   counter as any other retry -- a job stuck behind the concurrency limit for enough consecutive
       #   attempts is dropped/DLQ'd exactly like one that keeps failing outright.
@@ -54,8 +55,13 @@ module Cosmo
       #   slot, then finally runs and fails, calls this handler with +count == 3+, not 1. Don't read +count+ as
       #   "how many times perform has actually run and failed" when concurrency limits are in play.
       # @return [Hash{Symbol => Object}] the class's merged options
-      # @raise [ArgumentError] when +limit[:concurrency]+ lacks a +duration+ or +retry_in+ is not callable
+      # @raise [ArgumentError] when +limit[:concurrency]+ lacks a +duration+, a limit duration is invalid, or +retry_in+
+      #   is not callable
       def options(**config)
+        if (limit = config[:limit])
+          config[:limit] = limit.merge(limit.slice(:duration, :retry_in).compact.transform_values { Utils::Duration.parse(_1) })
+        end
+
         if config[:limit] && config.dig(:limit, :concurrency) && !config.dig(:limit, :duration).to_i.positive?
           raise ArgumentError, "limit: duration is required when concurrency is set"
         end

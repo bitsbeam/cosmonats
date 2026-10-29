@@ -37,7 +37,7 @@ module Cosmo
     #
     # @param env [Hash] the Rack environment
     # @return [Array] the Rack response
-    def call(env) # rubocop:disable Metrics/AbcSize
+    def call(env)
       @request = Rack::Request.new(env)
       return route if @request.path_info.start_with?("/assets/", "/favicon.ico")
       return guarded.tap { Cache.instance.clear } unless @request.get?

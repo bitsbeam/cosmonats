@@ -583,9 +583,15 @@ end
 class ThirdPartyApiJob
   include Cosmo::Job
   # At most 3 instances of this job run at once, cluster-wide.
-  # Jobs that lose the race are NAK'd with a delay equal to `duration`
-  # so they aren't redelivered until a slot is guaranteed free.
+  # Jobs that lose the race are NAK'd and redelivered after half of `duration`,
+  # or after `retry_in` when set (e.g. limit: { duration: 30, concurrency: 3, retry_in: 5 }).
   options limit: { duration: 30, concurrency: 3 }
+end
+
+class CrawlJob
+  include Cosmo::Job
+  # Durations take seconds or strings such as "82m" or "2h" (also for limit retry_in).
+  options limit: { duration: "82m" }
 end
 
 class PerAccountSyncJob

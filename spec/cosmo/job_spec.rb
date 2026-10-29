@@ -39,6 +39,18 @@ RSpec.describe Cosmo::Job do
 
       expect(ConcurrentJob.concurrency_options).to include(duration: 30, retry_in: 5)
     end
+
+    it "takes durations such as 82m for duration and retry_in" do
+      stub_const("ConcurrentJob", Class.new(MyJob) { options limit: { duration: "82m", concurrency: 2, retry_in: "30s" } })
+
+      expect(ConcurrentJob.concurrency_options).to include(duration: 4920, retry_in: 30)
+      expect(ConcurrentJob.default_options[:limit]).to include(duration: 4920, retry_in: 30)
+    end
+
+    it "rejects an invalid duration when the class is defined" do
+      expect { Class.new(MyJob) { options limit: { duration: "82 minutes" } } }
+        .to raise_error(Cosmo::ArgumentError, /invalid duration: 82 minutes/)
+    end
   end
 
   describe "#retry_in" do
