@@ -395,6 +395,16 @@ consumers:
 `max_age`, `duplicate_window`, and `ack_wait` are in seconds. Without `setup.jobs`, `consumers.jobs.default` still
 tunes the built-in consumer (e.g. just `ack_wait: 300`).
 
+`consumers.jobs` can also be a list of groups, e.g. to mirror which streams each worker fleet runs together. It is
+flattened on load, so it only organizes the file; a stream may appear in one group only:
+```yaml
+consumers:
+  jobs:
+    - critical: { <<: *consumer_config, priority: 50 }
+      default: { <<: *consumer_config, priority: 15 }
+    - crawlers: { <<: *consumer_config, ack_wait: 1860 }
+```
+
 **Service streams** — the `scheduled` stream (delayed jobs, crons), the `dead` stream (dead letters), and the stats
 counters and KV buckets are Cosmo's own: they are not part of `cosmo.yml`, and `cosmo --setup` creates them next to
 yours. Tune them in `Cosmo.configure`:

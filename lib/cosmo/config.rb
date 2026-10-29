@@ -23,12 +23,33 @@ module Cosmo
       (seconds.to_f * NANO).to_i
     end
 
-    # Parses the YAML file at +path+ as is, without normalizing it.
+    # Parses the YAML file at +path+ without normalizing it, only flattening grouped job consumers.
     #
     # @param path [String]
     # @return [Hash]
+    # @raise [ConfigError] when grouped job consumers are malformed or repeat a stream
     def self.read(path)
-      Utils::Hash.symbolize_keys!(YAML.load_file(path, aliases: true) || {})
+      Utils::Hash.symbolize_keys!(YAML.load_file(path, aliases: true) || {}).tap { flatten_groups!(_1) }
+    end
+
+    # Flattens +consumers.jobs+ given as an array of groups (hashes of consumers) into one hash, in place. Groups only
+    # organize the file: their order and boundaries are dropped.
+    #
+    # @param config [Hash]
+    # @return [void]
+    # @raise [ConfigError] when a group is not a hash or a stream appears in more than one group
+    def self.flatten_groups!(config)
+      groups = config.dig(:consumers, :jobs)
+      return unless groups.is_a?(::Array)
+
+      config[:consumers][:jobs] = groups.each_with_object({}) do |group, jobs|
+        raise ConfigError, "`consumers.jobs` groups must be hashes of consumers, got #{group.inspect}" unless group.is_a?(::Hash)
+
+        repeated = jobs.keys & group.keys
+        raise ConfigError, "`consumers.jobs.#{repeated.first}` appears in more than one group" if repeated.any?
+
+        jobs.merge!(group)
+      end
     end
 
     # @param path [String]

@@ -25,7 +25,8 @@ CLI → Engine → ThreadPool
   with the user's file deep-merged over it (no file → the defaults alone), then `overrides` — the CLI's `-c`/`-t`/`-p`,
   so flags always win. The one exception: a user `setup.jobs` replaces the built-in `default` job stream and consumer
   instead of merging. YAML holds user-defined things only — `scheduled`/`dead` under `setup.jobs`/`consumers.jobs`, or
-  `batch_expiry`, raise `ConfigError`. `load` is the only writer of YAML keys (there is no `Config.set`). Class-level
+  `batch_expiry`, raise `ConfigError`. `consumers.jobs` may be an array of consumer hashes (groups); `Config.read` flattens it, a stream
+  repeated across groups raises `ConfigError`. `load` is the only writer of YAML keys (there is no `Config.set`). Class-level
   `[]`, `fetch`, `dig`, `load`, `server_middleware`, `services`, `scheduled`, `dead`, `batches` are delegated to the
   singleton. `Cosmo.configure { |config| }` yields the same singleton. `server_middleware` and the service settings are instance variables, not keys, so `load` keeps them.
   `config.logger=` / `config.log_level=` wrap `Logger.instance=` / `Logger.level=`; `Logger.trace` is a no-op for

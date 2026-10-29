@@ -16,6 +16,8 @@ module Cosmo
 
     def self.read: (::String path) -> Hash[Symbol, untyped]
 
+    def self.flatten_groups!: (Hash[Symbol, untyped] config) -> void
+
     def self.parse_file: (::String path) -> Hash[Symbol, untyped]
 
     def self.build: (Hash[Symbol, untyped] user) -> Hash[Symbol, untyped]

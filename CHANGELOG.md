@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The web UI's Streams page shows when each stream last received a message
+- `consumers.jobs` in `cosmo.yml` can be a list of groups, flattened on load, to organize consumers by worker fleet
 
 ### Changed
 

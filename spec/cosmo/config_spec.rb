@@ -200,6 +200,43 @@ RSpec.describe Cosmo::Config do
       expect(instance.dig(:setup, :jobs, :critical, :subjects)).to eq(["jobs.critical.>"])
     end
 
+    it "flattens job consumers given as groups" do
+      load_yaml(<<~YAML)
+        setup:
+          jobs:
+            critical: {}
+            default: {}
+            crawlers: {}
+        consumers:
+          jobs:
+            - critical:
+                priority: 50
+              default:
+                priority: 15
+            - crawlers:
+                ack_wait: 1860
+      YAML
+
+      expect(instance.dig(:consumers, :jobs).keys).to eq(%i[critical default crawlers])
+      expect(instance.dig(:consumers, :jobs, :critical)).to eq(priority: 50)
+      expect(instance.dig(:consumers, :jobs, :crawlers)).to eq(ack_wait: 1860)
+    end
+
+    it "rejects a stream repeated across groups" do
+      expect { load_yaml("consumers:\n  jobs:\n    - default: {}\n    - default: {}\n") }
+        .to raise_error(Cosmo::ConfigError, /`consumers.jobs.default` appears in more than one group/)
+    end
+
+    it "rejects a group that is not a hash of consumers" do
+      expect { load_yaml("consumers:\n  jobs:\n    - default\n") }
+        .to raise_error(Cosmo::ConfigError, /groups must be hashes of consumers/)
+    end
+
+    it "rejects the service streams inside groups" do
+      expect { load_yaml("consumers:\n  jobs:\n    - scheduled:\n        max_deliver: 5\n") }
+        .to raise_error(Cosmo::ConfigError, /`consumers.jobs.scheduled` is a Cosmo service stream/)
+    end
+
     it "lets overrides such as command-line flags win over the file" do
       Tempfile.create(["cosmo", ".yml"]) do |file|
         file.write("concurrency: 10\nhttp:\n  port: 9090\n  host: 0.0.0.0\n")
