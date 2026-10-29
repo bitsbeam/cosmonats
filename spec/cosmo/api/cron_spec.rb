@@ -68,6 +68,36 @@ RSpec.describe Cosmo::API::Cron do
     end
   end
 
+  describe "#all" do
+    before do
+      destroy_streams
+      create_streams({})
+      api.upsert!(class_name: "ReportJob", stream: "reports", schedule: "@daily", name: "nightly")
+      api.upsert!(class_name: "SyncJob", stream: "default", schedule: "0 9 * * 1-5", timezone: "Europe/Amsterdam")
+      api.upsert!(class_name: "ReportJob", stream: "reports", schedule: "@weekly", args: [1], name: "monthly")
+      api.upsert!(class_name: "CleanupJob", stream: "default", schedule: "@hourly")
+    end
+
+    after { destroy_streams }
+
+    it "lists schedules sorted by stream, class and name" do
+      expect(api.all.map { _1[:schedule_subject] }).to eq(%w[
+                                                            cosmo.cron.default.cleanup_job
+                                                            cosmo.cron.default.sync_job
+                                                            cosmo.cron.reports.report_job.monthly
+                                                            cosmo.cron.reports.report_job.nightly
+                                                          ])
+    end
+
+    it "reads each schedule's expression, timezone and args from NATS" do
+      expect(api.all).to include(
+        hash_including(class: "SyncJob", schedule: "0 0 9 * * 1-5", timezone: "Europe/Amsterdam",
+                       schedule_subject: "cosmo.cron.default.sync_job", dispatch_subject: "jobs.default.sync_job"),
+        hash_including(class: "ReportJob", name: "monthly", schedule: "@weekly", args: [1])
+      )
+    end
+  end
+
   describe "#delete!" do
     it "purges the correct stream and subject" do
       expect(client).to receive(:purge).with("scheduled", "cosmo.cron.default.report_job")

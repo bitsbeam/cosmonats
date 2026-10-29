@@ -85,9 +85,9 @@ module Cosmo
 
         def read(days)
           filters = dates(days).map { "#{STREAM_NAME}.#{@namespace}.#{_1}.>" }
-          client.last_messages(STREAM_NAME, filters).map do |subject, data|
+          client.last_messages(STREAM_NAME, filters).map do |subject, message|
             day, job, field = subject.split(".").last(3)
-            [[day, job.gsub("-", "::"), field.to_sym], Utils::Json.parse(data, default: {})[:val].to_i]
+            [[day, job.gsub("-", "::"), field.to_sym], Utils::Json.parse(message.data, default: {})[:val].to_i]
           end
         end
 

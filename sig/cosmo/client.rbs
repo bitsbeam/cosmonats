@@ -57,7 +57,7 @@ module Cosmo
 
     def get_message: (::String | Symbol name, **untyped options) -> untyped
 
-    def last_messages: (::String stream_name, Array[::String] filters) -> Hash[::String, ::String]
+    def last_messages: (::String stream_name, Array[::String] filters) -> Hash[::String, NATS::Msg]
 
     def delete_message: (::String name, ::Integer seq) -> Hash[::String, untyped]
 

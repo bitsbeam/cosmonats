@@ -217,7 +217,7 @@ module Cosmo
     #
     # @param stream_name [String]
     # @param filters [Array<String>] subject filters, wildcards allowed
-    # @return [Hash{String => String}] message data by subject
+    # @return [Hash{String => NATS::Msg}] the message by subject, its data and headers
     def last_messages(stream_name, filters)
       inbox = nc.new_inbox
       sub = nc.subscribe(inbox)
@@ -228,7 +228,7 @@ module Cosmo
         subject = msg.header&.dig(NATS::JetStream::Header::SUBJECT)
         break unless subject
 
-        messages[subject] = msg.data
+        messages[subject] = msg
       end
       messages
     rescue NATS::Timeout

@@ -24,7 +24,7 @@ module Cosmo
         @instance ||= new
       end
 
-      # @return [Array<Hash>] every cron schedule currently deployed in NATS
+      # @return [Array<Hash>] every cron schedule currently deployed in NATS, sorted by stream, class and name
       def all
         schedules
       rescue StandardError
@@ -89,16 +89,21 @@ module Cosmo
       end
 
       def schedules
-        subjects = client.cron_subjects_in_stream(STREAM, "#{Entry::SUBJECT_PREFIX}.>")
-        subjects.filter_map { |subj| build_from_nats(subj) }
+        client.last_messages(STREAM, ["#{Entry::SUBJECT_PREFIX}.>"])
+              .filter_map { |subject, msg| build(subject, msg.header, msg.data) }
+              .sort_by { [_1[:stream].to_s, _1[:class].to_s, _1[:name].to_s] }
       end
 
       def build_from_nats(subject)
         msg = client.get_message(STREAM, subject: subject)
-        return unless msg
+        build(subject, msg.headers, msg.data) if msg
+      rescue StandardError
+        nil
+      end
 
-        headers = msg.headers || {}
-        body = Utils::Json.parse(msg.data) || {}
+      def build(subject, headers, data)
+        headers ||= {}
+        body = Utils::Json.parse(data) || {}
 
         {
           class: body[:class],

@@ -26,6 +26,7 @@ module Cosmo
       def client: () -> Client
       def schedules: () -> ::Array[Hash[Symbol, untyped]]
       def build_from_nats: (::String subject) -> Hash[Symbol, untyped]?
+      def build: (::String subject, Hash[::String, ::String]? headers, ::String data) -> Hash[Symbol, untyped]?
       def name_from_subject: (::String subject) -> ::String?
     end
   end
