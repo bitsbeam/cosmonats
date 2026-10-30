@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Workers report the jobs and stream batches they are processing as in progress, so work running longer than
+  `ack_wait` is no longer redelivered and run twice; `config.in_progress.enabled = false` turns it off
 - The web UI's Streams page shows when each stream last received a message
 - `limit: { duration:, retry_in: }` accept duration strings such as `"82m"`, not only seconds
 - `Job.perform_bulk(list)` enqueues one job per argument list, pipelining the publishes a thousand at a time

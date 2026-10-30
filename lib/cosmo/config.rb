@@ -14,7 +14,7 @@ module Cosmo
     class << self
       extend Forwardable
 
-      delegate %i[[] fetch dig load server_middleware client_middleware error_handlers services scheduled dead batches metrics] => :instance
+      delegate %i[[] fetch dig load server_middleware client_middleware error_handlers services scheduled dead batches metrics in_progress] => :instance
     end
 
     # @param seconds [Numeric]
@@ -188,6 +188,11 @@ module Cosmo
     # @return [Metrics]
     def metrics
       @metrics ||= Metrics.new(enabled: true, retention: "30d")
+    end
+
+    # @return [InProgress]
+    def in_progress
+      @in_progress ||= InProgress.new(enabled: true)
     end
 
     # Callables given every error Cosmo rescues: failed jobs and stream batches, fetch and scheduler errors, rejected

@@ -20,5 +20,11 @@ module Cosmo
     # +config.metrics+ in Cosmo.configure: per-day job metrics behind the web UI's Metrics tab, kept for +retention+
     # (seconds or a duration such as "30d"). Turned off, nothing is recorded and the tab is hidden.
     Metrics = Struct.new(:enabled, :retention, keyword_init: true)
+
+    # +config.in_progress+ in Cosmo.configure: while enabled, every job or stream batch still being processed is
+    # reported to NATS as in progress every {Heartbeat::INTERVAL} seconds, restarting its +ack_wait+, so it is not
+    # redelivered to another worker while this one is still on it. Turned off, work running longer than its
+    # consumer's +ack_wait+ is redelivered and may run twice at once.
+    InProgress = Struct.new(:enabled, keyword_init: true)
   end
 end

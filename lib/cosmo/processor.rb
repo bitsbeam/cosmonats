@@ -61,6 +61,14 @@ module Cosmo
       @in_flight.values.flatten.count { release_message(_1) }
     end
 
+    # Tells NATS every message still being processed is being worked on, restarting its +ack_wait+, so a long job or
+    # batch is not redelivered to another worker while this one is still on it.
+    #
+    # @return [void]
+    def touch
+      @in_flight.values.flatten.each { _1.in_progress rescue nil }
+    end
+
     # Kills the threads still processing messages and waits up to +timeout+ seconds for each to unwind,
     # so their +ensure+ blocks run while the NATS connection is still up instead of during process exit.
     #

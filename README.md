@@ -414,6 +414,11 @@ consumers:
 `max_age`, `duplicate_window`, and `ack_wait` are in seconds. Without `setup.jobs`, `consumers.jobs.default` still
 tunes the built-in consumer (e.g. just `ack_wait: 300`).
 
+`ack_wait` is how long a crashed worker holds its messages, not how long a job may run: every 10 seconds a worker
+tells NATS the jobs and stream batches it is still processing are in progress, so they are not redelivered while they
+run. Keep `ack_wait` above those 10 seconds. `Cosmo.configure { |config| config.in_progress.enabled = false }` turns
+it off, and then anything running longer than `ack_wait` is redelivered and may run twice at once.
+
 `consumers.jobs` can also be a list of groups, e.g. to mirror which streams each worker fleet runs together. It is
 flattened on load, so it only organizes the file; a stream may appear in one group only:
 ```yaml

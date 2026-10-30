@@ -9,9 +9,10 @@ RSpec.describe Cosmo::Job::Processor do
   let(:results)     { Results.instance }
   let(:scheduled_enabled) { true }
   let(:missing_streams) { [] }
+  let(:overrides) { nil }
 
   before do
-    Cosmo::Config.load("spec/support/cosmo.yml")
+    Cosmo::Config.load("spec/support/cosmo.yml", overrides:)
     Cosmo.configure { |config| config.scheduled.enabled = scheduled_enabled }
     # Keep the scheduler fetch timeout short so teardown
     # isn't blocked by the default 5-second NATS pull window.
@@ -572,6 +573,45 @@ RSpec.describe Cosmo::Job::Processor do
       expect(Time.now - started).to be < 1
       expect(processor.busy).to eq(0)
       expect(Cosmo::API::Stats::Busy.instance.all).to be_empty
+    end
+  end
+
+  context "with a job running longer than ack_wait" do
+    let(:overrides) { { consumers: { jobs: { default: { ack_wait: 1 } } } } }
+
+    before do
+      stub_const("LongJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform
+          Results.instance << attempt
+          sleep 3
+        end
+      end)
+    end
+
+    it "redelivers it to another thread while it still runs" do
+      LongJob.perform_async
+      wait_until(timeout: 5) { results.include?(2) }
+    end
+
+    it "runs it once while in progress is reported" do
+      LongJob.perform_async
+      wait_until(timeout: 5) { processor.busy == 1 }
+
+      ticker = Thread.new do
+        loop do
+          processor.touch
+          sleep 0.3
+        end
+      end
+      wait_until(timeout: 5) { processor.busy.zero? }
+      ticker.kill
+
+      expect(results).to eq([1])
+      expect(stream_size("default")).to eq(0)
     end
   end
 

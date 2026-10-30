@@ -30,6 +30,8 @@ module Cosmo
 
     def busy: () -> Integer
 
+    def touch: () -> void
+
     def subscriptions: () -> Hash[Symbol, Array[::String]]
 
     def shutdown: () -> void

@@ -82,6 +82,13 @@ module Cosmo
       Array(@processors).sum(&:busy)
     end
 
+    # Reports every message still being processed as in progress, see {Processor#touch}.
+    #
+    # @return [void]
+    def touch
+      Array(@processors).each(&:touch)
+    end
+
     # @return [Hash{Symbol => Array<String>}] what each running processor pulls from, keyed by processor type
     def subscriptions
       Array(@processors).to_h { [PROCESSORS.key(_1.class), _1.subscriptions] }

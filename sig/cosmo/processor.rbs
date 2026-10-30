@@ -30,6 +30,8 @@ module Cosmo
 
     def release: () -> Integer
 
+    def touch: () -> void
+
     def interrupt: (::Integer | ::Float timeout) -> void
 
     def stop: (?::Integer | ::Float timeout) -> void

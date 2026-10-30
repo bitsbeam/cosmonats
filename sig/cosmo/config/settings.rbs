@@ -33,5 +33,11 @@ module Cosmo
 
       def self.new: (enabled: bool, retention: Numeric | ::String) -> Metrics
     end
+
+    class InProgress
+      attr_accessor enabled: bool
+
+      def self.new: (enabled: bool) -> InProgress
+    end
   end
 end

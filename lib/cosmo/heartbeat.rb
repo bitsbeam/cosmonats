@@ -25,6 +25,7 @@ module Cosmo
       @thread = Thread.new do
         loop do
           sleep(INTERVAL)
+          touch
           beat
           flush
         end
@@ -51,6 +52,15 @@ module Cosmo
       processes.register(identity, info)
     rescue StandardError => e
       Logger.debug "Heartbeat error: #{e.class} #{e.message}"
+    end
+
+    # Keeps the work in flight from being redelivered while it runs, see {Engine#touch}.
+    #
+    # @return [void]
+    def touch
+      @engine.touch if Config.in_progress.enabled
+    rescue StandardError => e
+      Logger.debug "In progress error: #{e.class} #{e.message}"
     end
 
     # Writes the job metrics recorded since the last flush.

@@ -49,7 +49,9 @@ CLI → Engine → ThreadPool
   destructive routes (retry/delete dead jobs, pause streams, delete/run crons).
 - **`Cosmo::Heartbeat`** (`lib/cosmo/heartbeat.rb`) — started by `Engine#run`; every 10s writes this process's
   details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `_cosmoprocesses`
-  KV bucket via `API::Stats::Processes`. Unregisters on graceful shutdown; a crashed process expires by the bucket's 60s TTL.
+  KV bucket via `API::Stats::Processes`. Unregisters on graceful shutdown; a crashed process expires by the bucket's 60s TTL. Each tick also calls
+  `Engine#touch` → `Processor#touch`, sending `in_progress` for every message in `@in_flight` (jobs and stream
+  batches), so `ack_wait` only bounds how long a dead worker holds a message (`config.in_progress.enabled`).
 - **`Cosmo::Batch`** (`lib/cosmo/batch.rb`) — groups jobs and fires a `:success`/`:complete` callback when the group
   finishes; state lives in `Batch::Counters` (the `_cosmobatches` stream, `max_age` = `config.batches.expiry`, so an
   abandoned batch's counters expire with its KV state) plus a TTL'd KV bucket. Nested batches are created with

@@ -4,7 +4,7 @@ RSpec.describe Cosmo::Heartbeat do
   subject(:heartbeat) { described_class.new(engine, options: { streams: ["default"] }) }
 
   let(:engine) do
-    instance_double(Cosmo::Engine, state: "running", busy: 1, concurrency: 5, subscriptions: { jobs: %w[default scheduled] })
+    instance_double(Cosmo::Engine, state: "running", busy: 1, concurrency: 5, subscriptions: { jobs: %w[default scheduled] }, touch: nil)
   end
   let(:processes) { Cosmo::API::Stats::Processes.instance }
 
@@ -53,6 +53,24 @@ RSpec.describe Cosmo::Heartbeat do
     it "swallows NATS errors so a beat never takes the worker down" do
       allow(processes).to receive(:register).and_raise(NATS::IO::Timeout)
       expect { heartbeat.beat }.not_to raise_error
+    end
+  end
+
+  describe "#touch" do
+    it "reports the work in flight as in progress" do
+      heartbeat.touch
+      expect(engine).to have_received(:touch)
+    end
+
+    it "reports nothing with in progress turned off" do
+      Cosmo.configure { |config| config.in_progress.enabled = false }
+      heartbeat.touch
+      expect(engine).not_to have_received(:touch)
+    end
+
+    it "swallows errors so a tick never takes the worker down" do
+      allow(engine).to receive(:touch).and_raise(NATS::IO::Timeout)
+      expect { heartbeat.touch }.not_to raise_error
     end
   end
 
