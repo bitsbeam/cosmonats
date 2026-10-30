@@ -94,6 +94,21 @@ RSpec.describe Cosmo::API::KV do
       first = kv.keys(limit: 5)
       expect(kv.keys(limit: 5, offset: 2)).to eq(first.drop(2))
     end
+
+    it "stops the watcher when the walk raises" do
+      kv.set("a", "1")
+      watcher = nil
+      allow(kv.kv).to receive(:watch).and_wrap_original do |original, *args, **options|
+        watcher = original.call(*args, **options)
+        allow(watcher).to receive(:each).and_raise(NATS::IO::Timeout)
+        allow(watcher).to receive(:stop).and_call_original
+        watcher
+      end
+
+      expect { kv.keys }.to raise_error(NATS::IO::Timeout)
+      expect(watcher).to have_received(:stop)
+      expect(watcher._hb_task).to be_shutdown
+    end
   end
 
   describe "#entries" do

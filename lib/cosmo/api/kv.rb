@@ -123,23 +123,26 @@ module Cosmo
         skipped = 0
         seen = 0
         watcher = kv.watch(subject || ">", meta_only:)
-        watcher.each do |entry|
-          if entry.nil?
-            break if drained?(watcher, seen)
+        begin
+          watcher.each do |entry|
+            if entry.nil?
+              break if drained?(watcher, seen)
 
-            next
+              next
+            end
+
+            seen += 1
+            unless entry.operation
+              next skipped += 1 if skipped < offset.to_i
+
+              results << [entry.key, entry.value]
+              break if limit && results.size >= limit
+            end
+            break if entry.delta.zero?
           end
-
-          seen += 1
-          unless entry.operation
-            next skipped += 1 if skipped < offset.to_i
-
-            results << [entry.key, entry.value]
-            break if limit && results.size >= limit
-          end
-          break if entry.delta.zero?
+        ensure
+          watcher.stop
         end
-        watcher.stop
         results
       end
 
