@@ -6,6 +6,7 @@ module Cosmo
       @name: ::String
       @options: Hash[Symbol, untyped]
       @kv: untyped
+      @direct: true
 
       attr_reader kv: untyped
 
@@ -22,6 +23,18 @@ module Cosmo
       def keys: (?::String? subject, ?limit: ::Integer?, ?offset: ::Integer) -> Array[::String]
 
       def entries: (?::String? subject, ?limit: ::Integer?, ?offset: ::Integer) -> Array[[::String, ::String]]
+
+      def direct_entries: (?::String? subject, ?limit: ::Integer?) -> Array[[::String, ::String]]
+
+      def direct_count: (?::String? subject) -> ::Integer
+
+      def direct_keys: (?::String? subject) -> Array[::String]
+
+      def direct_values: (Array[::String] keys) -> Hash[::String, ::String]
+
+      def write_many: (Hash[::String, untyped] pairs) -> void
+
+      def direct!: () -> true
 
       def purge: (::String | ::Integer key) -> untyped
 
