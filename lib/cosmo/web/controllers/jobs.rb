@@ -106,16 +106,18 @@ module Cosmo
         end
 
         def busy_locals
-          busy = API::Stats::Busy.instance
-          total = busy.size
-          page, limit, total_pages = paginate(total, API::Stats::Busy::LIMIT)
+          total = API::Stats.busy
+          page, limit, total_pages = paginate(total, API::Registry::LIMIT)
           polling = params["poll"].to_s != "0"
-          { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages:, polling:, query: { limit:, poll: (0 unless polling) }.compact }
+          longest = params["order"] == "longest"
+          jobs = API::Stats.running_page(page:, limit:, longest:)
+          { jobs:, total:, page:, limit:, total_pages:, polling:,
+            query: { limit:, poll: (0 unless polling), order: ("longest" if longest) }.compact }
         end
 
         def enqueued_locals # rubocop:disable Metrics/AbcSize
           stream_name, stream_sizes = streams
-          limit = (params["limit"] || API::Stream::LIMIT).to_i
+          limit = limit(API::Stream::LIMIT)
           page = [params["page"].to_i, 1].max
           locals = { stream_name:, stream_sizes:, page:, limit:, total: 0, total_pages: 0, jobs: nil, polling: false,
                      query: { stream_name: Rack::Utils.escape(stream_name.to_s), limit: } }
@@ -144,7 +146,7 @@ module Cosmo
         end
 
         def paginate(total, default_limit)
-          limit = (params["limit"] || default_limit).to_i
+          limit = limit(default_limit)
           total_pages = (total.to_f / limit).ceil
           [params["page"].to_i.clamp(1, [total_pages, 1].max), limit, total_pages]
         end

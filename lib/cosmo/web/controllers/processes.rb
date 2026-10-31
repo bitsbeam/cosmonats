@@ -19,14 +19,14 @@ module Cosmo
 
         private
 
-        def table # rubocop:disable Metrics/AbcSize
-          processes = API::Stats::Processes.instance
-          total = processes.size
-          limit = (params["limit"] || API::Stats::Processes::LIMIT).to_i
+        def table
+          registry = API::Stats::Processes.instance
+          total = registry.size
+          limit = limit(API::Stats::Processes::LIMIT)
           total_pages = (total.to_f / limit).ceil
           page = params["page"].to_i.clamp(1, [total_pages, 1].max)
           polling = params["poll"].to_s != "0"
-          groups = processes.list(page:, limit:).chunk { API::Stats::Processes.kind(_1) }.to_a
+          groups = registry.list(page:, limit:).chunk { API::Stats::Processes.kind(_1) }.to_a
           render("processes/_table", { groups:, total:, page:, limit:, total_pages:, polling:,
                                        query: { limit:, poll: (0 unless polling) }.compact })
         end

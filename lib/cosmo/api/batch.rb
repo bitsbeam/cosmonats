@@ -12,6 +12,14 @@ module Cosmo
         kv.keys("*.meta", limit: limit).map { |key| new(key.delete_suffix(".meta")) }
       end
 
+      # Counts batches by direct gets, reading no further than +limit+.
+      #
+      # @param limit [Integer] the most batches to count
+      # @return [Integer]
+      def self.count(limit:)
+        kv.direct_entries("*.meta", limit:).size
+      end
+
       # @return [KV] the bucket holding each batch's meta, callbacks and finalized snapshot
       def self.kv
         Cosmo::Batch.kv

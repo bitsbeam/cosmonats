@@ -19,7 +19,7 @@ module Cosmo
         #
         # @return [Array] the Rack response
         def _table
-          limit = (params["limit"] || API::Batch::LIMIT).to_i
+          limit = limit(API::Batch::LIMIT)
           ok render("batches/_table", { batches: API::Batch.all(limit:) })
         end
       end

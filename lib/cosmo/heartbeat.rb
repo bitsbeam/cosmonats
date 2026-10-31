@@ -5,7 +5,7 @@ require "shellwords"
 
 module Cosmo
   # Publishes this process's identity and live state to API::Stats::Processes, so the Web UI lists
-  # every running worker, the idle ones included.
+  # every running worker, the idle ones included, and the jobs it is running to API::Stats::Jobs.
   class Heartbeat
     INTERVAL = 10
 
@@ -32,14 +32,18 @@ module Cosmo
       self
     end
 
-    # Stops beating and removes the entry right away, instead of leaving it to expire.
+    # Stops beating and removes the entries right away, instead of leaving them to expire.
     #
     # @return [void]
     def stop
       @thread&.kill&.join
       @thread = nil
       flush
-      processes.unregister(identity)
+      begin
+        processes.unregister(identity)
+      ensure
+        jobs.clear(identity)
+      end
     rescue StandardError => e
       Logger.debug "Heartbeat unregister error: #{e.class} #{e.message}"
     end
@@ -49,6 +53,7 @@ module Cosmo
     # @return [void]
     def beat
       processes.register(identity, info)
+      jobs.report(identity, @engine.jobs)
     rescue StandardError => e
       Logger.debug "Heartbeat error: #{e.class} #{e.message}"
     end
@@ -135,6 +140,10 @@ module Cosmo
 
     def processes
       API::Stats::Processes.instance
+    end
+
+    def jobs
+      API::Stats::Jobs.instance
     end
   end
 end

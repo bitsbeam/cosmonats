@@ -32,6 +32,7 @@ module Cosmo
       @cache = Utils::TTLCache.new
       @busy = Concurrent::AtomicFixnum.new
       @in_flight = Concurrent::Map.new
+      @started_at = Concurrent::Map.new
     end
 
     # Subscribes the consumers and, when there are any, starts fetching in the background.
@@ -50,6 +51,13 @@ module Cosmo
     # @return [Integer]
     def busy
       @busy.value
+    end
+
+    # What the Web UI lists as running on this process, sent with each heartbeat.
+    #
+    # @return [Array<Hash>]
+    def jobs
+      []
     end
 
     # Hands every message still being processed back to NATS instead of leaving it for +ack_wait+: a job
@@ -187,10 +195,12 @@ module Cosmo
 
     def track_busy(messages)
       @busy.increment
+      @started_at[Thread.current] = Time.now.to_i
       @in_flight[Thread.current] = messages
       yield
     ensure
       @in_flight.delete(Thread.current)
+      @started_at.delete(Thread.current)
       @busy.decrement
     end
 

@@ -514,6 +514,38 @@ RSpec.describe Cosmo::Job::Processor do
     end
   end
 
+  describe "#jobs" do
+    before do
+      stub_const("SleepyJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 2
+
+        def perform(*) = sleep(1)
+      end)
+    end
+
+    it "lists the jobs running right now" do
+      jid = SleepyJob.perform_async("Alice", 1)
+      wait_until(timeout: 5) { processor.jobs.any? }
+
+      expect(processor.jobs).to contain_exactly(
+        jid:, class: "SleepyJob", args: ["Alice", 1], retry: 2, stream: "default", delivery: 1,
+        started_at: be_within(2).of(Time.now.to_i)
+      )
+      wait_until(timeout: 5) { processor.jobs.empty? }
+    end
+
+    it "cuts long arguments short" do
+      SleepyJob.perform_async("x" * 1000)
+      wait_until(timeout: 5) { processor.jobs.any? }
+
+      args = processor.jobs.first[:args]
+      expect(args).to start_with('["xxx').and end_with("…")
+      expect(args.bytesize).to be <= described_class::ARGS_LIMIT + "…".bytesize
+    end
+  end
+
   context "with a shutdown that timed out" do
     let(:retries) { 1 }
 
@@ -560,10 +592,10 @@ RSpec.describe Cosmo::Job::Processor do
       expect(processor.release).to eq(0)
     end
 
-    it "interrupts a released job right away and drops it from the busy list" do
+    it "interrupts a released job right away and drops it from the running jobs" do
       SlowJob.perform_async("Alice")
       wait_until(timeout: 5) { processor.busy == 1 }
-      wait_until(timeout: 5) { Cosmo::API::Stats::Busy.instance.all.any? }
+      wait_until(timeout: 5) { processor.jobs.any? }
 
       processor.release
       started = Time.now
@@ -571,7 +603,7 @@ RSpec.describe Cosmo::Job::Processor do
 
       expect(Time.now - started).to be < 1
       expect(processor.busy).to eq(0)
-      expect(Cosmo::API::Stats::Busy.instance.all).to be_empty
+      expect(processor.jobs).to be_empty
     end
   end
 

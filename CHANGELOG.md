@@ -17,12 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** running jobs live in a new `_cosmojobs` bucket, written by each worker's 10s heartbeat, instead of one
+  `_cosmobusy` write per job. `Middleware::Busy` and `API::Stats::Busy` are gone (drop `chain.remove Cosmo::Middleware::Busy`),
+  and `_cosmoprocesses` keys are now `<kind>.<host>.<pid>.<concurrency>`. After a rollout, `nats kv del _cosmobusy -f`
+- The Web UI counts running jobs and processes on the server and reads only the page it shows, instead of watching whole
+  buckets on every poll. "Running now" became a "Running sample", and the Busy tab has an "Order by longest" button
+- The sidebar's batch badge counts up to 100 batches by direct get and shows "100+" past that
+
 - A worker whose shutdown times out releases the messages it's still processing before it exits instead of leaving
   them for `ack_wait`: a job counts as a failed attempt with `Cosmo::JobInterruptedError`, retried after its usual
   delay or moved to `dead` without attempts left; stream messages are NAK'd and redelivered after 10s
   (`COSMO_STREAMS_RELEASE_DELAY`). The interrupted threads are then killed and get up to 5s to unwind while NATS is
   still connected, so a worker exits right after its shutdown timeout instead of waiting out a JetStream request
-  timeout per busy job, and their busy entries are cleared
+  timeout per busy job, and their running-job entries are cleared
 - **Breaking:** `config.replicas` is `config.services.num_replicas`, named like the `num_replicas` each stream in
   `cosmo.yml` sets for itself; it only sizes Cosmo's own streams and buckets
 - `API::Counter#increment`/`#incr` and `#decrement`/`#decr` log a counter that can't be written and return nil;
@@ -32,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Web UI's `?limit=` is kept between 1 and 100: `0` raised, and over 1024 read an empty page
 - A job's `limit: { duration: }` can't be swallowed by job code rescuing `Timeout::Error` or `StandardError`
   anymore; the job is interrupted with Ruby's internal timeout exception and fails with `Timeout::Error` as before
 - A job whose class a worker can't load, e.g. mid-deploy, runs through the server middleware with a `nil` job and

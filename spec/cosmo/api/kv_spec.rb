@@ -125,6 +125,79 @@ RSpec.describe Cosmo::API::KV do
     end
   end
 
+  describe "#direct_entries" do
+    it "reads every live key in the order it was last written" do
+      %w[a b c d].each { kv.set(_1, "#{_1}1") }
+      kv.set("a", "a2")
+      kv.delete("b")
+      kv.erase("c")
+
+      expect(kv.direct_entries).to eq([%w[d d1], %w[a a2]])
+    end
+
+    it "filters keys and stops at the limit" do
+      3.times { kv.set("#{_1}.meta", "m") }
+      kv.set("0.ready", "r")
+
+      expect(kv.direct_entries("*.meta").map(&:first)).to eq(%w[0.meta 1.meta 2.meta])
+      expect(kv.direct_entries(limit: 2).size).to eq(2)
+    end
+
+    it "turns on direct gets for a bucket created without them, keeping its config" do
+      kv
+      expect(client.stream_info("KV_test_kv_bucket").config.allow_direct).to be false
+
+      kv.set("a", "1")
+      expect(kv.direct_entries).to eq([%w[a 1]])
+      config = client.stream_info("KV_test_kv_bucket").config
+      expect(config.allow_direct).to be true
+      expect(config.max_msgs_per_subject).to eq(1)
+    end
+  end
+
+  describe "#direct_count, #direct_keys and #direct_values" do
+    before do
+      %w[a.1 a.2 b.1].each { kv.set(_1, "v-#{_1}") }
+      kv.set("a.1", "v-a.1-again")
+    end
+
+    it "counts keys under a filter on the server" do
+      expect([kv.direct_count, kv.direct_count("a.>"), kv.direct_count("*.1"), kv.direct_count("c.>")]).to eq([3, 2, 2, 0])
+    end
+
+    it "lists the sorted keys without their values" do
+      expect(kv.direct_keys).to eq(%w[a.1 a.2 b.1])
+      expect(kv.direct_keys("a.>")).to eq(%w[a.1 a.2])
+    end
+
+    it "reads the values of the keys asked for, leaving out missing ones and deleted ones" do
+      kv.delete("b.1")
+
+      expect(kv.direct_values(%w[a.1 b.1 zzz])).to eq("a.1" => "v-a.1-again")
+    end
+
+    it "counts and lists after a key expires or is erased" do
+      kv.erase("a.2")
+
+      expect([kv.direct_count, kv.direct_keys]).to eq([2, %w[a.1 b.1]])
+    end
+  end
+
+  describe "#write_many" do
+    it "writes every pair in one go" do
+      kv.write_many({ "a" => "1", "b" => "2" })
+
+      expect(kv.direct_entries.sort).to eq([%w[a 1], %w[b 2]])
+    end
+
+    it "raises when a write is refused" do
+      kv
+      client.delete_stream("KV_test_kv_bucket")
+
+      expect { kv.write_many({ "a" => "1" }) }.to raise_error(StandardError)
+    end
+  end
+
   describe "#purge" do
     it "purges a key" do
       kv.set("p", "v")

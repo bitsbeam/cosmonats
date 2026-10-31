@@ -3,6 +3,7 @@ module Cosmo
     JS_TIMEOUT: ::Integer
     CONNECT_TIMEOUT: ::Integer
     MAX_RECONNECT_ATTEMPTS: ::Integer
+    DIRECT_BATCH: ::Integer
 
     attr_reader name: ::String
 
@@ -59,6 +60,12 @@ module Cosmo
 
     def last_messages: (::String stream_name, Array[::String] filters) -> Hash[::String, NATS::Msg]
 
+    def direct_messages: (::String stream_name, ::String filter, ?limit: ::Integer?) -> Array[NATS::Msg]
+
+    def count_messages: (::String stream_name, ::String filter) -> ::Integer
+
+    def subjects: (::String stream_name, ::String filter) -> Array[::String]
+
     def delete_message: (::String name, ::Integer seq) -> Hash[::String, untyped]
 
     def purge: (::String stream_name, ::String? subject) -> ::Integer?
@@ -68,6 +75,10 @@ module Cosmo
     def close: -> void
 
     private
+
+    def direct_batch: (::String stream_name, Hash[Symbol, untyped] request, Array[NATS::Msg] messages) -> [::Integer, ::Integer]
+
+    def direct_pending: (::String stream_name, Hash[::String, ::String] header) -> ::Integer
 
     def acks: (untyped subscription, Integer count) -> Array[untyped]
 

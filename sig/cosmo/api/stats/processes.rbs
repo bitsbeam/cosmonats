@@ -6,13 +6,21 @@ module Cosmo
         BUCKET: ::String
         KINDS: Array[::String]
 
+        @registered: Hash[::String, ::String]
+
         def self.kind: (Hash[Symbol, untyped] process) -> ::String
 
-        def list: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+        def initialize: () -> void
+
+        def threads: () -> ::Integer
 
         def register: (::String identity, Hash[Symbol, untyped] info) -> void
 
         def unregister: (::String identity) -> void
+
+        private
+
+        def key_for: (::String identity, Hash[Symbol, untyped] info) -> ::String
       end
     end
   end

@@ -11,6 +11,7 @@ module Cosmo
         CELLS = 64
         RUNNING = 9
         PROCESSES = 3
+        BATCHES = 100
 
         # Renders the overview page.
         #
@@ -42,41 +43,40 @@ module Cosmo
         # Renders the worker processes and a cell per thread, busy or idle.
         #
         # @return [Array] the Rack response
-        def _workers # rubocop:disable Metrics/AbcSize
-          processes = API::Stats::Processes.instance.list(limit: API::Stats::Processes.instance.size.clamp(1, nil))
-          busy = API::Stats::Busy.instance.all.group_by { _1[:worker] }
-          cells = processes.flat_map { worker_cells(_1, busy) }.partition(&:itself).flatten(1)
-          ok render("overview/_workers", { processes: processes.first(PROCESSES), total: processes.size,
-                                           cells: cells.first(CELLS), hidden: [cells.size - CELLS, 0].max,
-                                           busy: cells.count(&:itself), threads: cells.size })
+        def _workers
+          registry = API::Stats::Processes.instance
+          threads = registry.threads
+          cells, busy = worker_cells(threads)
+          ok render("overview/_workers", { processes: registry.list(limit: PROCESSES), total: registry.size,
+                                           cells:, hidden: [threads - CELLS, 0].max, busy:, threads: })
         end
 
-        # Renders the longest running jobs.
+        # Renders a sample of the running jobs.
         #
         # @return [Array] the Rack response
         def _running
-          jobs = API::Stats::Busy.instance.all.sort_by { _1[:started_at].to_i }.first(RUNNING)
-          jobs = jobs.map { _1.merge(data: Utils::Json.parse(_1[:data]) || {}) }
-          ok render("overview/_running", { jobs:, total: API::Stats::Busy.instance.size })
+          ok render("overview/_running", { jobs: API::Stats.running(RUNNING), total: API::Stats.busy })
         end
 
-        # Renders the sidebar's count badges.
+        # Renders the sidebar's count badges. Batches are only counted up to BATCHES; past that the badge
+        # reads "100+".
         #
         # @return [Array] the Rack response
         def _badges
           badges = { jobs: API::Stats.enqueued, streams: visible_streams.size }
           badges[:crons] = API::Cron.instance.all.size if Config.scheduled.enabled
-          badges[:batches] = API::Batch.kv.keys("*.meta", limit: nil).size
+          batches = API::Batch.count(limit: BATCHES + 1)
+          badges[:batches] = batches > BATCHES ? "#{BATCHES}+" : batches
           ok render("overview/_badges", { badges: })
         end
 
         private
 
-        # A process's threads, each the stream of the job it runs or nil while idle.
-        def worker_cells(process, busy)
-          streams = Array(busy[process[:identity]]).map { _1[:stream] }
-          idle = [process[:concurrency].to_i - streams.size, 0].max
-          streams + Array.new(idle)
+        def worker_cells(threads)
+          busy = API::Stats.busy_streams.select { _2.positive? }
+          cells = busy.flat_map { |stream, count| Array.new([count, CELLS].min, stream) }.first(CELLS)
+          cells += Array.new((threads - busy.values.sum).clamp(0, CELLS - cells.size))
+          [cells, busy.values.sum]
         end
 
         def visible_streams

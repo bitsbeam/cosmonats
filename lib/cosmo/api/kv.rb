@@ -82,6 +82,79 @@ module Cosmo
         walk(subject, limit:, offset:, meta_only: false)
       end
 
+      # Same pairs as #entries, read by batched direct gets instead of a watch: no consumer is created, any replica
+      # can answer, and the cost doesn't grow with the writes landing on the bucket while it's read. Keys come in
+      # the order they were last written. Turns on direct gets for the bucket first, see #direct!.
+      #
+      # @param subject [String, nil] a key filter, every key when nil
+      # @param limit [Integer, nil] the most messages to read, tombstones included; nil for every one
+      # @return [Array<Array(String, String)>] +[key, value]+ pairs
+      def direct_entries(subject = nil, limit: nil)
+        direct!
+        messages = client.direct_messages("KV_#{@name}", "$KV.#{@name}.#{subject || ">"}", limit:)
+        messages.filter_map do |msg|
+          header = msg.header
+          [header[NATS::JetStream::Header::SUBJECT].delete_prefix("$KV.#{@name}."), msg.data] unless header["KV-Operation"]
+        end
+      end
+
+      # How many keys match +subject+, counted by the server without reading any value: one request however many
+      # keys there are. Turns on direct gets for the bucket first, see #direct!.
+      #
+      # @param subject [String, nil] a key filter, every key when nil
+      # @return [Integer]
+      def direct_count(subject = nil)
+        direct!
+        client.count_messages("KV_#{@name}", "$KV.#{@name}.#{subject || ">"}")
+      end
+
+      # The sorted keys matching +subject+, without their values, for paging through a bucket in a stable order.
+      # Turns on direct gets for the bucket first, see #direct!.
+      #
+      # @param subject [String, nil] a key filter, every key when nil
+      # @return [Array<String>]
+      def direct_keys(subject = nil)
+        direct!
+        client.subjects("KV_#{@name}", "$KV.#{@name}.#{subject || ">"}").map { _1.delete_prefix("$KV.#{@name}.") }
+      end
+
+      # The values of +keys+, in one batched direct get. NATS answers for at most 1024 keys at a time.
+      #
+      # @param keys [Array<String>]
+      # @return [Hash{String => String}] the value by key, without the keys that don't exist
+      def direct_values(keys)
+        direct!
+        messages = client.last_messages("KV_#{@name}", keys.map { "$KV.#{@name}.#{_1}" })
+        messages.each_with_object({}) do |(subject, msg), values|
+          values[subject.delete_prefix("$KV.#{@name}.")] = msg.data unless msg.header&.key?("KV-Operation")
+        end
+      end
+
+      # Writes every pair before waiting for any ack, so a batch costs about one round trip instead of one each.
+      #
+      # @param pairs [Hash{String => #to_s}] the value by key
+      # @param ttl [Integer, nil] seconds before each key expires, on a bucket created with +allow_msg_ttl+
+      # @return [void]
+      # @raise [StandardError] the first error among the acks
+      def write_many(pairs, ttl: nil)
+        header = ttl ? { "Nats-TTL" => [ttl.to_i, 1].max.to_s } : {}
+        acks = client.publish_many(pairs.map { |key, value| { subject: "$KV.#{@name}.#{key}", payload: value.to_s, header: } })
+        error = acks.find { _1.is_a?(StandardError) }
+        raise error if error
+      end
+
+      # Turns on +allow_direct+ for a bucket created without it, as nats-pure creates them. Checked once per instance.
+      #
+      # @return [true]
+      def direct!
+        @direct ||= begin
+          stream = "KV_#{@name}"
+          config = client.stream_info(stream).config
+          client.update_stream(stream, config.to_h.compact.except(:name).merge(allow_direct: true)) unless config.allow_direct
+          true
+        end
+      end
+
       # Writes a KV-Operation tombstone (same issue as #delete on ttl buckets).
       #
       # @param key [String, Integer]

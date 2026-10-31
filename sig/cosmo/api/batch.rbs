@@ -5,6 +5,8 @@ module Cosmo
 
       def self.all: (?limit: ::Integer?) -> Array[Batch]
 
+      def self.count: (limit: ::Integer) -> ::Integer
+
       def self.kv: () -> KV
 
       def self.counter: () -> Cosmo::Batch::Counters

@@ -46,6 +46,15 @@ RSpec.describe Cosmo::API::Batch do
     end
   end
 
+  describe ".count" do
+    it "counts batches up to the limit" do
+      3.times { Cosmo::Batch.new.jobs {} }
+
+      expect(described_class.count(limit: 10)).to eq(3)
+      expect(described_class.count(limit: 2)).to eq(2)
+    end
+  end
+
   describe "#stats" do
     it "reports live counts while the batch is still open" do
       batch = Cosmo::Batch.new

@@ -1,0 +1,34 @@
+module Cosmo
+  module API
+    module Stats
+      class Jobs < Registry
+        TTL: ::Integer
+        BUCKET: ::String
+        LONGEST_TTL: ::Integer
+        ENTRY_TTL: ::Integer
+
+        @mutex: Mutex
+        @longest: Array[Hash[Symbol, untyped]]
+        @longest_at: Float
+
+        def initialize: () -> void
+
+        def report: (::String identity, Array[Hash[Symbol, untyped]] jobs) -> void
+
+        def clear: (::String identity) -> void
+
+        def count: (?::String? stream) -> ::Integer
+
+        def sample: (::Integer limit) -> Array[Hash[Symbol, untyped]]
+
+        def longest: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+
+        private
+
+        def bucket: () -> KV
+
+        def key_for: (::String identity, Hash[Symbol, untyped] job) -> ::String
+      end
+    end
+  end
+end

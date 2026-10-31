@@ -13,6 +13,7 @@ module Cosmo
     @cache: Utils::TTLCache
     @busy: untyped
     @in_flight: untyped
+    @started_at: untyped
     @options: Hash[Symbol, untyped]
     @consumer_state: untyped
 
@@ -27,6 +28,8 @@ module Cosmo
     def run: () -> void
 
     def busy: () -> Integer
+
+    def jobs: () -> Array[Hash[Symbol, untyped]]
 
     def release: () -> Integer
 

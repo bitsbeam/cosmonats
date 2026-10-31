@@ -82,6 +82,11 @@ module Cosmo
       Array(@processors).sum(&:busy)
     end
 
+    # @return [Array<Hash>] the jobs running right now, across all processors, see {Job::Processor#jobs}
+    def jobs
+      Array(@processors).flat_map(&:jobs)
+    end
+
     # @return [Hash{Symbol => Array<String>}] what each running processor pulls from, keyed by processor type
     def subscriptions
       Array(@processors).to_h { [PROCESSORS.key(_1.class), _1.subscriptions] }

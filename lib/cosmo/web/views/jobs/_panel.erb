@@ -12,6 +12,11 @@
     <% end -%>
     <div class="tools">
       <% if @tab == 'busy' -%>
+        <% longest = @query[:order] == 'longest' -%>
+        <button type="button" class="btn<%= ' quiet' unless longest %>"
+                hx-get="<%= url_for(tab_path, @query.merge(page: 1).tap { |q| longest ? q.delete(:order) : q[:order] = 'longest' }) %>"
+                hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"
+                title="Reads every running job, so it is slower with many"><%= longest ? '✓ Longest first' : 'Order by longest' %></button>
         <% if @polling -%>
           <button type="button" class="btn quiet" hx-get="<%= url_for(tab_path, @query.merge(page: @page, poll: 0)) %>"
                   hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner">⏸ Stop polling</button>

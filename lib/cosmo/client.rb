@@ -12,6 +12,7 @@ module Cosmo
     # Reconnect attempts before the connection closes for good; -1 never gives up, so a process outlives a NATS
     # outage. nats-pure lets NATS_MAX_RECONNECT_ATTEMPTS override it.
     MAX_RECONNECT_ATTEMPTS = -1
+    DIRECT_BATCH = 1000
 
     # @return [Client]
     def self.instance
@@ -213,7 +214,8 @@ module Cosmo
     end
 
     # The last message on every subject matching +filters+, in one batched direct get (NATS ≥ 2.11). Needs
-    # +allow_direct+ on the stream.
+    # +allow_direct+ on the stream. NATS refuses to match more than 1024 subjects, which reads as none here: use
+    # {#direct_messages} for those.
     #
     # @param stream_name [String]
     # @param filters [Array<String>] subject filters, wildcards allowed
@@ -235,6 +237,66 @@ module Cosmo
       messages
     ensure
       sub&.unsubscribe
+    end
+
+    # Every message on +filter+ in stream order, read by batched direct gets (NATS ≥ 2.11) of up to
+    # DIRECT_BATCH messages each, so it has no subject cap. On a stream keeping one message per subject, such as
+    # a KV bucket, that is the last message on every subject, as {#last_messages} reads them. Needs +allow_direct+
+    # on the stream.
+    #
+    # @param stream_name [String]
+    # @param filter [String] a subject filter, wildcards allowed
+    # @param limit [Integer, nil] the most messages to read, nil for every one
+    # @return [Array<NATS::Msg>]
+    # @raise [NATS::JetStream::Error] when the stream refuses the read
+    # @raise [NATS::Timeout] when a batch stops arriving, or never starts: no stream, or none with +allow_direct+
+    def direct_messages(stream_name, filter, limit: nil)
+      messages = []
+      seq = 1
+      loop do
+        batch = [DIRECT_BATCH, limit && (limit - messages.size)].compact.min
+        seq, pending = direct_batch(stream_name, { seq:, next_by_subj: filter, batch: }, messages)
+        break if pending.zero? || (limit && messages.size >= limit)
+      end
+      messages
+    end
+
+    # How many messages match +filter+, answered by the server without sending any of them: a direct get of one
+    # message reports the rest as pending. On a stream keeping one message per subject, such as a KV bucket, that is
+    # the number of subjects. Needs +allow_direct+ on the stream.
+    #
+    # @param stream_name [String]
+    # @param filter [String] a subject filter, wildcards allowed
+    # @return [Integer]
+    # @raise [NATS::JetStream::Error] when the stream refuses the read
+    # @raise [NATS::Timeout] when no stream with +allow_direct+ answers
+    def count_messages(stream_name, filter)
+      messages = []
+      _, pending = direct_batch(stream_name, { seq: 1, next_by_subj: filter, batch: 1 }, messages)
+      messages.size + pending
+    end
+
+    # The sorted subjects that hold a message and match +filter+, without the messages: the stream info's subject
+    # listing, which has no way to take a page of it, so read it once and page the result.
+    #
+    # @param stream_name [String]
+    # @param filter [String] a subject filter, wildcards allowed
+    # @return [Array<String>]
+    # @raise [NATS::JetStream::Error] when the stream refuses the read
+    def subjects(stream_name, filter)
+      names = []
+      loop do
+        response = Utils::Json.parse(
+          nc.request("$JS.API.STREAM.INFO.#{stream_name}", Utils::Json.dump({ subjects_filter: filter, offset: names.size })).data,
+          default: {}, symbolize_names: false
+        )
+        raise NATS::JetStream::Error, response.dig("error", "description") if response["error"]
+
+        page = response.dig("state", "subjects")&.keys.to_a
+        names.concat(page)
+        break if page.empty? || names.size >= response["total"].to_i
+      end
+      names.sort
     end
 
     # @param name [String] the stream
@@ -278,6 +340,29 @@ module Cosmo
     end
 
     private
+
+    def direct_batch(stream_name, request, messages)
+      inbox = nc.new_inbox
+      sub = nc.subscribe(inbox)
+      nc.publish("$JS.API.DIRECT.GET.#{stream_name}", Utils::Json.dump(request), inbox)
+      seq = request[:seq]
+      loop do
+        msg = sub.next_msg(timeout: self.class.js_timeout)
+        header = msg.header || {}
+        return [seq, direct_pending(stream_name, header)] unless header[NATS::JetStream::Header::SUBJECT]
+
+        messages << msg
+        seq = header[NATS::JetStream::Header::SEQUENCE].to_i + 1
+      end
+    ensure
+      sub&.unsubscribe
+    end
+
+    def direct_pending(stream_name, header)
+      return header["Nats-Num-Pending"].to_i if %w[204 404].include?(header["Status"])
+
+      raise NATS::JetStream::Error, "direct get on #{stream_name}: #{header["Status"]} #{header["Description"]}"
+    end
 
     def acks(subscription, count)
       results = Array.new(count)

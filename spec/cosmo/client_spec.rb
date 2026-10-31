@@ -99,6 +99,60 @@ RSpec.describe Cosmo::Client do
     end
   end
 
+  describe "#direct_messages" do
+    before do
+      client.create_stream(stream_name, { subjects: ["test.>"], allow_direct: true })
+      client.publish_many(Array.new(5) { { subject: "test.#{_1}", payload: "m#{_1}" } })
+    end
+
+    it "reads every message on the filter in stream order, batch after batch" do
+      stub_const("#{described_class}::DIRECT_BATCH", 2)
+
+      expect(client.direct_messages(stream_name, "test.>").map(&:data)).to eq(%w[m0 m1 m2 m3 m4])
+      expect(client.direct_messages(stream_name, "test.3").map(&:data)).to eq(%w[m3])
+    end
+
+    it "stops at the limit" do
+      stub_const("#{described_class}::DIRECT_BATCH", 2)
+
+      expect(client.direct_messages(stream_name, "test.>", limit: 3).map(&:data)).to eq(%w[m0 m1 m2])
+    end
+
+    it "reads past the 1024 subjects a last-messages get can match" do
+      client.publish_many(Array.new(1100) { { subject: "test.many.#{_1}", payload: "" } })
+
+      expect(client.direct_messages(stream_name, "test.many.>").size).to eq(1100)
+    end
+
+    it "reads nothing when no message matches" do
+      expect(client.direct_messages(stream_name, "test.none")).to eq([])
+    end
+  end
+
+  describe "#count_messages" do
+    before do
+      client.create_stream(stream_name, { subjects: ["test.>"], allow_direct: true })
+      client.publish_many(Array.new(5) { { subject: "test.#{_1.even? ? "even" : "odd"}.#{_1}", payload: "x" } })
+    end
+
+    it "counts the messages on the filter without reading them" do
+      expect([client.count_messages(stream_name, "test.>"), client.count_messages(stream_name, "test.even.>"),
+              client.count_messages(stream_name, "test.*.1"), client.count_messages(stream_name, "test.none")]).to eq([5, 3, 1, 0])
+    end
+  end
+
+  describe "#subjects" do
+    before do
+      client.create_stream(stream_name, { subjects: ["test.>"], allow_direct: true })
+      client.publish_many(%w[c a b a].map { { subject: "test.#{_1}", payload: "x" } })
+    end
+
+    it "lists the sorted subjects that hold a message, once each" do
+      expect(client.subjects(stream_name, "test.>")).to eq(%w[test.a test.b test.c])
+      expect(client.subjects(stream_name, "test.none")).to eq([])
+    end
+  end
+
   describe "#publish" do
     it "publishes message to subject" do
       client.create_stream(stream_name, { subjects: subjects })

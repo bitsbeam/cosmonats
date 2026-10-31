@@ -48,8 +48,23 @@ CLI → Engine → ThreadPool
   mounted, `Rack::Auth::Basic` standalone). It also has **no CSRF protection** yet, while exposing
   destructive routes (retry/delete dead jobs, pause streams, delete/run crons).
 - **`Cosmo::Heartbeat`** (`lib/cosmo/heartbeat.rb`) — started by `Engine#run`; every 10s writes this process's
-  details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `_cosmoprocesses`
-  KV bucket via `API::Stats::Processes`. Unregisters on graceful shutdown; a crashed process expires by the bucket's 60s TTL.
+  details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `_cosmoprocesses` KV
+  bucket via `API::Stats::Processes`, and one entry per job it's running (`Job::Processor#jobs`: jid, class, args cut
+  to 256 bytes, stream, delivery, started_at) to the `_cosmojobs` bucket via `API::Stats::Jobs`, each with a
+  20s `Nats-TTL` (`Jobs::ENTRY_TTL`), so a finished job drops out without a purge request. Unregisters on graceful
+  shutdown; a crashed process's entry expires by the bucket's 60s TTL, its jobs' after 20s. Those beats are
+  the only record of running jobs (a job writes nothing itself), so the Web UI's busy views lag up to 10s and can
+  miss a shorter job. The keys carry what the UI counts, so the server counts instead of the web process reading:
+  processes are `<kind>.<host>.<pid>.<concurrency>` (the sorted keys page the Processes list, give the process and
+  thread totals, and only a page's entries are read), jobs are `<stream>.<worker>.<jid>` (`Jobs#count`, per stream or
+  in all, is `Client#count_messages`: a one-message direct get whose `Nats-Num-Pending` is the answer). Counts can't
+  drift, because an entry is gone when its TTL ends. No view reads every entry: lists are `Registry#list`, a page of the
+  sorted keys (cached 2s, `API::KV#direct_keys`) read by one `multi_last` get (`API::KV#direct_values`), and the
+  Overview's running card is `Jobs#sample`, the first few entries NATS holds (`API::KV#direct_entries` with a limit,
+  `Client#direct_messages`), whose rows shift as workers beat. The Busy tab's `?order=longest` is the one read of every entry
+  (`Jobs#longest`, cached per Ruby process for `LONGEST_TTL` = 5s). Reads are direct gets, never a KV watch, and turn on
+  `allow_direct` for the bucket first.
+  `Client#last_messages` (`multi_last`) matches at most 1024 subjects, so it only reads a page of keys.
 - **`Cosmo::Batch`** (`lib/cosmo/batch.rb`) — groups jobs and fires a `:success`/`:complete` callback when the group
   finishes; state lives in `Batch::Counters` (the `_cosmobatches` stream, `max_age` = `config.batches.expiry`, so an
   abandoned batch's counters expire with its KV state) plus a TTL'd KV bucket. Nested batches are created with
@@ -77,7 +92,7 @@ CLI → Engine → ThreadPool
   `Cosmo.configure { |config| config.server_middleware { |chain| ... } }`, that `Job::Processor#process` invokes as
   `call(job, data, message)` around `perform_job` (`job` is nil when the worker can't load the class, which
   `perform_job` then fails with `JobClassNotFoundError`, retried like any failure), inside
-  the retry/DLQ rescue. It starts as `[Middleware::Limit, Middleware::Busy, Middleware::Totals, Middleware::Metrics]`: Limit enforces a
+  the retry/DLQ rescue. It starts as `[Middleware::Limit, Middleware::Totals, Middleware::Metrics]`: Limit enforces a
   job class's `limit:` (concurrency slots via `Job::Limit`, the duration timeout) and raises `Job::Requeue` while slots
   are taken, which the processor naks with its delay instead of failing the job; Totals counts every execution, retries
   included. Logging and batch notification stay hard-wired in the processor. `perform_sync` and stream processors
@@ -138,8 +153,8 @@ are eagerly loaded by the CLI.
 ## Subject & Stream Naming Conventions
 
 - **Cosmo's internal storage**: every stream and KV bucket Cosmo keeps for itself is named `_cosmo<domain>`, one word
-  per domain: streams `_cosmototals`, `_cosmometrics`, `_cosmobatches`; KV buckets `_cosmobatches`, `_cosmobusy`,
-  `_cosmoprocesses`, `_cosmolimits` (NATS shows those as `KV__cosmo…`). The web UI's Streams page hides `_cosmo*` and
+  per domain: streams `_cosmototals`, `_cosmometrics`, `_cosmobatches`; KV buckets `_cosmobatches`,
+  `_cosmoprocesses`, `_cosmojobs`, `_cosmolimits` (NATS shows those as `KV__cosmo…`). The web UI's Streams page hides `_cosmo*` and
   `KV_*`. The `scheduled` and `dead` job streams keep plain names, as their subjects live in `jobs.*`
 - **Job subjects**: `jobs.<stream_name>.<underscored_class_name>` — e.g. `jobs.default.send_email_job`
 - **Dead letter**: `jobs.dead.<underscored_class_name>`
@@ -217,7 +232,7 @@ docker compose up nats
 ---
 
 ## Singleton Pattern
-`Client`, `Config`, `Engine`, `Publisher`, `CLI`, `Job::Limit`, `API::Stats::Totals`, `API::Stats::Busy`, `API::Stats::Processes`, `API::Cron` all use
+`Client`, `Config`, `Engine`, `Publisher`, `CLI`, `Job::Limit`, `API::Stats::Totals`, `API::Stats::Processes`, `API::Stats::Jobs`, `API::Cron` all use
 `@instance ||= new`. Reset between tests if needed by clearing `@instance` via `instance_variable_set`.
 
 ---
