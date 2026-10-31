@@ -16,23 +16,18 @@ RSpec.describe Cosmo::API::Stats::Jobs do
       expect([jobs.count, jobs.count("default"), jobs.count("low"), jobs.count("none")]).to eq([3, 2, 1, 0])
     end
 
-    it "removes the jobs the worker has finished since its last report" do
+    it "lets a job no longer reported expire, without deleting it" do
+      stub_const("#{described_class}::ENTRY_TTL", 1)
       jobs.report("web-1", [job.call("a"), job.call("b")])
       jobs.report("web-1", [job.call("b")])
+      expect(jobs.count).to eq(2)
 
-      expect(jobs.count).to eq(1)
-      expect(jobs.all.first).to include(jid: "b", worker: "web-1")
+      wait_until(timeout: 5) { jobs.count < 1 }
     end
 
     it "doesn't double count a job reported on every beat" do
       3.times { jobs.report("web-1", [job.call("a")]) }
       expect(jobs.count).to eq(1)
-    end
-
-    it "removes everything when the worker reports no jobs" do
-      jobs.report("web-1", [job.call("a")])
-      jobs.report("web-1", [])
-      expect(jobs.count).to eq(0)
     end
 
     it "accepts identities and ids with characters a subject cannot hold" do

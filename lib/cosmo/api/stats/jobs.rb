@@ -6,37 +6,34 @@ module Cosmo
       # The jobs running right now, one entry per job, refreshed by the worker running it through Cosmo::Heartbeat.
       #
       # An entry's key is +<stream>.<worker>.<jid>+, so how many jobs run, in all or on one stream, is a count the
-      # server answers without reading an entry. A worker that dies leaves entries that expire with the bucket's TTL,
-      # so the counts never drift.
+      # server answers without reading an entry. Each entry expires ENTRY_TTL after its last heartbeat, so a finished
+      # job or a dead worker's jobs drop out without a delete, and the counts never drift.
       class Jobs < Registry
         TTL = 60
         BUCKET = "_cosmojobs"
         LONGEST_TTL = 5
+        ENTRY_TTL = 2 * Heartbeat::INTERVAL
 
         def initialize
           super
           @mutex = Mutex.new
-          @reported = {}
         end
 
-        # Writes the jobs +identity+ is running and removes the ones it ran at its last report and has finished.
+        # Writes the jobs +identity+ is running, each to expire ENTRY_TTL from now unless the next report refreshes it.
         #
         # @param identity [String] the worker, e.g. +hostname-pid+
         # @param jobs [Array<Hash>] each with +:jid+ and +:stream+
         # @return [void]
         def report(identity, jobs)
           entries = jobs.to_h { |job| [key_for(identity, job), job.merge(worker: identity)] }
-          put_many(entries) unless entries.empty?
-          (@reported.fetch(identity, []) - entries.keys).each { remove(_1) }
-          @reported[identity] = entries.keys
+          put_many(entries, ttl: ENTRY_TTL) unless entries.empty?
         end
 
-        # Removes every job +identity+ reported.
+        # Removes every job +identity+ reported, in one request.
         #
         # @param identity [String]
         # @return [void]
         def clear(identity)
-          @reported.delete(identity)
           @kv.erase("*.#{Registry.token(identity)}.*")
         end
 
@@ -73,6 +70,10 @@ module Cosmo
         end
 
         private
+
+        def bucket
+          KV.new(BUCKET, { allow_msg_ttl: true, max_age: Config.to_ns(TTL), replicas: Config.services.num_replicas })
+        end
 
         def key_for(identity, job)
           [job[:stream], identity, job[:jid]].map { Registry.token(_1) }.join(".")

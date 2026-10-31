@@ -5,11 +5,11 @@ module Cosmo
         TTL: ::Integer
         BUCKET: ::String
         LONGEST_TTL: ::Integer
+        ENTRY_TTL: ::Integer
 
         @mutex: Mutex
         @longest: Array[Hash[Symbol, untyped]]
         @longest_at: Float
-        @reported: Hash[::String, Array[::String]]
 
         def initialize: () -> void
 
@@ -24,6 +24,8 @@ module Cosmo
         def longest: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
 
         private
+
+        def bucket: () -> KV
 
         def key_for: (::String identity, Hash[Symbol, untyped] job) -> ::String
       end

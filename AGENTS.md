@@ -50,8 +50,9 @@ CLI → Engine → ThreadPool
 - **`Cosmo::Heartbeat`** (`lib/cosmo/heartbeat.rb`) — started by `Engine#run`; every 10s writes this process's
   details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `_cosmoprocesses` KV
   bucket via `API::Stats::Processes`, and one entry per job it's running (`Job::Processor#jobs`: jid, class, args cut
-  to 256 bytes, stream, delivery, started_at) to the `_cosmojobs` bucket via `API::Stats::Jobs`, removing the ones
-  that finished. Unregisters on graceful shutdown; a crashed process expires by the buckets' 60s TTL. Those beats are
+  to 256 bytes, stream, delivery, started_at) to the `_cosmojobs` bucket via `API::Stats::Jobs`, each with a
+  20s `Nats-TTL` (`Jobs::ENTRY_TTL`), so a finished job drops out without a purge request. Unregisters on graceful
+  shutdown; a crashed process's entry expires by the bucket's 60s TTL, its jobs' after 20s. Those beats are
   the only record of running jobs (a job writes nothing itself), so the Web UI's busy views lag up to 10s and can
   miss a shorter job. The keys carry what the UI counts, so the server counts instead of the web process reading:
   processes are `<kind>.<host>.<pid>.<concurrency>` (the sorted keys page the Processes list, give the process and

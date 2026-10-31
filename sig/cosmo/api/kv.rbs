@@ -32,7 +32,7 @@ module Cosmo
 
       def direct_values: (Array[::String] keys) -> Hash[::String, ::String]
 
-      def write_many: (Hash[::String, untyped] pairs) -> void
+      def write_many: (Hash[::String, untyped] pairs, ?ttl: ::Integer?) -> void
 
       def direct!: () -> true
 

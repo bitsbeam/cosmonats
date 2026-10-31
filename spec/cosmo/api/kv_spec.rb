@@ -185,7 +185,7 @@ RSpec.describe Cosmo::API::KV do
 
   describe "#write_many" do
     it "writes every pair in one go" do
-      kv.write_many("a" => "1", "b" => "2")
+      kv.write_many({ "a" => "1", "b" => "2" })
 
       expect(kv.direct_entries.sort).to eq([%w[a 1], %w[b 2]])
     end
@@ -194,7 +194,7 @@ RSpec.describe Cosmo::API::KV do
       kv
       client.delete_stream("KV_test_kv_bucket")
 
-      expect { kv.write_many("a" => "1") }.to raise_error(StandardError)
+      expect { kv.write_many({ "a" => "1" }) }.to raise_error(StandardError)
     end
   end
 

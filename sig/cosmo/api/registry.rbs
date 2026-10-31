@@ -18,7 +18,7 @@ module Cosmo
 
       def put: (::String | ::Integer key, Hash[Symbol, untyped] value) -> void
 
-      def put_many: (Hash[::String, Hash[Symbol, untyped]] entries) -> void
+      def put_many: (Hash[::String, Hash[Symbol, untyped]] entries, ?ttl: ::Integer?) -> void
 
       def remove: (::String | ::Integer key) -> void
 

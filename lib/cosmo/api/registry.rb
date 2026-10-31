@@ -45,13 +45,14 @@ module Cosmo
       # Writes or refreshes several entries in one round trip, recreating the bucket like {#put}.
       #
       # @param entries [Hash{String => Hash}] the value by key
+      # @param ttl [Integer, nil] seconds before each entry expires, on a bucket that allows per-message TTLs
       # @return [void]
-      def put_many(entries)
+      def put_many(entries, ttl: nil)
         pairs = entries.to_h { |key, value| [sanitize(key), Utils::Json.dump(value)] }
-        @kv.write_many(pairs)
+        @kv.write_many(pairs, ttl:)
       rescue NATS::JetStream::Error::NoStreamResponse
         @kv = bucket
-        @kv.write_many(pairs)
+        @kv.write_many(pairs, ttl:)
       end
 
       # Removes an entry, leaving no tombstone behind.

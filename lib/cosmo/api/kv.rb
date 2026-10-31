@@ -133,10 +133,12 @@ module Cosmo
       # Writes every pair before waiting for any ack, so a batch costs about one round trip instead of one each.
       #
       # @param pairs [Hash{String => #to_s}] the value by key
+      # @param ttl [Integer, nil] seconds before each key expires, on a bucket created with +allow_msg_ttl+
       # @return [void]
       # @raise [StandardError] the first error among the acks
-      def write_many(pairs)
-        acks = client.publish_many(pairs.map { |key, value| { subject: "$KV.#{@name}.#{key}", payload: value.to_s } })
+      def write_many(pairs, ttl: nil)
+        header = ttl ? { "Nats-TTL" => [ttl.to_i, 1].max.to_s } : {}
+        acks = client.publish_many(pairs.map { |key, value| { subject: "$KV.#{@name}.#{key}", payload: value.to_s, header: } })
         error = acks.find { _1.is_a?(StandardError) }
         raise error if error
       end
