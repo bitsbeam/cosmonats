@@ -4,6 +4,8 @@ module Cosmo
       class Application
         include Renderer
 
+        MAX_LIMIT: ::Integer
+
         @request: untyped
         @content_for: ::Hash[::Symbol, ::String]?
 
@@ -14,6 +16,8 @@ module Cosmo
         def render: (::String template, ?::Hash[::Symbol, untyped]? locals, ?layout: bool) -> ::String
 
         def params: () -> ::Hash[::String, untyped]
+
+        def limit: (::Integer default) -> ::Integer
 
         def path: () -> ::String
 

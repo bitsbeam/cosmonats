@@ -6,6 +6,8 @@ module Cosmo
       class Application
         include Renderer
 
+        MAX_LIMIT = 100
+
         # @param request [Rack::Request]
         def initialize(request)
           @request = request
@@ -39,6 +41,12 @@ module Cosmo
         # @return [Hash{String => Object}] the query and form parameters
         def params
           @request.params
+        end
+
+        # @param default [Integer] the page size when the request names none
+        # @return [Integer] the requested page size, kept between 1 and MAX_LIMIT
+        def limit(default)
+          (params["limit"] || default).to_i.clamp(1, MAX_LIMIT)
         end
 
         # @return [String] the request path
