@@ -3,7 +3,10 @@
 RSpec.describe Cosmo::API::Stats::Processes do
   subject(:processes) { described_class.new }
 
-  before { processes.instance_variable_get(:@kv).clean rescue nil }
+  before do
+    stub_const("Cosmo::API::Stats::Processes::KEYS_TTL", 0)
+    processes.instance_variable_get(:@kv).clean rescue nil
+  end
   after { processes.instance_variable_get(:@kv).clean rescue nil }
 
   describe ".instance" do
@@ -50,6 +53,35 @@ RSpec.describe Cosmo::API::Stats::Processes do
       processes.unregister("host-1")
       wait_until(timeout: 5) { processes.size == 1 }
       expect(processes.list.map { _1[:identity] }).to eq(["host-2"])
+    end
+  end
+
+  describe "#size and #threads" do
+    it "count the processes and their threads from the keys alone" do
+      processes.register("web-a-1", { hostname: "web-a", pid: 1, concurrency: 5 })
+      processes.register("web-b-2", { hostname: "web-b", pid: 2, concurrency: 3 })
+      wait_until(timeout: 5) { processes.size == 2 }
+
+      expect(processes.threads).to eq(8)
+    end
+
+    it "reads the keys once for concurrent callers within the ttl" do
+      stub_const("Cosmo::API::Stats::Processes::KEYS_TTL", 60)
+      processes.register("web-a-1", { hostname: "web-a", pid: 1 })
+      kv = processes.instance_variable_get(:@kv)
+      allow(kv).to receive(:direct_keys).and_call_original
+
+      Array.new(5) { Thread.new { processes.size } }.each(&:join)
+      expect(kv).to have_received(:direct_keys).once
+    end
+  end
+
+  describe "#register with a changing key" do
+    it "moves the entry when the process changes kind" do
+      processes.register("web-a-1", { hostname: "web-a", pid: 1, subscriptions: { jobs: %w[default] } })
+      processes.register("web-a-1", { hostname: "web-a", pid: 1, subscriptions: { jobs: %w[default], streams: %w[s] } })
+      wait_until(timeout: 5) { processes.size == 1 }
+      expect(processes.list.first[:subscriptions]).to include(:streams)
     end
   end
 

@@ -225,7 +225,7 @@ module Cosmo
       Logger.level = level
     end
 
-    # The chain every job execution runs through, starting with the built-in {Middleware::Limit}, {Middleware::Busy},
+    # The chain every job execution runs through, starting with the built-in {Middleware::Limit},
     # {Middleware::Totals}, and {Middleware::Metrics}. It lives outside the loaded YAML, so {#load} keeps it. Register middleware
     # at boot, before workers start:
     #
@@ -240,7 +240,6 @@ module Cosmo
     def server_middleware
       @server_middleware ||= Middleware::Chain.new do |chain|
         chain.add Middleware::Limit
-        chain.add Middleware::Busy
         chain.add Middleware::Totals
         chain.add Middleware::Metrics
       end

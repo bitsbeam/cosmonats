@@ -2,6 +2,7 @@ module Cosmo
   module Job
     class Processor < ::Cosmo::Processor
       DISPATCH_HEADERS: ::Array[::String]
+      ARGS_LIMIT: ::Integer
 
       @weights: Array[Symbol]?
 
@@ -9,7 +10,13 @@ module Cosmo
 
       def subscriptions: () -> Array[::String]
 
+      def jobs: () -> Array[Hash[Symbol, untyped]]
+
       private
+
+      def job_entry: (untyped message, ::Integer? started_at) -> Hash[Symbol, untyped]
+
+      def capped_args: (untyped args) -> untyped
 
       def setup: () -> void
 

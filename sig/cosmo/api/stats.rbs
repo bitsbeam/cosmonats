@@ -7,7 +7,13 @@ module Cosmo
 
       def self.failed: () -> ::Integer
 
+      def self.running: (::Integer limit) -> Array[Hash[Symbol, untyped]]
+
+      def self.running_page: (page: ::Integer, limit: ::Integer, ?longest: bool) -> Array[Hash[Symbol, untyped]]
+
       def self.busy: () -> ::Integer
+
+      def self.busy_streams: (?Array[Stream] streams) -> Hash[::String, ::Integer]
 
       def self.enqueued: (?Array[Stream] streams) -> ::Integer
 

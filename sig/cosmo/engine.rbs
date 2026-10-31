@@ -30,6 +30,8 @@ module Cosmo
 
     def busy: () -> Integer
 
+    def jobs: () -> Array[Hash[Symbol, untyped]]
+
     def subscriptions: () -> Hash[Symbol, Array[::String]]
 
     def shutdown: () -> void

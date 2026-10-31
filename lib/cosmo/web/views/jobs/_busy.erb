@@ -5,14 +5,14 @@
     <div class="thead t-jobs"><span>JID</span><span>Class</span><span>Args</span><span>Queue</span><span>Status</span><span class="r">Try</span><span class="r">Running for</span></div>
     <% @jobs.each do |job| -%>
       <% delivery = job[:delivery].to_i -%>
-      <% retries = job.dig(:data, :retry) -%>
+      <% retries = job[:retry] -%>
       <div class="trow hover t-jobs">
-        <span class="mono mute ellip" style="font-size:11.5px" title="<%= h(job.dig(:data, :jid)) %>"><%= h(job.dig(:data, :jid)) %></span>
+        <span class="mono mute ellip" style="font-size:11.5px" title="<%= h(job[:jid]) %>"><%= h(job[:jid]) %></span>
         <div class="stack">
-          <span class="strong ellip"><%= h(job.dig(:data, :class)) %></span>
+          <span class="strong ellip"><%= h(job[:class]) %></span>
           <span class="small-mono ellip" title="<%= h(job[:worker]) %>"><%= h(job[:worker]) %></span>
         </div>
-        <%= render('jobs/_args', { args: job.dig(:data, :args) }) %>
+        <%= render('jobs/_args', { args: job[:args] }) %>
         <span class="mono ellip" style="font-size:12px"><%= h(job[:stream]) %></span>
         <span class="pill" style="--tone:var(--acc)">running</span>
         <span class="mono r" style="font-size:12px;color:<%= delivery >= 5 ? 'var(--err)' : delivery > 1 ? 'var(--warn)' : 'var(--mute)' %>">

@@ -2,15 +2,23 @@ module Cosmo
   module API
     class Registry
       LIMIT: ::Integer
+      KEYS_TTL: ::Integer
 
       self.@instance: Registry
       @kv: KV
+      @keys_mutex: Mutex
+      @keys: Array[::String]
+      @keys_at: Float
 
       def self.instance: () -> instance
+
+      def self.token: (untyped value) -> ::String
 
       def initialize: () -> void
 
       def put: (::String | ::Integer key, Hash[Symbol, untyped] value) -> void
+
+      def put_many: (Hash[::String, Hash[Symbol, untyped]] entries) -> void
 
       def remove: (::String | ::Integer key) -> void
 
@@ -21,6 +29,8 @@ module Cosmo
       def size: () -> ::Integer
 
       private
+
+      def keys: () -> Array[::String]
 
       def bucket: () -> KV
 

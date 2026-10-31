@@ -1,5 +1,5 @@
-<% json = (JSON.generate(@args) rescue @args.to_s) -%>
+<% json = @args.is_a?(String) ? @args : (JSON.generate(@args) rescue @args.to_s) -%>
 <details class="stack">
   <summary class="mono mute ellip" style="font-size:11.5px" title="<%= h(json) %>"><%= h(json) %></summary>
-  <pre class="code-block"><%= h((JSON.pretty_generate(@args) rescue @args.to_s)) %></pre>
+  <pre class="code-block"><%= h(@args.is_a?(String) ? @args : (JSON.pretty_generate(@args) rescue @args.to_s)) %></pre>
 </details>

@@ -10,10 +10,6 @@ module Cosmo
       def timeout: (Numeric? duration) { () -> untyped } -> untyped
     end
 
-    class Busy
-      def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
-    end
-
     class Metrics
       def call: (untyped job, Hash[Symbol, untyped] data, untyped message) { () -> untyped } -> untyped
 

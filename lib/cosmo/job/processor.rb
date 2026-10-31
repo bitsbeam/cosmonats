@@ -10,6 +10,7 @@ module Cosmo
       # rejects a publish that carries them back.
       DISPATCH_HEADERS = ["X-Stream", "X-Subject", "X-Execute-At", NATS::JetStream::Header::EXPECTED_STREAM,
                           NATS::JetStream::Header::SCHEDULER, NATS::JetStream::Header::SCHEDULE_NEXT].freeze
+      ARGS_LIMIT = 256
 
       # @param options [Hash] the CLI options
       # @return [void]
@@ -25,13 +26,33 @@ module Cosmo
         names
       end
 
+      # @return [Array<Hash>] the jobs running right now, each with its +:jid+, +:class+, +:args+ (cut to
+      #   ARGS_LIMIT bytes), +:retry+, +:stream+, delivery attempt as +:delivery+ and +:started_at+
+      def jobs
+        @in_flight.each_pair.flat_map do |thread, messages|
+          started_at = @started_at[thread]
+          messages.map { job_entry(_1, started_at) }
+        end
+      end
+
       private
+
+      def job_entry(message, started_at)
+        data = Utils::Json.parse(message.data) || {}
+        meta = message.metadata
+        { jid: data[:jid], class: data[:class], args: capped_args(data[:args]), retry: data[:retry],
+          stream: meta.stream, delivery: meta.num_delivered, started_at: }
+      end
+
+      def capped_args(args)
+        json = Utils::Json.dump(args)
+        json.bytesize > ARGS_LIMIT ? "#{json.byteslice(0, ARGS_LIMIT).scrub("")}…" : args
+      end
 
       def setup
         filter = StreamFilter.from(@options[:streams]).validate!
 
         # Initialize singletons before starting to process messages
-        API::Stats::Busy.instance
         API::Stats::Totals.instance
         Limit.instance
         Config.server_middleware

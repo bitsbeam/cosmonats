@@ -4,11 +4,13 @@ RSpec.describe Cosmo::Heartbeat do
   subject(:heartbeat) { described_class.new(engine, options: { streams: ["default"] }) }
 
   let(:engine) do
-    instance_double(Cosmo::Engine, state: "running", busy: 1, concurrency: 5, subscriptions: { jobs: %w[default scheduled] })
+    instance_double(Cosmo::Engine, state: "running", busy: 1, concurrency: 5, subscriptions: { jobs: %w[default scheduled] },
+                                   jobs: [{ jid: "abc", class: "MyJob", stream: "default", started_at: 1 }])
   end
   let(:processes) { Cosmo::API::Stats::Processes.instance }
 
   before do
+    stub_const("Cosmo::API::Stats::Processes::KEYS_TTL", 0)
     processes.instance_variable_get(:@kv).clean rescue nil
     allow(Cosmo::CLI.instance).to receive(:argv).and_return(%w[-c 5 jobs --stream default])
   end
@@ -39,6 +41,21 @@ RSpec.describe Cosmo::Heartbeat do
       expect(info[:rss]).to be_positive
       expect(info[:nats]).to include(name: Cosmo::Client.instance.name, ip: be_a(String), server_version: be_a(String))
       expect(info[:nats][:rtt]).to be_a(Float)
+    end
+  end
+
+  describe "running jobs" do
+    let(:jobs) { Cosmo::API::Stats::Jobs.instance }
+
+    after { jobs.instance_variable_get(:@kv).clean rescue nil }
+
+    it "reports the jobs the engine runs, and removes them with the process" do
+      heartbeat.start
+      expect(jobs.count("default")).to eq(1)
+      expect(jobs.all.first).to include(jid: "abc", worker: heartbeat.identity)
+
+      heartbeat.stop
+      expect(jobs.count).to eq(0)
     end
   end
 

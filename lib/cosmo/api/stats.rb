@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require "cosmo/api/stats/totals"
-require "cosmo/api/stats/busy"
 require "cosmo/api/stats/processes"
+require "cosmo/api/stats/jobs"
 require "cosmo/api/stats/metrics"
 
 module Cosmo
@@ -27,9 +27,32 @@ module Cosmo
         Totals.instance.failed
       end
 
-      # @return [Integer] jobs running right now across all workers
+      # @param limit [Integer]
+      # @return [Array<Hash>] up to +limit+ of the jobs running right now, which ones is not defined, each with the
+      #   +:worker+ running it; up to Heartbeat::INTERVAL old, and missing a job shorter than that
+      def running(limit)
+        Jobs.instance.sample(limit)
+      end
+
+      # @param page [Integer]
+      # @param limit [Integer]
+      # @param longest [Boolean] longest running first, which reads every running job (at most once per
+      #   Jobs::LONGEST_TTL) instead of only the page
+      # @return [Array<Hash>] the jobs running right now on a page, in stream, worker and job id order unless
+      #   +longest+, each with the +:worker+ running it; see {.busy} for how many there are
+      def running_page(page:, limit:, longest: false)
+        longest ? Jobs.instance.longest(page:, limit:) : Jobs.instance.list(page:, limit:)
+      end
+
+      # @return [Integer] jobs running right now across all workers, counted by the server
       def busy
-        Busy.instance.size
+        Jobs.instance.count
+      end
+
+      # @param streams [Array<Stream>] the job streams
+      # @return [Hash{String => Integer}] the number of jobs running per stream
+      def busy_streams(streams = Stream.jobs)
+        streams.to_h { [_1.name, Jobs.instance.count(_1.name)] }
       end
 
       # @param streams [Array<Stream>] the job streams
@@ -56,15 +79,16 @@ module Cosmo
 
       # @return [Array<Hash>] a {.queue} row per job stream
       def queues
-        busy = Busy.instance.by_stream
-        Stream.jobs.map { queue(_1, busy) }
+        streams = Stream.jobs
+        busy = busy_streams(streams)
+        streams.map { queue(_1, busy) }
       end
 
       # @param stream [Stream] a job stream
-      # @param busy [Hash{String => Integer}] running jobs per stream, as {Busy#by_stream} counts them
+      # @param busy [Hash{String => Integer}] running jobs per stream, as {.busy_streams} counts them
       # @return [Hash] the stream's +:name+, waiting messages as +:size+, running jobs as +:busy+, redeliveries as
       #   +:retries+, and whether it is +:paused+
-      def queue(stream, busy = Busy.instance.by_stream)
+      def queue(stream, busy = busy_streams([stream]))
         { name: stream.name, size: stream.size, busy: busy.fetch(stream.name, 0), retries: stream.retries,
           paused: stream.paused? }
       end

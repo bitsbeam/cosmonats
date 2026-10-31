@@ -6,6 +6,7 @@ module Cosmo
         CELLS: ::Integer
         RUNNING: ::Integer
         PROCESSES: ::Integer
+        BATCHES: ::Integer
 
         def index: () -> Web::response
 
@@ -21,7 +22,7 @@ module Cosmo
 
         private
 
-        def worker_cells: (::Hash[::Symbol, untyped] process, ::Hash[untyped, ::Array[::Hash[::Symbol, untyped]]] busy) -> ::Array[::String?]
+        def worker_cells: (::Integer threads) -> [::Array[::String?], ::Integer]
 
         def visible_streams: () -> ::Array[API::Stream]
       end

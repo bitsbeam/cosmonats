@@ -106,11 +106,13 @@ module Cosmo
         end
 
         def busy_locals
-          busy = API::Stats::Busy.instance
-          total = busy.size
-          page, limit, total_pages = paginate(total, API::Stats::Busy::LIMIT)
+          total = API::Stats.busy
+          page, limit, total_pages = paginate(total, API::Registry::LIMIT)
           polling = params["poll"].to_s != "0"
-          { jobs: busy.list(page:, limit:), total:, page:, limit:, total_pages:, polling:, query: { limit:, poll: (0 unless polling) }.compact }
+          longest = params["order"] == "longest"
+          jobs = API::Stats.running_page(page:, limit:, longest:)
+          { jobs:, total:, page:, limit:, total_pages:, polling:,
+            query: { limit:, poll: (0 unless polling), order: ("longest" if longest) }.compact }
         end
 
         def enqueued_locals # rubocop:disable Metrics/AbcSize

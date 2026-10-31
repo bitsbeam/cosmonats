@@ -34,5 +34,7 @@ module Cosmo
     def rss: () -> ::Integer?
 
     def processes: () -> API::Stats::Processes
+
+    def jobs: () -> API::Stats::Jobs
   end
 end

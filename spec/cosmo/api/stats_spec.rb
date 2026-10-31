@@ -2,11 +2,19 @@
 
 RSpec.describe Cosmo::API::Stats do
   let(:counter) { instance_double(Cosmo::API::Stats::Totals, processed: 42, failed: 3) }
-  let(:busy) { instance_double(Cosmo::API::Stats::Busy, size: 2) }
+  let(:jobs) { instance_double(Cosmo::API::Stats::Jobs) }
+  let(:running) do
+    [{ jid: "b", worker: "web-1", stream: "low", started_at: 10 }, { jid: "a", worker: "web-1", stream: "default", started_at: 20 },
+     { jid: "c", worker: "web-2", stream: "default", started_at: 30 }]
+  end
 
   before do
     allow(Cosmo::API::Stats::Totals).to receive(:instance).and_return(counter)
-    allow(Cosmo::API::Stats::Busy).to receive(:instance).and_return(busy)
+    allow(Cosmo::API::Stats::Jobs).to receive(:instance).and_return(jobs)
+    allow(jobs).to receive(:sample) { |limit| running.first(limit) }
+    allow(jobs).to receive(:longest) { |page:, limit:| running.sort_by { -_1[:started_at] }.slice((page - 1) * limit, limit) }
+    allow(jobs).to receive(:list) { |page:, limit:| running.slice((page - 1) * limit, limit) }
+    allow(jobs).to receive(:count) { |stream| stream ? running.count { _1[:stream] == stream } : running.size }
     allow(Cosmo::API::Stream).to receive(:jobs).and_return([])
     allow(Cosmo::API::Stream).to receive(:new).with("scheduled").and_return(double(size: 5))
     allow(Cosmo::API::Stream).to receive(:new).with("dead").and_return(double(size: 1))
@@ -25,8 +33,31 @@ RSpec.describe Cosmo::API::Stats do
   end
 
   describe ".busy" do
-    it "returns busy size" do
-      expect(described_class.busy).to eq(2)
+    it "counts the running jobs without reading them" do
+      expect(described_class.busy).to eq(3)
+    end
+  end
+
+  describe ".running" do
+    it "samples up to the limit of the running jobs, with the worker running each" do
+      expect(described_class.running(2).map { _1.values_at(:jid, :worker) }).to eq([%w[b web-1], %w[a web-1]])
+    end
+  end
+
+  describe ".running_page" do
+    it "reads one page of the running jobs" do
+      expect(described_class.running_page(page: 2, limit: 2).map { _1[:jid] }).to eq(%w[c])
+    end
+
+    it "reads the longest running first on request" do
+      expect(described_class.running_page(page: 1, limit: 2, longest: true).map { _1[:jid] }).to eq(%w[c a])
+    end
+  end
+
+  describe ".busy_streams" do
+    it "counts the running jobs of each job stream" do
+      allow(Cosmo::API::Stream).to receive(:jobs).and_return([double(name: "default"), double(name: "low"), double(name: "idle")])
+      expect(described_class.busy_streams).to eq("default" => 2, "low" => 1, "idle" => 0)
     end
   end
 
@@ -73,9 +104,7 @@ RSpec.describe Cosmo::API::Stats do
     end
 
     it "counts running jobs itself without a tally" do
-      allow(busy).to receive(:by_stream).and_return({ "default" => 4 })
-
-      expect(described_class.queue(stream)).to include(busy: 4)
+      expect(described_class.queue(stream)).to include(busy: 2)
     end
   end
 
@@ -84,12 +113,12 @@ RSpec.describe Cosmo::API::Stats do
       streams = [double(name: "default", size: 1, retries: 0, paused?: false),
                  double(name: "low", size: 0, retries: 5, paused?: false)]
       allow(Cosmo::API::Stream).to receive(:jobs).and_return(streams)
-      allow(busy).to receive(:by_stream).once.and_return({ "low" => 2 })
 
       expect(described_class.queues).to eq([
-                                             { name: "default", size: 1, busy: 0, retries: 0, paused: false },
-                                             { name: "low", size: 0, busy: 2, retries: 5, paused: false }
+                                             { name: "default", size: 1, busy: 2, retries: 0, paused: false },
+                                             { name: "low", size: 0, busy: 1, retries: 5, paused: false }
                                            ])
+      expect(Cosmo::API::Stream).to have_received(:jobs).once
     end
   end
 
@@ -99,7 +128,7 @@ RSpec.describe Cosmo::API::Stats do
       expect(summary).to include(:processed, :failed, :busy, :enqueued, :retries, :scheduled, :dead)
       expect(summary[:processed]).to eq(42)
       expect(summary[:failed]).to eq(3)
-      expect(summary[:busy]).to eq(2)
+      expect(summary[:busy]).to eq(3)
     end
 
     it "lists the job streams once" do
