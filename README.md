@@ -692,7 +692,7 @@ end
 ```
 Register middleware at boot, before workers start (e.g. in a Rails initializer; loading `cosmo.yml` afterwards keeps
 it). The chain starts with Cosmo's required middleware: `Cosmo::Middleware::Limit` (a job class's `limit:`
-option), `Cosmo::Middleware::Busy` (the Web UI's Busy page), `Cosmo::Middleware::Totals` (processed/failed counts,
+option), `Cosmo::Middleware::Totals` (processed/failed counts,
 one per execution), and `Cosmo::Middleware::Metrics` (the Metrics tab). `add` appends innermost, after them; `prepend`, `insert_before`, `insert_after`, and `remove`
 reorder the chain, so moving or removing the built-ins is at your own risk.
 A middleware that raises sends the job through the usual retry/DLQ path, and one that doesn't yield skips the job
@@ -936,12 +936,14 @@ sudo systemctl enable cosmo && sudo systemctl start cosmo
 light, dark, or automatic (system) theme. Fonts and assets are bundled, so it loads nothing from a CDN:
 - **Overview** — processed, failed, busy, enqueued, retries, scheduled and dead totals; a 7- or 30-day throughput
   chart of successful and failed runs; a grid of every worker thread, busy ones colored by stream; the queues; and the
-  jobs running right now, longest first
+  a sample of the jobs running right now
 - **Jobs** — each job queue with its size, busy jobs and redeliveries, paused and resumed in place; then busy,
   enqueued (per queue), scheduled and dead jobs, with retry and delete for dead ones and their error and backtrace
 - **Processes** — every live worker (idle ones included): host, pid, IP, NATS connection name, command line,
   subscribed streams, busy/concurrency, running/quiet/stopping state, memory, NATS RTT and reconnects. Each worker
-  beats into the `_cosmoprocesses` KV bucket every 10s, and a crashed worker drops out within 60s
+  beats into the `_cosmoprocesses` KV bucket every 10s, and the jobs it's running into `_cosmojobs`; a crashed worker
+  drops out within 60s. Busy jobs come from those heartbeats, so they show up to 10s late, and a job shorter than that
+  may not show at all. The page reads only the processes it shows, and every count is answered by NATS from the keys.
 - **Streams** — every stream with its subjects, messages, size, retention and replicas, its consumers' pending,
   ack-pending and redelivered counts, and pause/resume
 - **Crons** — every schedule deployed in NATS, with run-now and delete
