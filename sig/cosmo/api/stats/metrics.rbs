@@ -5,6 +5,7 @@ module Cosmo
         STREAM_NAME: ::String
         DESCRIPTION: ::String
         DAY: Integer
+        CLOCK_SKEW: Integer
 
         self.@instance: Metrics
 
@@ -30,6 +31,8 @@ module Cosmo
         def buffer: () -> Hash[[::String, ::String], Hash[Symbol, Numeric]]
 
         def read: (Integer days) -> Array[[[::String, ::String, Symbol], Integer]]
+
+        def since: (::String day) -> ::Time
 
         def dates: (Integer days) -> Array[::String]
 

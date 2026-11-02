@@ -99,6 +99,22 @@ RSpec.describe Cosmo::Client do
     end
   end
 
+  describe "#last_messages" do
+    before { client.create_stream(stream_name, { subjects: ["test.>"], allow_direct: true }) }
+
+    it "reads the last message on every matching subject" do
+      client.publish_many(%w[a b a].each_with_index.map { |key, i| { subject: "test.#{key}", payload: "m#{i}" } })
+
+      expect(client.last_messages(stream_name, ["test.>"]).transform_values(&:data)).to eq("test.a" => "m2", "test.b" => "m1")
+    end
+
+    it "raises when the filters match more subjects than NATS allows" do
+      client.publish_many(Array.new(1025) { { subject: "test.many.#{_1}", payload: "" } })
+
+      expect { client.last_messages(stream_name, ["test.many.>"]) }.to raise_error(NATS::JetStream::Error, /413/)
+    end
+  end
+
   describe "#direct_messages" do
     before do
       client.create_stream(stream_name, { subjects: ["test.>"], allow_direct: true })
@@ -116,6 +132,13 @@ RSpec.describe Cosmo::Client do
       stub_const("#{described_class}::DIRECT_BATCH", 2)
 
       expect(client.direct_messages(stream_name, "test.>", limit: 3).map(&:data)).to eq(%w[m0 m1 m2])
+    end
+
+    it "starts at the first message stored since the given time" do
+      since = Time.iso8601(client.direct_messages(stream_name, "test.>")[2].header["Nats-Time-Stamp"])
+      stub_const("#{described_class}::DIRECT_BATCH", 2)
+
+      expect(client.direct_messages(stream_name, "test.>", since:).map(&:data)).to eq(%w[m2 m3 m4])
     end
 
     it "reads past the 1024 subjects a last-messages get can match" do

@@ -29,6 +29,24 @@ RSpec.describe Cosmo::API::Stats::Metrics do
     end
   end
 
+  describe "#summary" do
+    it "reads more job classes than a last-messages get can match" do
+      210.times { metrics.record("Job#{_1}", exec_ms: 1, wait_ms: 1) && metrics.record("Job#{_1}", failed: true) }
+      metrics.flush
+
+      expect(metrics.summary.size).to eq(210)
+    end
+
+    it "leaves out days before the period" do
+      metrics.increment!("#{(Time.now.utc - (7 * 86_400)).strftime("%Y%m%d")}.OtherJob.count", by: 5)
+      metrics.record("OtherJob", exec_ms: 1)
+      metrics.flush
+
+      expect(metrics.summary(days: 7).first).to include(count: 1)
+      expect(metrics.summary(days: 8).first).to include(count: 6)
+    end
+  end
+
   describe "#daily" do
     it "returns one entry per day, oldest first, with today's numbers last" do
       metrics.record("OtherJob", exec_ms: 50)

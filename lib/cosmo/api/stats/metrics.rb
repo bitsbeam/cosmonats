@@ -5,11 +5,14 @@ module Cosmo
     module Stats
       # Per-day metrics for every job class: runs, failures, and execution and wait time, kept in their own counters
       # stream for +config.metrics.retention+. Workers {#record} executions in memory and the heartbeat {#flush}es them,
-      # so a job costs no NATS round trip; a crashed worker loses at most one heartbeat's worth.
+      # so a job costs no NATS round trip; a crashed worker loses at most one heartbeat's worth. A counter keeps only
+      # its last update, so a day's counters all sit at or after that day's start: reads begin there.
       class Metrics < Counter
         STREAM_NAME = "_cosmometrics"
         DESCRIPTION = "Cosmo metrics"
         DAY = 86_400
+        # Seconds a worker's clock, which names the day, may run ahead of the NATS server's, which stamps the message.
+        CLOCK_SKEW = 60
 
         # @return [Metrics]
         def self.instance
@@ -84,11 +87,18 @@ module Cosmo
         end
 
         def read(days)
-          filters = dates(days).map { "#{STREAM_NAME}.#{@namespace}.#{_1}.>" }
-          client.last_messages(STREAM_NAME, filters).map do |subject, message|
-            day, job, field = subject.split(".").last(3)
+          window = dates(days)
+          messages = client.direct_messages(STREAM_NAME, "#{STREAM_NAME}.#{@namespace}.>", since: since(window.first))
+          messages.filter_map do |message|
+            day, job, field = message.header[NATS::JetStream::Header::SUBJECT].split(".").last(3)
+            next unless window.include?(day)
+
             [[day, job.gsub("-", "::"), field.to_sym], Utils::Json.parse(message.data, default: {})[:val].to_i]
           end
+        end
+
+        def since(day)
+          Time.utc(day[0, 4].to_i, day[4, 2].to_i, day[6, 2].to_i) - CLOCK_SKEW
         end
 
         def dates(days)

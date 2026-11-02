@@ -214,12 +214,12 @@ module Cosmo
     end
 
     # The last message on every subject matching +filters+, in one batched direct get (NATS ≥ 2.11). Needs
-    # +allow_direct+ on the stream. NATS refuses to match more than 1024 subjects, which reads as none here: use
-    # {#direct_messages} for those.
+    # +allow_direct+ on the stream. NATS refuses to match more than 1024 subjects: use {#direct_messages} for those.
     #
     # @param stream_name [String]
     # @param filters [Array<String>] subject filters, wildcards allowed
     # @return [Hash{String => NATS::Msg}] the message by subject, its data and headers
+    # @raise [NATS::JetStream::Error] when the stream refuses the read, such as for matching too many subjects
     def last_messages(stream_name, filters)
       inbox = nc.new_inbox
       sub = nc.subscribe(inbox)
@@ -227,8 +227,12 @@ module Cosmo
       messages = {}
       loop do
         msg = sub.next_msg(timeout: self.class.js_timeout)
-        subject = msg.header&.dig(NATS::JetStream::Header::SUBJECT)
-        break unless subject
+        header = msg.header || {}
+        subject = header[NATS::JetStream::Header::SUBJECT]
+        unless subject
+          direct_pending(stream_name, header)
+          break
+        end
 
         messages[subject] = msg
       end
@@ -247,16 +251,19 @@ module Cosmo
     # @param stream_name [String]
     # @param filter [String] a subject filter, wildcards allowed
     # @param limit [Integer, nil] the most messages to read, nil for every one
+    # @param since [Time, nil] start at the first message stored at or after it, instead of the first one
     # @return [Array<NATS::Msg>]
     # @raise [NATS::JetStream::Error] when the stream refuses the read
     # @raise [NATS::Timeout] when a batch stops arriving, or never starts: no stream, or none with +allow_direct+
-    def direct_messages(stream_name, filter, limit: nil)
+    def direct_messages(stream_name, filter, limit: nil, since: nil)
       messages = []
-      seq = 1
+      start = since ? { start_time: since.utc.iso8601(9) } : { seq: 1 }
       loop do
         batch = [DIRECT_BATCH, limit && (limit - messages.size)].compact.min
-        seq, pending = direct_batch(stream_name, { seq:, next_by_subj: filter, batch: }, messages)
+        seq, pending = direct_batch(stream_name, { **start, next_by_subj: filter, batch: }, messages)
         break if pending.zero? || (limit && messages.size >= limit)
+
+        start = { seq: }
       end
       messages
     end

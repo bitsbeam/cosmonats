@@ -101,8 +101,9 @@ CLI → Engine → ThreadPool
   per (UTC day, job class) runs, failures, exec time (successes only) and first-delivery wait in memory;
   `Heartbeat#flush` writes them every 10s (and on stop) as `Nats-Incr` counters to the internal `_cosmometrics` stream
   (`max_age` = `config.metrics.retention`, created by `Services.setup!`). Subjects are
-  `_cosmometrics.jobs.<YYYYMMDD>.<Class-Name>.<field>` (`::` → `-`, reversible); reads are one batched direct get
-  (`Client#last_messages`, `multi_last`). The web UI's Metrics tab (`Web::Chart` draws the SVG) shows only while enabled.
+  `_cosmometrics.jobs.<YYYYMMDD>.<Class-Name>.<field>` (`::` → `-`, reversible); reads are batched direct gets
+  from the period's first day (`Client#direct_messages` with `since:`, as a counter keeps only its last update), not
+  `multi_last`, which refuses more than 1024 subjects. The web UI's Metrics tab (`Web::Chart` draws the SVG) shows only while enabled.
 - **Client middleware** (`Config#client_middleware`) — an initially empty `Middleware::Chain` that
   `Job::Enqueuer.enqueue` invokes as `call(job_class_name, payload, stream)` around the publish (so for
   `perform_*` and the ActiveJob adapter, never `perform_sync`). `payload` is the Hash that gets published; not
