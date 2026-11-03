@@ -10,6 +10,7 @@ module Cosmo
     DEFAULT_PATH = "config/cosmo.yml"
     DEFAULTS_FILE = File.expand_path(DEFAULT_PATH, __dir__)
     SERVICE_STREAMS = %i[scheduled dead].freeze
+    GROUPED = [%i[consumers jobs], %i[setup cron]].freeze
 
     class << self
       extend Forwardable
@@ -32,23 +33,26 @@ module Cosmo
       Utils::Hash.symbolize_keys!(YAML.load_file(path, aliases: true) || {}).tap { flatten_groups!(_1) }
     end
 
-    # Flattens +consumers.jobs+ given as an array of groups (hashes of consumers) into one hash, in place. Groups only
-    # organize the file: their order and boundaries are dropped.
+    # Flattens +consumers.jobs+ and +setup.cron+ given as an array of groups (hashes of entries) into one hash, in
+    # place. Groups only organize the file: their order and boundaries are dropped.
     #
     # @param config [Hash]
     # @return [void]
-    # @raise [ConfigError] when a group is not a hash or a stream appears in more than one group
+    # @raise [ConfigError] when a group is not a hash or a name appears in more than one group
     def self.flatten_groups!(config)
-      groups = config.dig(:consumers, :jobs)
-      return unless groups.is_a?(::Array)
+      GROUPED.each do |path|
+        groups = config.dig(*path)
+        next unless groups.is_a?(::Array)
 
-      config[:consumers][:jobs] = groups.each_with_object({}) do |group, jobs|
-        raise ConfigError, "`consumers.jobs` groups must be hashes of consumers, got #{group.inspect}" unless group.is_a?(::Hash)
+        key = path.join(".")
+        config.dig(*path[0..-2])[path.last] = groups.each_with_object({}) do |group, entries|
+          raise ConfigError, "`#{key}` groups must be hashes of entries, got #{group.inspect}" unless group.is_a?(::Hash)
 
-        repeated = jobs.keys & group.keys
-        raise ConfigError, "`consumers.jobs.#{repeated.first}` appears in more than one group" if repeated.any?
+          repeated = entries.keys & group.keys
+          raise ConfigError, "`#{key}.#{repeated.first}` appears in more than one group" if repeated.any?
 
-        jobs.merge!(group)
+          entries.merge!(group)
+        end
       end
     end
 

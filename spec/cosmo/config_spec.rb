@@ -229,7 +229,24 @@ RSpec.describe Cosmo::Config do
 
     it "rejects a group that is not a hash of consumers" do
       expect { load_yaml("consumers:\n  jobs:\n    - default\n") }
-        .to raise_error(Cosmo::ConfigError, /groups must be hashes of consumers/)
+        .to raise_error(Cosmo::ConfigError, /groups must be hashes of entries/)
+    end
+
+    it "flattens cron schedules given as groups" do
+      load_yaml(<<~YAML)
+        setup:
+          cron:
+            - daily_report: { class: ReportJob, schedule: "@daily", stream: default }
+            - weekday_digest: { class: DigestJob, schedule: "0 9 * * 1-5", stream: default }
+      YAML
+
+      expect(instance.dig(:setup, :cron).keys).to eq(%i[daily_report weekday_digest])
+      expect(instance.dig(:setup, :cron, :daily_report, :class)).to eq("ReportJob")
+    end
+
+    it "rejects a cron schedule repeated across groups" do
+      expect { load_yaml("setup:\n  cron:\n    - a: {}\n    - a: {}\n") }
+        .to raise_error(Cosmo::ConfigError, /`setup.cron.a` appears in more than one group/)
     end
 
     it "rejects the service streams inside groups" do

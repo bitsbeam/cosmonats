@@ -501,6 +501,9 @@ setup:
       timezone: America/New_York # optional, cron expressions only
 ```
 
+Like `consumers.jobs`, `setup.cron` can be a list of groups (`- daily_report: {...}`) to keep related schedules together.
+They are flattened on load, so a name may appear in one group only.
+
 `cosmo -C config/cosmo.yml -S` syncs it — whatever's in the file is exactly what ends up scheduled in NATS, same as streams.
 
 Prefer to manage schedules at runtime instead? The same operations are available from Ruby:
