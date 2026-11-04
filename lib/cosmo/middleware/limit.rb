@@ -8,6 +8,11 @@ module Cosmo
     # taken, and the +duration+ timeout. Jobs without +limit:+ pass straight through. It runs first in the chain,
     # so a requeued job never reaches the stats or user middleware.
     class Limit
+      # Raised into the job thread when its duration runs out. It is not a StandardError, so job code rescuing
+      # Timeout::Error or StandardError can't swallow it, and it is told apart from a Timeout::Error raised by the
+      # job's own code.
+      class Expired < Exception; end # rubocop:disable Lint/InheritException
+
       # @param job [Cosmo::Job, nil] nil when this worker can't load the job's class
       # @param data [Hash]
       # @param _message [NATS::Msg]
@@ -41,14 +46,13 @@ module Cosmo
         raise Job::Requeue
       end
 
-      # No exception class is passed on purpose: Timeout then interrupts the job with its internal
-      # Timeout::ExitException, which job code rescuing Timeout::Error or StandardError can't swallow,
-      # and turns it into Timeout::Error only once it leaves the block.
       def timeout(duration, &)
         return yield unless duration
 
         seconds = duration.to_i
-        Timeout.timeout(seconds, nil, "execution expired after the #{seconds}s duration limit", &)
+        Timeout.timeout(seconds, Expired, &)
+      rescue Expired
+        raise JobTimeoutError, seconds
       end
     end
   end

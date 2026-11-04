@@ -147,7 +147,7 @@ module Cosmo
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "requeue[#{e.delay}s]" }
         rescue NATS::JetStream::Error::MsgAlreadyAckd
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "released[shutdown]" }
-        rescue Timeout::Error => e
+        rescue Timeout::Error, JobTimeoutError => e
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[timeout]" }
           Cosmo.handle_error(e, error_context(message, data))
           handle_failure(worker_class, message, data, e)

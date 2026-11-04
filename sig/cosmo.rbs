@@ -44,6 +44,10 @@ module Cosmo
     def initialize: () -> void
   end
 
+  class JobTimeoutError < Error
+    def initialize: (::Integer seconds) -> void
+  end
+
   class UnknownJobStreamError < Error
     def initialize: (Array[::String] names, Array[::String] configured) -> void
   end

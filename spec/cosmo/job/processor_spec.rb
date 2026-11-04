@@ -480,8 +480,8 @@ RSpec.describe Cosmo::Job::Processor do
           wait_until(timeout: 8) { stream_size("dead") >= 1 }
 
           job = Cosmo::API::Stream.new("dead").messages.first
-          expect(job.error_class).to eq("Timeout::Error")
-          expect(job.error_message).to eq("execution expired after the 1s duration limit")
+          expect(job.error_class).to eq("Cosmo::JobTimeoutError")
+          expect(job.error_message).to eq("Job exceeded its 1s duration limit")
           expect(job.error_backtrace).not_to be_nil
         end
 

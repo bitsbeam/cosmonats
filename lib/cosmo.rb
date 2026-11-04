@@ -105,6 +105,12 @@ module Cosmo
     end
   end
 
+  class JobTimeoutError < Error
+    def initialize(seconds)
+      super("Job exceeded its #{seconds}s duration limit")
+    end
+  end
+
   class UnknownJobStreamError < Error
     def initialize(names, configured)
       super("Unknown job stream#{"s" if names.size > 1} #{names.map { "`#{_1}`" }.join(", ")}; " \
