@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-04
+
 ### Added
 
 - The web UI's Streams page shows when each stream last received a message
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Job.perform_bulk(list)` enqueues one job per argument list, pipelining the publishes a thousand at a time
 - `Job.set(stream:, retry:, dead:, subject:)` overrides job options for a single `perform_async`/`perform_in`/`perform_at`
 - `consumers.jobs` in `cosmo.yml` can be a list of groups, flattened on load, to organize consumers by worker fleet
+- `setup.cron` in `cosmo.yml` can be a list of groups to organize cron schedules
 
 ### Changed
 
@@ -47,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fails with `Cosmo::JobClassNotFoundError`, so it is counted and retried as its payload's `retry` allows instead of
   going straight to `dead`; a malformed payload still goes straight to `dead` but counts as failed
 - A cron job takes `retry` and `dead` from its job class instead of always the defaults
+- Metrics read a period by start time instead of a `multi_last` get capped at 1024 subjects
 - Web UI buttons show a pointer cursor and a fill on hover
 
 ## [0.9.0] - 2026-10-12
