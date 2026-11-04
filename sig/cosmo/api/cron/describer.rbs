@@ -1,0 +1,62 @@
+module Cosmo
+  module API
+    class Cron
+      class Describer
+        MONTHS: Array[::String]
+        WEEKDAYS: Array[::String]
+        MACROS: Hash[::String, ::String]
+        DURATION_UNITS: Hash[::String, ::String]
+        DURATION: Regexp
+        TERM: Regexp
+        ORDINAL_SUFFIXES: Hash[Integer, ::String]
+        SPECS: Array[Spec]
+
+        class Term < Data
+          attr_reader from: Integer
+          attr_reader to: Integer
+          attr_reader step: Integer
+          attr_reader wild: bool
+          def self.new: (Integer from, Integer to, Integer step, bool wild) -> Term
+        end
+
+        class Spec < Data
+          attr_reader unit: ::String
+          attr_reader range: Range[Integer]
+          attr_reader labels: Array[::String]?
+          attr_reader names: Hash[::String, Integer]
+          def self.new: (::String unit, Range[Integer] range, Array[::String]? labels, Hash[::String, Integer] names) -> Spec
+        end
+
+        @expression: ::String
+
+        def self.call: (::String? expression) -> ::String
+        def initialize: (::String? expression) -> void
+        def call: () -> ::String
+
+        private
+
+        def interval: (::String text) -> ::String
+        def instant: (::String text) -> ::String
+        def cron: (::String text) -> ::String
+        def parse: (::String field, Spec spec) -> Array[Term]?
+        def term: (::String part, Spec spec) -> Term?
+        def bounded: (MatchData match, Integer step, Spec spec) -> Term?
+        def pluralize: (Integer amount, ::String unit) -> ::String
+        def number: (::String token, Spec spec) -> Integer?
+        def time: (Array[Term] seconds, Array[Term] minutes, Array[Term] hours) -> ::String
+        def clock: (Array[Term] seconds, Array[Term] minutes, Array[Term] hours) -> ::String
+        def weekday_clause: (Array[Term] days, Array[Term] weekdays) -> ::String
+        def month_clause: (Array[Term] months) -> ::String
+        def phrase: (Array[Term] terms, Spec spec) -> ::String
+        def every: (Term term, Spec spec) -> ::String
+        def label: (Integer value, Spec spec) -> ::String
+        def ranged?: (Term term) -> bool
+        def single?: (Array[Term] terms) -> bool
+        def wild?: (Array[Term] terms) -> bool
+        def zero?: (Array[Term] terms) -> bool
+        def ordinal: (Integer number) -> ::String
+        def sentence: (Array[::String] values) -> ::String
+      end
+    end
+  end
+end

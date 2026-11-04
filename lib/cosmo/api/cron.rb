@@ -2,6 +2,7 @@
 
 require "securerandom"
 require "cosmo/api/cron/entry"
+require "cosmo/api/cron/describer"
 
 module Cosmo
   module API

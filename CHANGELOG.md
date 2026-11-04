@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The web UI's Crons page describes each schedule in plain English
+
 ## [0.10.0] - 2026-11-04
 
 ### Added

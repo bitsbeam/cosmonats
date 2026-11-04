@@ -10,6 +10,7 @@
       <div class="trow group t-crons"><span class="full qname"><span class="dot" style="background:<%= hue(stream) %>"></span><%= h(stream) %> (<%= schedules.size %>)</span></div>
       <% schedules.each do |s| -%>
         <% subject = s[:schedule_subject].to_s -%>
+        <% description = Cosmo::API::Cron::Describer.call(s[:schedule]) -%>
         <div class="trow hover t-crons">
           <div class="stack">
             <span class="strong ellip"><%= h(s[:name] || s[:class]) %></span>
@@ -18,6 +19,7 @@
           </div>
           <div class="stack">
             <span class="mono" style="font-size:12.5px"><%= h(s[:schedule]) %></span>
+            <% unless description.empty? -%><span class="mute ellip" style="font-size:11.5px" title="<%= h(description) %>"><%= h(description) %></span><% end -%>
             <span class="mute" style="font-size:11.5px"><%= h(s[:timezone] || 'UTC') %></span>
           </div>
           <% if s[:args]&.any? -%>
