@@ -7,7 +7,7 @@
       <% delivery = job[:delivery].to_i -%>
       <% retries = job[:retry] -%>
       <div class="trow hover t-jobs">
-        <span class="mono mute ellip" style="font-size:11.5px" title="<%= h(job[:jid]) %>"><%= h(job[:jid]) %></span>
+        <%= jid_cell(job, stream: job[:stream]) %>
         <div class="stack">
           <span class="strong ellip"><%= h(job[:class]) %></span>
           <span class="small-mono ellip" title="<%= h(job[:worker]) %>"><%= h(job[:worker]) %></span>

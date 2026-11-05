@@ -47,6 +47,8 @@ CLI → Engine → ThreadPool
   ships **no authentication** — wrap it with your own (Devise `authenticate` / route constraints when
   mounted, `Rack::Auth::Basic` standalone). It also has **no CSRF protection** yet, while exposing
   destructive routes (retry/delete dead jobs, pause streams, delete/run crons).
+  `config.web.jid_link` (`Config::WebUI`; a `%{jid}`/`%{class}`/`%{stream}` URL template or a callable given the
+  payload) turns job IDs into links via `Helpers::Links#jid_cell`; only http(s) URLs, errors fall back to text.
 - **`Cosmo::Heartbeat`** (`lib/cosmo/heartbeat.rb`) — started by `Engine#run`; every 10s writes this process's
   details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `_cosmoprocesses` KV
   bucket via `API::Stats::Processes`, and one entry per job it's running (`Job::Processor#jobs`: jid, class, args cut
