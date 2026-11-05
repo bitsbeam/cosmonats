@@ -1,11 +1,16 @@
 # frozen_string_literal: true
 
 require "json"
+require "time"
 
 module Cosmo
   module Job
     class Data
       DEFAULTS = { stream: :default, retry: 3, dead: true, limit: nil }.freeze
+
+      # Subjects of delayed jobs: one NATS +@at+ schedule per job, kept in the +scheduled+ stream apart from the
+      # +jobs.scheduled+ subjects the scheduler consumes and the +cosmo.cron+ ones the Crons tab lists.
+      SUBJECT_PREFIX = "cosmo.delayed"
 
       # @return [Integer] +max_retries+ from the config, or the built-in default
       def self.default_retry
@@ -44,19 +49,27 @@ module Cosmo
         @at ? :scheduled : @options[:stream]
       end
 
-      # @return [String] the subject the job is published to: the custom +subject:+ option, or the one derived
-      #   from its stream and class
+      # @return [String] the subject the job is published to: +cosmo.delayed.<jid>+ for a delayed job, else the
+      #   custom +subject:+ option, or the one derived from its stream and class
       def subject
+        return "#{SUBJECT_PREFIX}.#{jid}" if @at
+
         @subject || subject_for(stream)
       end
 
-      # @return [Hash{String => String, Integer}] dedup id, plus where to dispatch a delayed job once it is due
+      # @return [Hash{String => String}] dedup id, plus for a delayed job the NATS schedule that fires it at its
+      #   time into the +scheduled+ stream, and where the scheduler dispatches it on from there
       def headers
         headers = { NATS::JetStream::Header::MSG_ID => jid }
         return headers unless @at
 
         target = stream(target: true)
-        headers.merge("X-Execute-At" => @at.to_i, "X-Stream" => target, "X-Subject" => subject_for(target))
+        headers.merge(
+          NATS::JetStream::Header::SCHEDULE => "@at #{Time.at(@at).utc.iso8601}",
+          NATS::JetStream::Header::SCHEDULE_TARGET => subject_for(StreamFilter::SCHEDULED),
+          "X-Stream" => target.to_s,
+          "X-Subject" => @subject || subject_for(target)
+        )
       end
 
       # @return [Hash{Symbol => Object}] the published payload

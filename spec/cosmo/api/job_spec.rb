@@ -41,6 +41,21 @@ RSpec.describe Cosmo::API::Job do
       allow(message).to receive(:headers).and_return({})
       expect(job.execute_at).to be_nil
     end
+
+    it "reads the time of a Nats-Schedule @at, ahead of X-Execute-At" do
+      allow(message).to receive(:headers).and_return(headers.merge("Nats-Schedule" => "@at 2023-11-14T22:13:20Z", "X-Execute-At" => "1"))
+      expect(job.execute_at).to eq(1_700_000_000)
+    end
+
+    it "falls back to X-Execute-At when the Nats-Schedule is not an @at" do
+      allow(message).to receive(:headers).and_return(headers.merge("Nats-Schedule" => "0 0 * * *"))
+      expect(job.execute_at).to eq(1_700_000_000)
+    end
+
+    it "returns nil for an unreadable @at time" do
+      allow(message).to receive(:headers).and_return({ "Nats-Schedule" => "@at soon" })
+      expect(job.execute_at).to be_nil
+    end
   end
 
   describe "#x_stream" do

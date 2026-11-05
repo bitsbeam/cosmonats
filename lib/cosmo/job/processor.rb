@@ -98,7 +98,7 @@ module Cosmo
             stream, subject, execute_at = message.header.values_at("X-Stream", "X-Subject", "X-Execute-At")
             scheduler = message.header[NATS::JetStream::Header::SCHEDULER]
             if scheduler
-              headers["X-Scheduled-By"] = scheduler
+              headers["X-Scheduled-By"] = scheduler if scheduler.start_with?("#{API::Cron::Entry::SUBJECT_PREFIX}.")
               headers["X-Enqueued-At"] = message.metadata.timestamp.to_f.to_s
             end
             execute_at = execute_at.to_i

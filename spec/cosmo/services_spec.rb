@@ -10,7 +10,7 @@ RSpec.describe Cosmo::Services do
       expect(described_class.setup!).to eq(%w[scheduled dead])
 
       expect(stream_config("scheduled")).to have_attributes(allow_msg_schedules: true, discard: "old",
-                                                            subjects: ["jobs.scheduled.>", "cosmo.cron.>"])
+                                                            subjects: ["jobs.scheduled.>", "cosmo.cron.>", "cosmo.delayed.>"])
       expect(stream_config("dead")).to have_attributes(retention: "workqueue", max_msgs: 10_000, max_age: 604_800 * Cosmo::Config::NANO)
       expect(stream_config("_cosmototals")).to have_attributes(allow_msg_counter: true, max_age: 0)
       expect(stream_config("_cosmobatches")).to have_attributes(allow_msg_counter: true, max_age: 3 * 86_400 * Cosmo::Config::NANO)

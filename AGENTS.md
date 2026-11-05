@@ -161,9 +161,14 @@ are eagerly loaded by the CLI.
   `KV_*`. The `scheduled` and `dead` job streams keep plain names, as their subjects live in `jobs.*`
 - **Job subjects**: `jobs.<stream_name>.<underscored_class_name>` — e.g. `jobs.default.send_email_job`
 - **Dead letter**: `jobs.dead.<underscored_class_name>`
-- **Scheduled jobs**: routed through the `:scheduled` stream with headers `X-Execute-At`, `X-Stream`, `X-Subject`.
-  A cron firing carries no `X-Execute-At`; the scheduler forwards timestamp as `X-Enqueued-At` so `enqueued_at` on the
-  job based on the firing time rather than the dispatch time
+- **Delayed jobs** (`perform_in`/`perform_at`): one NATS `@at` schedule per job, published to `cosmo.delayed.<jid>` in the
+  `scheduled` stream with `Nats-Schedule`, `Nats-Schedule-Target` (`jobs.scheduled.<class>`), `X-Stream` and `X-Subject`. NATS
+  holds it until it is due and fires it into `jobs.scheduled.<class>`, where `Job::Processor#schedule_loop` dispatches it on
+  like a cron firing. The scheduler's consumer filters on `jobs.scheduled.>`, so it never sees a delayed job before it is due
+  and none holds one of its `max_ack_pending` slots; the Crons tab only reads `cosmo.cron.>`. Cancel one by deleting its
+  message. A message with an `X-Execute-At` (a delayed job from before schedules) is still naked until due by the scheduler.
+- **Cron jobs**: a firing carries no `X-Execute-At`; the scheduler forwards its timestamp as `X-Enqueued-At` so `enqueued_at`
+  on the job is the firing time rather than the dispatch time, and sets `X-Scheduled-By` for `cosmo.cron.*` schedules only
 - **Stream subjects**: default `<underscored_class_name>.>` — interpolated via Ruby `format(str, name:)`
 - Config YAML `subject`/`subjects` fields use `%{name}` format strings interpolated with the stream name (see
   `Config.normalize!`)

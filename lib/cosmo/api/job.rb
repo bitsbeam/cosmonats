@@ -29,9 +29,15 @@ module Cosmo
         @message.headers
       end
 
-      # @return [Integer, nil] when a scheduled job is due, from +X-Execute-At+
+      # @return [Integer, nil] when a delayed job is due, from its +Nats-Schedule+ (+@at <time>+) or, for one
+      #   enqueued before delayed jobs became NATS schedules, +X-Execute-At+
       def execute_at
+        schedule = headers&.dig(NATS::JetStream::Header::SCHEDULE)
+        return Time.iso8601(schedule.delete_prefix("@at ")).to_i if schedule&.start_with?("@at ")
+
         headers&.dig("X-Execute-At")&.to_i
+      rescue ::ArgumentError
+        nil
       end
 
       # @return [String, nil] the stream a scheduled or dead job belongs to, from +X-Stream+
