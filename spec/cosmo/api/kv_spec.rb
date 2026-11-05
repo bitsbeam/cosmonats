@@ -176,6 +176,10 @@ RSpec.describe Cosmo::API::KV do
       expect(kv.direct_values(%w[a.1 b.1 zzz])).to eq("a.1" => "v-a.1-again")
     end
 
+    it "reads no values for no keys" do
+      expect(kv.direct_values([])).to eq({})
+    end
+
     it "counts and lists after a key expires or is erased" do
       kv.erase("a.2")
 

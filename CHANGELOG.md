@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The web UI's Crons page describes each schedule in plain English
 
+### Fixed
+
+- `KV#direct_values` returns `{}` for no keys instead of sending NATS an empty batched get, which it refuses with
+  `408 Empty Request`. The web UI's Jobs page raised it whenever no job was running
+
 ## [0.10.0] - 2026-11-04
 
 ### Added
