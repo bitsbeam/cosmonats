@@ -123,6 +123,8 @@ module Cosmo
       # @param keys [Array<String>]
       # @return [Hash{String => String}] the value by key, without the keys that don't exist
       def direct_values(keys)
+        return {} if keys.empty?
+
         direct!
         messages = client.last_messages("KV_#{@name}", keys.map { "$KV.#{@name}.#{_1}" })
         messages.each_with_object({}) do |(subject, msg), values|
