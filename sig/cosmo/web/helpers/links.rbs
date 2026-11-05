@@ -1,0 +1,16 @@
+module Cosmo
+  class Web
+    module Helpers
+      module Links
+        def jid_cell: (::Hash[::Symbol, untyped] data, ?stream: (::String | ::Symbol)?) -> ::String
+
+        def jid_url: (::Hash[::Symbol, untyped] data) -> ::String?
+
+        # provided by Helpers::Application
+        def h: (untyped value) -> ::String
+
+        def u: (untyped value) -> ::String
+      end
+    end
+  end
+end

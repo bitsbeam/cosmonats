@@ -33,5 +33,11 @@ module Cosmo
 
       def self.new: (enabled: bool, retention: Numeric | ::String) -> Metrics
     end
+
+    class WebUI
+      attr_accessor jid_link: (::String | ^(Hash[Symbol, untyped]) -> ::String?)?
+
+      def self.new: (jid_link: (::String | ^(Hash[Symbol, untyped]) -> ::String?)?) -> WebUI
+    end
   end
 end

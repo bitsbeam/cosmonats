@@ -18,7 +18,7 @@
     <div class="thead t-jobs actions"><span>JID</span><span>Class</span><span>Args</span><span>Seq</span><span>Status</span><span class="r">Enqueued</span><span></span></div>
     <% @jobs.each do |job| -%>
       <div class="trow hover t-jobs actions">
-        <span class="mono mute ellip" style="font-size:11.5px" title="<%= h(job.data[:jid]) %>"><%= h(job.data[:jid]) %></span>
+        <%= jid_cell(job.data, stream: @stream_name) %>
         <span class="strong ellip"><%= h(job.data[:class]) %></span>
         <%= render('jobs/_args', { args: job.data[:args] }) %>
         <span class="mono mute" style="font-size:12px">#<%= job.seq %></span>

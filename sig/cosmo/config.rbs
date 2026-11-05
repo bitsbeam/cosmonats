@@ -46,6 +46,8 @@ module Cosmo
 
     def self.metrics: () -> Metrics
 
+    def self.web: () -> WebUI
+
     def self.server_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
 
     def self.client_middleware: () ?{ (Middleware::Chain chain) -> void } -> Middleware::Chain
@@ -81,7 +83,11 @@ module Cosmo
 
     @metrics: Metrics
 
+    @web: WebUI
+
     def metrics: () -> Metrics
+
+    def web: () -> WebUI
 
     def logger: () -> untyped
 

@@ -20,5 +20,11 @@ module Cosmo
     # +config.metrics+ in Cosmo.configure: per-day job metrics behind the web UI's Metrics tab, kept for +retention+
     # (seconds or a duration such as "30d"). Turned off, nothing is recorded and the tab is hidden.
     Metrics = Struct.new(:enabled, :retention, keyword_init: true)
+
+    # +config.web+ in Cosmo.configure: settings for the monitoring UI ({Cosmo::Web}). +jid_link+ turns every job ID
+    # into a link, e.g. to the job's logs in Grafana: a URL template whose +%{jid}+, +%{class}+ and +%{stream}+ are
+    # filled in URL-escaped, or a callable given the job's payload Hash (+:jid+, +:class+, +:args+, ...) that returns
+    # the URL, or +nil+ for plain text. Only http(s) URLs are linked.
+    WebUI = Struct.new(:jid_link, keyword_init: true)
   end
 end

@@ -956,6 +956,24 @@ light, dark, or automatic (system) theme. Fonts and assets are bundled, so it lo
   `Cosmo::Middleware::Metrics`, flushed by every worker's heartbeat into the internal `_cosmometrics` counters stream;
   turn it off with `config.metrics.enabled = false`
 
+**Job ID links** — every job ID in the Jobs tables can link out, e.g. to the job's logs in Grafana. Give
+`config.web.jid_link` a URL template, whose `%{jid}`, `%{class}` and `%{stream}` are filled in URL-escaped (any other
+`%` in it is left as is), or a callable given the job's payload (`:jid`, `:class`, `:args`, ... and `:stream`) that
+returns the URL, or `nil` to keep that one as plain text. Links open in a new tab; only `http(s)` URLs are linked, and a
+raising callable falls back to plain text:
+
+```ruby
+Cosmo.configure do |config|
+  config.web.jid_link = "https://grafana.example.com/d/jobs/cosmo?var-jid=%{jid}&var-class=%{class}"
+  # or
+  config.web.jid_link = lambda do |job|
+    "https://grafana.example.com/explore?left=" + ERB::Util.url_encode(
+      { queries: [{ expr: %({app="worker"} |= "jid=#{job[:jid]}") }], range: { from: "now-7d", to: "now" } }.to_json
+    )
+  end
+end
+```
+
 Each panel refreshes `COSMO_WEB_POLL_INTERVAL` seconds after its previous response, never on top of one still
 running, backs off while refreshes fail, and pauses in a hidden tab. Identical refreshes from several viewers share a
 single NATS read for `COSMO_WEB_CACHE_TTL` seconds, and while NATS is unreachable the UI answers at once instead of

@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require "cosmo/web/helpers/application"
+require "cosmo/web/helpers/links"
 
 module Cosmo
   class Web
     class Context
       include Helpers::Application
+      include Helpers::Links
 
       # @param locals [Hash{Symbol => Object}] set as instance variables the view reads
       # @param content_for [Hash{Symbol => String}, nil] the blocks the layout yields
