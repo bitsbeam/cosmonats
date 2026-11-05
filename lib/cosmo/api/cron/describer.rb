@@ -85,7 +85,7 @@ module Cosmo
         def instant(text)
           Time.iso8601(text)
           "Once at #{text}"
-        rescue ArgumentError
+        rescue ::ArgumentError
           ""
         end
 
