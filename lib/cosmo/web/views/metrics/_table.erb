@@ -4,10 +4,11 @@
     <div class="card-title">Job classes</div>
     <% if selectable -%><span class="small-mono">click a job to chart it</span><% end -%>
   </div>
-  <div class="scroll"><div style="min-width:620px">
-    <div class="thead t-metrics"><span>Job</span><span class="r">Runs</span><span class="r">Failed</span><span class="r">Avg execution</span><span class="r">Avg wait</span></div>
+  <div class="scroll"><div style="min-width:760px">
+    <div class="thead t-metrics"><span>Job</span><span class="r" title="Every execution, retries included">Runs</span><span class="r" title="Executions that finished without an error">Succeeded</span><span class="r" title="Failed attempts, retries included. A job is dead-lettered only once it has no attempts left">Failed</span><span class="r" title="Failed attempts as a share of all runs">Fail rate</span><span class="r" title="Successful executions only">Avg execution</span><span class="r" title="Enqueue to first delivery, first attempts only">Avg wait</span></div>
     <% @rows.each do |row| -%>
       <% selected = selectable && row[:job] == @job -%>
+      <% runs = row[:count] + row[:failed] -%>
       <div class="trow hover t-metrics<%= ' selectable' if selectable %><%= ' selected' if selected %>"
            <% if selectable -%>
            hx-get="<%= url_for('/metrics/_panel', { days: @days, job: u(row[:job]) }) %>"
@@ -15,8 +16,10 @@
            <% if selected -%>aria-selected="true"<% end -%>
            <% end -%>>
         <span class="mono ellip"><%= h(row[:job]) %></span>
+        <span class="r"><%= format_numbers(runs) %></span>
         <span class="r"><%= format_numbers(row[:count]) %></span>
         <span class="r" style="color:<%= row[:failed].positive? ? 'var(--err)' : 'var(--faint)' %>"><%= format_numbers(row[:failed]) %></span>
+        <span class="r" style="color:<%= row[:failed].positive? ? 'var(--err)' : 'var(--faint)' %>"><%= runs.positive? ? "#{(row[:failed] * 100.0 / runs).round}%" : '—' %></span>
         <span class="r mute"><%= duration(row[:exec_ms]) %></span>
         <span class="r mute"><%= duration(row[:wait_ms]) %></span>
       </div>

@@ -175,7 +175,7 @@ a.kpi:hover{text-decoration:none;background:var(--panel2)}
 .t-crons{grid-template-columns:1.5fr 1.2fr 1.2fr 190px;gap:14px}
 .trow.t-crons{padding-top:13px;padding-bottom:13px}
 .t-procs{grid-template-columns:1.4fr 1.5fr 1.3fr 50px 80px 64px 56px 76px 64px 72px}
-.t-metrics{grid-template-columns:2fr .8fr .8fr 1fr 1fr}
+.t-metrics{grid-template-columns:2fr .8fr .9fr .8fr .8fr 1fr 1fr}
 .t-kv{grid-template-columns:200px minmax(0,1fr)}
 .trow.t-jobs,.trow.t-cons,.trow.t-crons,.trow.t-metrics,.trow.t-kv{font-size:13px}
 .trow.t-procs{font-size:12.5px}

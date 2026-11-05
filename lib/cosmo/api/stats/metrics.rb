@@ -64,11 +64,11 @@ module Cosmo
 
         # @param days [Integer] today and the days before it
         # @return [Array<Hash>] per job class +:job+, +:count+, +:failed+, +:exec_ms+ and +:wait_ms+ (averages in
-        #   milliseconds, nil without data), busiest first
+        #   milliseconds, nil without data), most runs first, failures included
         def summary(days: 1)
           totals = Hash.new { |hash, job| hash[job] = Hash.new(0) }
           read(days).each { |(_, job, field), value| totals[job][field] += value }
-          totals.map { |job, sums| row(sums).merge(job: job) }.sort_by { -_1[:count] }
+          totals.map { |job, sums| row(sums).merge(job: job) }.sort_by { -(_1[:count] + _1[:failed]) }
         end
 
         # @param job_class [String, nil] nil sums every job class
