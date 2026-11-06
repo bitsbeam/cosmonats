@@ -161,7 +161,7 @@ are eagerly loaded by the CLI.
   `KV_*`. The `scheduled` and `dead` job streams keep plain names, as their subjects live in `jobs.*`
 - **Job subjects**: `jobs.<stream_name>.<underscored_class_name>` — e.g. `jobs.default.send_email_job`
 - **Dead letter**: `jobs.dead.<underscored_class_name>`
-- **Delayed jobs** (`perform_in`/`perform_at`): one NATS `@at` schedule per job, published to `cosmo.delayed.<jid>` in the
+- **Delayed jobs** (`perform_in`/`perform_at`): one NATS `@at` schedule per job, published to `cosmo.delayed.<underscored_class_name>.<jid>` in the
   `scheduled` stream with `Nats-Schedule`, `Nats-Schedule-Target` (`jobs.scheduled.<class>`), `X-Stream` and `X-Subject`. NATS
   holds it until it is due and fires it into `jobs.scheduled.<class>`, where `Job::Processor#schedule_loop` dispatches it on
   like a cron firing. The scheduler's consumer filters on `jobs.scheduled.>`, so it never sees a delayed job before it is due

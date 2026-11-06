@@ -14,10 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `perform_in`/`perform_at` publish a NATS `@at` schedule to `cosmo.delayed.<jid>` instead of a message the scheduler naks
+- `perform_in`/`perform_at` publish a NATS `@at` schedule to `cosmo.delayed.<class>.<jid>` instead of a message the scheduler naks
   until due, which held one of the consumer's 100 pending slots per delayed job until it was due, and starved crons and due
-  jobs once 100 were waiting. Run `cosmo --setup` first, so the `scheduled` stream takes `cosmo.delayed.>`; delayed jobs
-  already queued still run
+  jobs once 100 were waiting. One `nats stream purge scheduled --subject 'cosmo.delayed.<class>.>'` drops every delayed
+  job of a class. Run `cosmo --setup` first, so the `scheduled` stream takes `cosmo.delayed.>`; delayed jobs already
+  queued still run
 
 ### Fixed
 

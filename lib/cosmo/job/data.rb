@@ -8,8 +8,9 @@ module Cosmo
     class Data
       DEFAULTS = { stream: :default, retry: 3, dead: true, limit: nil }.freeze
 
-      # Subjects of delayed jobs: one NATS +@at+ schedule per job, kept in the +scheduled+ stream apart from the
-      # +jobs.scheduled+ subjects the scheduler consumes and the +cosmo.cron+ ones the Crons tab lists.
+      # Subjects of delayed jobs, +cosmo.delayed.<underscored_class_name>.<jid>+: one NATS +@at+ schedule per job, kept
+      # in the +scheduled+ stream apart from the +jobs.scheduled+ subjects the scheduler consumes and the +cosmo.cron+
+      # ones the Crons tab lists. The class in the subject lets one wildcard purge every delayed job of a class.
       SUBJECT_PREFIX = "cosmo.delayed"
 
       # @return [Integer] +max_retries+ from the config, or the built-in default
@@ -49,10 +50,10 @@ module Cosmo
         @at ? :scheduled : @options[:stream]
       end
 
-      # @return [String] the subject the job is published to: +cosmo.delayed.<jid>+ for a delayed job, else the
-      #   custom +subject:+ option, or the one derived from its stream and class
+      # @return [String] the subject the job is published to: +cosmo.delayed.<class>.<jid>+ for a delayed job, else
+      #   the custom +subject:+ option, or the one derived from its stream and class
       def subject
-        return "#{SUBJECT_PREFIX}.#{jid}" if @at
+        return "#{SUBJECT_PREFIX}.#{Utils::String.underscore(@class_name)}.#{jid}" if @at
 
         @subject || subject_for(stream)
       end

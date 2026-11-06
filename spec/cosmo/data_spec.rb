@@ -21,16 +21,22 @@ RSpec.describe Cosmo::Job::Data do
       expect(described_class.new("MyJob", "args", stream: "default", subject: "custom.subject").subject).to eq("custom.subject")
     end
 
-    it "is a subject of its own for a delayed job" do
+    it "is a subject of its own under the class for a delayed job" do
       data = described_class.new("MyJob", "args", stream: "default", in: 60)
 
-      expect(data.subject).to eq("cosmo.delayed.#{data.jid}")
+      expect(data.subject).to eq("cosmo.delayed.my_job.#{data.jid}")
     end
 
     it "keeps the subject option out of a delayed job's own subject" do
       data = described_class.new("MyJob", "args", stream: "default", in: 60, subject: "custom.subject")
 
-      expect(data.subject).to eq("cosmo.delayed.#{data.jid}")
+      expect(data.subject).to eq("cosmo.delayed.my_job.#{data.jid}")
+    end
+
+    it "keeps a namespaced class in one subject token" do
+      data = described_class.new("Batches::NurseJob", "args", stream: "default", in: 60)
+
+      expect(data.subject).to eq("cosmo.delayed.batches-nurse_job.#{data.jid}")
     end
   end
 
