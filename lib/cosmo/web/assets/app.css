@@ -171,6 +171,7 @@ a.kpi:hover{text-decoration:none;background:var(--panel2)}
 .t-jobs{grid-template-columns:110px 1.4fr 1.5fr .8fr 100px 60px 110px}
 .t-jobs.actions{grid-template-columns:110px 1.4fr 1.5fr .8fr 100px 110px 90px}
 .t-jobs.plain{grid-template-columns:110px 1.4fr 1.5fr .8fr 100px 150px}
+.t-jobs.scheduled{grid-template-columns:110px 1.4fr 1.5fr 90px 180px 90px}
 .t-cons{grid-template-columns:1.5fr .8fr .8fr .7fr .7fr 1.4fr}
 .t-crons{grid-template-columns:1.5fr 1.2fr 1.2fr 190px;gap:14px}
 .trow.t-crons{padding-top:13px;padding-bottom:13px}
