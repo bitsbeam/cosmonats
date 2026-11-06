@@ -298,6 +298,66 @@ RSpec.describe Cosmo::Job::Processor do
       end
     end
 
+    context "with a delayed job" do
+      before do
+        stub_const("DelayedJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << { tag: tag, scheduled_by: scheduled_by, ran_at: Time.now }
+        end)
+      end
+
+      def scheduler_consumer
+        client.js.consumer_info("scheduled", "consumer-scheduled")
+      end
+
+      it "runs once it is due, and is not reported as scheduled by a cron" do
+        due = Time.now + 2
+        DelayedJob.perform_at(due, "later")
+
+        wait_until(timeout: 12) { results.any? }
+
+        expect(results.first).to include(tag: "later", scheduled_by: nil)
+        expect(results.first[:ran_at]).to be >= due - 1
+      end
+
+      it "stays out of the scheduler's consumer until it is due" do
+        DelayedJob.perform_in(3600, "later")
+        sleep 1
+
+        expect(stream_size("scheduled")).to eq(1)
+        expect(scheduler_consumer).to have_attributes(num_pending: 0, num_ack_pending: 0, num_redelivered: 0)
+      end
+
+      it "does not hold the scheduler back however many are waiting" do
+        stub_const("Cosmo::Job::Enqueuer::CHUNK_SIZE", 50)
+        DelayedJob.perform_bulk(Array.new(150) { |i| ["waiting-#{i}"] }, in: 3600)
+        stub_const("DueJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag) = Results.instance << tag
+        end)
+        DueJob.perform_at(Time.now - 60, "due-now")
+
+        wait_until(timeout: 12) { results.include?("due-now") }
+
+        expect(scheduler_consumer.num_ack_pending).to eq(0)
+      end
+
+      it "does not run once its schedule is deleted" do
+        DelayedJob.perform_in(2, "cancelled")
+        stream = Cosmo::API::Stream.new("scheduled")
+        stream.messages.each { |job| stream.delete(job.seq.to_i) }
+        sleep 4
+
+        expect(results).to be_empty
+      end
+    end
+
     context "with scheduling turned off" do
       let(:scheduled_enabled) { false }
 

@@ -151,6 +151,18 @@ RSpec.describe Cosmo::Job do
       expect(client.get_message("scheduled", seq: 2).headers).to include("X-Stream" => "default")
     end
 
+    it "purges the delayed jobs of one class with a single subject filter" do
+      stub_const("OtherJob", Class.new { include Cosmo::Job })
+      MyJob.perform_bulk([[1], [2], [3]], in: 3600)
+      OtherJob.perform_bulk([[4]], in: 3600)
+
+      purged = client.purge("scheduled", "cosmo.delayed.my_job.>")
+
+      expect(purged).to eq(3)
+      expect(stream_size("scheduled")).to eq(1)
+      expect(client.get_message("scheduled", seq: 4).subject).to start_with("cosmo.delayed.other_job.")
+    end
+
     it "counts every job in the current batch" do
       batch = Cosmo::Batch.new
       batch.jobs { MyJob.perform_bulk([[1], [2], [3]]) }

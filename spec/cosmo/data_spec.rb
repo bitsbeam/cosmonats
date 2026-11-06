@@ -21,8 +21,22 @@ RSpec.describe Cosmo::Job::Data do
       expect(described_class.new("MyJob", "args", stream: "default", subject: "custom.subject").subject).to eq("custom.subject")
     end
 
-    it "targets the scheduled stream for a delayed job" do
-      expect(described_class.new("MyJob", "args", stream: "default", in: 60).subject).to eq("jobs.scheduled.my_job")
+    it "is a subject of its own under the class for a delayed job" do
+      data = described_class.new("MyJob", "args", stream: "default", in: 60)
+
+      expect(data.subject).to eq("cosmo.delayed.my_job.#{data.jid}")
+    end
+
+    it "keeps the subject option out of a delayed job's own subject" do
+      data = described_class.new("MyJob", "args", stream: "default", in: 60, subject: "custom.subject")
+
+      expect(data.subject).to eq("cosmo.delayed.my_job.#{data.jid}")
+    end
+
+    it "keeps a namespaced class in one subject token" do
+      data = described_class.new("Batches::NurseJob", "args", stream: "default", in: 60)
+
+      expect(data.subject).to eq("cosmo.delayed.batches-nurse_job.#{data.jid}")
     end
   end
 
@@ -31,11 +45,18 @@ RSpec.describe Cosmo::Job::Data do
       expect(data.headers).to eq("Nats-Msg-Id" => data.jid)
     end
 
-    it "tells the scheduler where to dispatch a delayed job" do
+    it "makes a delayed job a NATS schedule that fires into the scheduled stream" do
       data = described_class.new("MyJob", "args", stream: "default", at: 1_700_000_000)
 
-      expect(data.headers).to eq("Nats-Msg-Id" => data.jid, "X-Execute-At" => 1_700_000_000,
+      expect(data.headers).to eq("Nats-Msg-Id" => data.jid, "Nats-Schedule" => "@at 2023-11-14T22:13:20Z",
+                                 "Nats-Schedule-Target" => "jobs.scheduled.my_job",
                                  "X-Stream" => "default", "X-Subject" => "jobs.default.my_job")
+    end
+
+    it "dispatches a delayed job to the subject option" do
+      data = described_class.new("MyJob", "args", stream: "default", at: 1_700_000_000, subject: "custom.subject")
+
+      expect(data.headers).to include("X-Stream" => "default", "X-Subject" => "custom.subject")
     end
   end
 

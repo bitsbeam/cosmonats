@@ -19,12 +19,14 @@ module Cosmo
       return unless Config.scheduled.enabled
 
       { storage: "file", retention: "workqueue", discard: "old", allow_direct: true, allow_msg_schedules: true,
-        duplicate_window: Config.to_ns(120), subjects: ["jobs.#{SCHEDULED}.>", "#{API::Cron::Entry::SUBJECT_PREFIX}.>"],
+        duplicate_window: Config.to_ns(120),
+        subjects: ["jobs.#{SCHEDULED}.>", "#{API::Cron::Entry::SUBJECT_PREFIX}.>", "#{Job::Data::SUBJECT_PREFIX}.>"],
         num_replicas: Config.services.num_replicas, description: "Scheduled jobs and cron schedules", metadata: METADATA }
     end
 
-    # +max_deliver+ stays above 1: the scheduler naks a message that is not yet due, and one whose dispatch failed,
-    # and both need another delivery.
+    # +max_deliver+ stays above 1: the scheduler naks a message whose dispatch failed, and one with an +X-Execute-At+
+    # that is not yet due (a delayed job enqueued before delayed jobs became NATS schedules), and both need another
+    # delivery.
     #
     # @return [Hash, nil] nil when scheduling is turned off
     def scheduled_consumer

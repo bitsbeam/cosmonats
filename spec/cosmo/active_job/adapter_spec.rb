@@ -236,7 +236,7 @@ RSpec.describe Cosmo::ActiveJobAdapter do
         adapter.enqueue_at(job, timestamp)
 
         _, headers = published(:scheduled)
-        expect(headers).to include("X-Execute-At" => timestamp.to_s, "X-Stream" => "default")
+        expect(headers).to include("Nats-Schedule" => "@at #{Time.at(timestamp).utc.iso8601}", "X-Stream" => "default")
       end
     end
   end

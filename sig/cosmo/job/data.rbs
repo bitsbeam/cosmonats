@@ -2,6 +2,7 @@ module Cosmo
   module Job
     class Data
       DEFAULTS: { stream: Symbol, retry: Integer, dead: bool, limit: nil }
+      SUBJECT_PREFIX: ::String
 
       def self.default_retry: () -> Integer
 
