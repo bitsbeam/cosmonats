@@ -76,12 +76,56 @@ RSpec.describe "Web scheduled jobs" do
     expect(stream_size("default")).to eq(0)
   end
 
+  describe "purging" do
+    before do
+      stub_const("OtherWebJob", Class.new { include Cosmo::Job })
+      3.times { |i| WebDelayedJob.perform_in(3600, i) }
+      2.times { |i| OtherWebJob.perform_in(3600, i) }
+      Cosmo::API::Cron.instance.upsert!(class_name: "WebDelayedJob", stream: "default", schedule: "@daily", name: "daily")
+    end
+
+    def delayed_subjects
+      stream.messages.map(&:subject).select { _1.start_with?("cosmo.delayed.") }
+    end
+
+    it "offers a purge for the tab and for each class" do
+      html = request("GET", "/jobs/scheduled", htmx).last
+
+      expect(html).to include("Purge all", "/jobs/scheduled/purge?class=web_delayed_job", "/jobs/scheduled/purge?class=other_web_job")
+    end
+
+    it "purges every delayed job of one class and reports how many" do
+      status, html = request("DELETE", "/jobs/scheduled/purge?class=web_delayed_job")
+
+      expect(status).to eq(200)
+      expect(html).to include("Purged 3 scheduled web_delayed_job jobs")
+      expect(delayed_subjects).to all(start_with("cosmo.delayed.other_web_job."))
+      expect(delayed_subjects.size).to eq(2)
+    end
+
+    it "purges every delayed job, and leaves the cron schedule" do
+      _, html = request("DELETE", "/jobs/scheduled/purge")
+
+      expect(html).to include("Purged 5 scheduled jobs")
+      expect(delayed_subjects).to be_empty
+      expect(Cosmo::API::Cron.instance.all).to include(hash_including(class: "WebDelayedJob"))
+    end
+
+    it "refuses a class that would widen the purge" do
+      statuses = ["*", ">", "web_delayed_job.>", "a.b"].map { request("DELETE", "/jobs/scheduled/purge?class=#{Rack::Utils.escape(_1)}").first }
+
+      expect(statuses).to all(eq(404))
+      expect(delayed_subjects.size).to eq(5)
+    end
+  end
+
   context "with scheduling turned off" do
     before { Cosmo.configure { |config| config.scheduled.enabled = false } }
 
     it "answers 404 to both actions" do
       expect(request("PATCH", "/jobs/scheduled/run/1").first).to eq(404)
       expect(request("DELETE", "/jobs/scheduled/delete/1").first).to eq(404)
+      expect(request("DELETE", "/jobs/scheduled/purge").first).to eq(404)
     end
   end
 end

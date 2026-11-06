@@ -74,6 +74,7 @@ module Cosmo
                  in [:delete, %r{/jobs/enqueued/\d+}]   then [Controllers::Jobs,      :delete_enqueued]
                  in [:patch,  %r{/jobs/scheduled/run/\d+}]    then [Controllers::Jobs, :run_scheduled]
                  in [:delete, %r{/jobs/scheduled/delete/\d+}] then [Controllers::Jobs, :delete_scheduled]
+                 in [:delete, "/jobs/scheduled/purge"] then [Controllers::Jobs, :purge_scheduled]
                  in [:get,    "/processes"]             then [Controllers::Processes, :index]
                  in [:get,    "/streams"]               then [Controllers::Streams,   :index]
                  in [:get,    "/streams/info"]          then [Controllers::Streams,   :info]

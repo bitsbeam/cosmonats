@@ -6,6 +6,9 @@ module Cosmo
   class Web
     module Controllers
       class Jobs < Application
+        # What an underscored class name can be inside a subject, with no wildcard or token separator to widen a purge.
+        CLASS_TOKEN = /\A[a-z0-9_-]+\z/
+
         # Renders the jobs page on the busy tab.
         #
         # @return [Array] the Rack response
@@ -95,6 +98,22 @@ module Cosmo
           stream = API::Stream.new("scheduled")
           stream.delete(seq) if stream.message(seq)
           ok panel("scheduled") + flash("Scheduled job ##{seq} deleted")
+        end
+
+        # Purges the delayed jobs of one class (+class+, its underscored name) or, without it, every delayed job.
+        # Cron schedules and jobs already fired into +jobs.scheduled+ are not touched.
+        #
+        # @return [Array] the Rack response
+        def purge_scheduled
+          return not_found unless Config.scheduled.enabled
+
+          name = params["class"].to_s
+          return not_found unless name.empty? || name.match?(CLASS_TOKEN)
+
+          filter = [Job::Data::SUBJECT_PREFIX, name.empty? ? nil : name, ">"].compact.join(".")
+          purged = Client.instance.purge("scheduled", filter)
+          scope = name.empty? ? "" : " #{name}"
+          ok panel("scheduled") + flash("Purged #{purged} scheduled#{scope} #{purged == 1 ? "job" : "jobs"}")
         end
 
         # Removes an enqueued message from its stream and renders the enqueued tab.
