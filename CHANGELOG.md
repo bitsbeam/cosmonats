@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The web UI's Crons page describes each schedule in plain English
+- The web UI's Scheduled tab can enqueue a delayed job now, or delete it, one by one
 
 ### Changed
 

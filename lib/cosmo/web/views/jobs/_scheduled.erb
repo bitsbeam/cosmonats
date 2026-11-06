@@ -1,10 +1,10 @@
 <% if @jobs.empty? -%>
   <div class="empty"><b>Nothing scheduled</b>No delayed jobs are waiting for their time.</div>
 <% else -%>
-  <div class="scroll"><div style="min-width:820px">
-    <div class="thead t-jobs plain"><span>JID</span><span>Class</span><span>Args</span><span>Queue</span><span>Status</span><span class="r">When</span></div>
+  <div class="scroll"><div style="min-width:860px">
+    <div class="thead t-jobs actions"><span>JID</span><span>Class</span><span>Args</span><span>Queue</span><span>Status</span><span class="r">When</span><span></span></div>
     <% @jobs.each do |job| -%>
-      <div class="trow hover t-jobs plain">
+      <div class="trow hover t-jobs actions">
         <%= jid_cell(job.data, stream: job.x_stream) %>
         <span class="strong ellip"><%= h(job.data[:class]) %></span>
         <%= render('jobs/_args', { args: job.data[:args] }) %>
@@ -13,6 +13,16 @@
         <div class="stack r" style="text-align:right">
           <span class="mono" style="font-size:12px"><%= h(time_until(job.execute_at)) %></span>
           <span class="small-mono"><%= h(format_timestamp(job.execute_at)) %></span>
+        </div>
+        <div class="btns">
+          <button type="button" class="btn" title="Enqueue now, without waiting for its time"
+                  hx-patch="<%= url_for("/jobs/scheduled/run/#{job.seq}", { page: @page, limit: @limit }) %>"
+                  hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"
+                  hx-confirm="Enqueue scheduled job #<%= job.seq %> now?">▶</button>
+          <button type="button" class="btn danger" title="Delete, so it never runs"
+                  hx-delete="<%= url_for("/jobs/scheduled/delete/#{job.seq}", { page: @page, limit: @limit }) %>"
+                  hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"
+                  hx-confirm="Delete scheduled job #<%= job.seq %>?">✕</button>
         </div>
       </div>
     <% end -%>

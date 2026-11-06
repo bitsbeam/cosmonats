@@ -165,8 +165,8 @@ are eagerly loaded by the CLI.
   `scheduled` stream with `Nats-Schedule`, `Nats-Schedule-Target` (`jobs.scheduled.<class>`), `X-Stream` and `X-Subject`. NATS
   holds it until it is due and fires it into `jobs.scheduled.<class>`, where `Job::Processor#schedule_loop` dispatches it on
   like a cron firing. The scheduler's consumer filters on `jobs.scheduled.>`, so it never sees a delayed job before it is due
-  and none holds one of its `max_ack_pending` slots; the Crons tab only reads `cosmo.cron.>`. Cancel one by deleting its
-  message. A message with an `X-Execute-At` (a delayed job from before schedules) is still naked until due by the scheduler.
+  and none holds one of its `max_ack_pending` slots; the Crons tab only reads `cosmo.cron.>`, while `/jobs/scheduled` lists
+  them, each with *enqueue now* (`Stream#retry`: publish to `X-Subject`, delete the schedule) and *delete* (never a cron template). A message with an `X-Execute-At` (a delayed job from before schedules) is still naked until due by the scheduler.
 - **Cron jobs**: a firing carries no `X-Execute-At`; the scheduler forwards its timestamp as `X-Enqueued-At` so `enqueued_at`
   on the job is the firing time rather than the dispatch time, and sets `X-Scheduled-By` for `cosmo.cron.*` schedules only
 - **Stream subjects**: default `<underscored_class_name>.>` — interpolated via Ruby `format(str, name:)`

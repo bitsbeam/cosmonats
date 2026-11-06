@@ -74,6 +74,29 @@ module Cosmo
           ok flash("Dead job ##{seq} deleted")
         end
 
+        # Enqueues a scheduled job now: sends it to the stream that runs it and drops its schedule.
+        #
+        # @return [Array] the Rack response
+        def run_scheduled
+          return not_found unless Config.scheduled.enabled
+
+          seq = path.split("/").last.to_i
+          API::Stream.new("scheduled").retry(seq)
+          ok panel("scheduled") + flash("Scheduled job ##{seq} enqueued now")
+        end
+
+        # Deletes a scheduled job, so it never runs. A cron schedule is not one: only the Crons tab removes those.
+        #
+        # @return [Array] the Rack response
+        def delete_scheduled
+          return not_found unless Config.scheduled.enabled
+
+          seq = path.split("/").last.to_i
+          stream = API::Stream.new("scheduled")
+          stream.delete(seq) if stream.message(seq)
+          ok panel("scheduled") + flash("Scheduled job ##{seq} deleted")
+        end
+
         # Removes an enqueued message from its stream and renders the enqueued tab.
         #
         # @return [Array] the Rack response
