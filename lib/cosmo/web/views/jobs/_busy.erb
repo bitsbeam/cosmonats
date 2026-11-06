@@ -2,7 +2,7 @@
   <div class="empty"><b>All quiet</b>No jobs are running right now.</div>
 <% else -%>
   <div class="scroll"><div style="min-width:860px">
-    <div class="thead t-jobs"><span>JID</span><span>Class</span><span>Args</span><span>Queue</span><span>Status</span><span class="r">Try</span><span class="r">Running for</span></div>
+    <div class="thead t-jobs"><span>JID</span><span>Class</span><span>Args</span><span>Stream</span><span class="r">Try</span><span class="r">Running for</span></div>
     <% @jobs.each do |job| -%>
       <% delivery = job[:delivery].to_i -%>
       <% retries = job[:retry] -%>
@@ -14,7 +14,6 @@
         </div>
         <%= render('jobs/_args', { args: job[:args] }) %>
         <span class="mono ellip" style="font-size:12px"><%= h(job[:stream]) %></span>
-        <span class="pill" style="--tone:var(--acc)">running</span>
         <span class="mono r" style="font-size:12px;color:<%= delivery >= 5 ? 'var(--err)' : delivery > 1 ? 'var(--warn)' : 'var(--mute)' %>">
           <%= delivery.zero? ? '—' : delivery %><%= "/#{retries.to_i + 1}" if retries.is_a?(Integer) && delivery.positive? %>
         </span>

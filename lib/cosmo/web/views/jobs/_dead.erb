@@ -2,14 +2,13 @@
   <div class="empty"><b>No dead jobs</b>Nothing has given up.</div>
 <% else -%>
   <div class="scroll"><div style="min-width:860px">
-    <div class="thead t-jobs actions"><span>JID</span><span>Class</span><span>Args</span><span>Queue</span><span>Status</span><span class="r">Failed</span><span></span></div>
+    <div class="thead t-jobs actions"><span>JID</span><span>Class</span><span>Args</span><span>Stream</span><span class="r">Failed</span><span></span></div>
     <% @jobs.each do |job| -%>
       <div class="trow hover t-jobs actions">
         <%= jid_cell(job.data, stream: job.x_stream) %>
         <span class="strong ellip"><%= h(job.data[:class]) %></span>
         <%= render('jobs/_args', { args: job.data[:args] }) %>
         <span class="mono ellip" style="font-size:12px"><%= job.x_stream ? h(job.x_stream) : '—' %></span>
-        <span class="pill" style="--tone:var(--err)">dead</span>
         <% if (failed_at = job.stored_at) -%>
           <span class="mono mute r" style="font-size:11.5px" title="<%= h(format_timestamp(failed_at)) %>"><%= elapsed(failed_at) %> ago</span>
         <% else -%>
