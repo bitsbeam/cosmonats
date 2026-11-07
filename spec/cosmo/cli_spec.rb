@@ -102,6 +102,18 @@ RSpec.describe Cosmo::CLI do
         expect { cli.run }.to output(anything).to_stdout
       end
 
+      context "with --no-cron" do
+        before do
+          ARGV.replace(%w[-S --no-cron])
+          allow(Cosmo::Config).to receive(:dig).with(:setup, :cron).and_return({ daily: { class: "MyJob", cron: "0 0 * * *" } })
+        end
+
+        it "does not sync cron schedules" do
+          expect(Cosmo::API::Cron.instance).not_to receive(:upsert!)
+          expect { cli.run }.to output(anything).to_stdout
+        end
+      end
+
       context "without streams to set up" do
         let(:setup) { { cron: { daily: {} } } }
 

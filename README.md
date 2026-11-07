@@ -799,6 +799,7 @@ The `scheduled` stream is a service stream: it is always dispatched, and naming 
 | `-t, --timeout NUM`     | Shutdown timeout (sec)                | `-t 60`               |
 | `-p, --http-port INT`   | Serve `/health` and `/ping` on a port | `-p 9090`             |
 | `-S, --setup`           | Setup streams & sync cron, then exit  | `--setup`             |
+| `--no-cron`             | With `--setup`, skip syncing cron schedules | `--setup --no-cron` |
 | `--init`                | Write `config/cosmo.yml` with the defaults, then exit | `--init`  |
 | `-v, --version`         | Print version and exit                | `--version`           |
 | `-h, --help`            | Show help and exit                    | `--help`               |

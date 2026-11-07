@@ -99,7 +99,7 @@ module Cosmo
       services = Services.setup!
       puts "Service streams are ready: #{services.join(", ")}" if services.any?
 
-      schedules = Config.dig(:setup, :cron)&.reduce(0) do |sum, (name, entry)|
+      schedules = (flags[:cron] == false ? nil : Config.dig(:setup, :cron))&.reduce(0) do |sum, (name, entry)|
         class_name = entry.delete(:class)
         API::Cron.instance.upsert!(**entry, name: name, class_name: class_name)
         sum + 1
@@ -166,6 +166,10 @@ module Cosmo
 
         o.on "-S", "--setup", "Create/update streams and sync cron schedules, then exit" do
           flags[:setup] = true
+        end
+
+        o.on "--no-cron", "With --setup, skip syncing cron schedules" do
+          flags[:cron] = false
         end
 
         o.on "--init", "Write #{Config::DEFAULT_PATH} with Cosmo's defaults, then exit" do
