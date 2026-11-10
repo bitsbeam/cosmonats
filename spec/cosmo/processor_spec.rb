@@ -127,6 +127,29 @@ RSpec.describe Cosmo::Processor do
       expect { processor.send(:fetch, subscription, batch_size: 10, timeout: 1) }.not_to raise_error
     end
 
+    it "treats a refused pull as an empty fetch without reporting it" do
+      subscription = double("subscription", jsi: double(consumer: "consumer-default"))
+      error = NATS::JetStream::Error::APIError.new(code: 409, description: "Exceeded MaxWaiting")
+      allow(subscription).to receive(:fetch).and_raise(error)
+
+      expect(Cosmo).not_to receive(:handle_error)
+      expect(Cosmo::Logger).not_to receive(:error)
+      expect(processor).not_to receive(:sleep)
+
+      expect(processor.send(:fetch, subscription, batch_size: 10, timeout: 1)).to be_nil
+    end
+
+    it "reports other API errors" do
+      error = NATS::JetStream::Error::APIError.new(code: 500, description: "boom")
+      allow(subscription).to receive(:fetch).and_raise(error)
+      allow(Cosmo::Logger).to receive(:error)
+
+      expect(Cosmo).to receive(:handle_error).with(error, { source: :fetch })
+      allow(processor).to receive(:sleep)
+
+      processor.send(:fetch, subscription, batch_size: 10, timeout: 1)
+    end
+
     it "handles StandardError by logging and sleeping with backoff" do
       error = StandardError.new("connection error")
       allow(subscription).to receive(:fetch).and_raise(error)

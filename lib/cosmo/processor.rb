@@ -6,6 +6,7 @@ module Cosmo
     STREAMS_PAUSED_IDLE_SLEEP = "1s" # How long to sleep when every stream is paused, preventing a tight CPU spin (override via COSMO_STREAMS_PAUSED_IDLE_SLEEP)
     STREAM_EMPTY_BACKOFF_MAX = "5s"  # Max sleep between empty fetches (override via COSMO_STREAM_EMPTY_BACKOFF_MAX)
     QUIET_SLEEP = "5s"               # How long to sleep between checks while in quiet mode (override via COSMO_QUIET_IDLE_SLEEP)
+    MAX_WAITING_STATUS = /Exceeded MaxWaiting/ # The server's refusal of a pull while the consumer already holds max_waiting of them
 
     # Builds a processor and starts it, see {#run}.
     #
@@ -235,6 +236,11 @@ module Cosmo
     rescue NATS::Timeout
       # No messages, continue
     rescue StandardError => e
+      if e.is_a?(NATS::JetStream::Error::APIError) && MAX_WAITING_STATUS.match?(e.message)
+        Logger.debug "#{subscription.jsi.consumer} already has max_waiting pulls parked, treating the fetch as empty"
+        return
+      end
+
       Logger.error "Snap! Error just happened"
       Logger.error "#{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       Cosmo.handle_error(e, { source: :fetch })

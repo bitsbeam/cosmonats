@@ -4,6 +4,7 @@ module Cosmo
     STREAMS_PAUSED_IDLE_SLEEP: ::String
     STREAM_EMPTY_BACKOFF_MAX: ::String
     QUIET_SLEEP: ::String
+    MAX_WAITING_STATUS: Regexp
 
     @pool: Utils::ThreadPool
     @running: untyped
