@@ -18,8 +18,8 @@
 
 <div class="row-wrap">
   <section class="card grow2" hx-get="<%= url_for('/jobs/_queues', compact: 1) %>" hx-trigger="load, cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="innerHTML">
-    <div class="card-head bar"><div class="card-title">Queues</div></div>
-    <div class="loading">Loading queues&hellip;</div>
+    <div class="card-head bar"><div class="card-title">Streams</div></div>
+    <div class="loading">Loading streams&hellip;</div>
   </section>
   <section class="card grow1" hx-get="<%= url_for('/_running') %>" hx-trigger="load, cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="innerHTML">
     <div class="card-head bar ruled"><div class="card-title">Running sample</div></div>

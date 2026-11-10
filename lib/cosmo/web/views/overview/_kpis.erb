@@ -3,7 +3,7 @@
      ['Processed', @processed, 'all time', 'var(--c1)', metrics_path],
      ['Failed', @failed, 'all time', 'var(--err)', metrics_path],
      ['Busy', @busy, 'running now', 'var(--c3)', '/jobs/busy'],
-     ['Enqueued', @enqueued, 'waiting in queues', 'var(--c2)', '/jobs/enqueued'],
+     ['Enqueued', @enqueued, 'waiting in streams', 'var(--c2)', '/jobs/enqueued'],
      ['Retries', @retries, 'redeliveries', 'var(--warn)', '/jobs']
    ] -%>
 <% kpis << ['Scheduled', @scheduled, 'delayed & cron', 'var(--c5)', '/jobs/scheduled'] if Cosmo::Config.scheduled.enabled -%>

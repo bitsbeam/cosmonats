@@ -19,7 +19,7 @@
 <% if @jobs.nil? -%>
   <div class="empty"><b>No job streams</b>Run <code>cosmo --setup</code> to create them.</div>
 <% elsif @jobs.empty? -%>
-  <div class="empty"><b>Queue is empty</b><code><%= h(@stream_name) %></code> has nothing waiting.</div>
+  <div class="empty"><b>Stream is empty</b><code><%= h(@stream_name) %></code> has nothing waiting.</div>
 <% else -%>
   <div class="scroll"><div style="min-width:860px">
     <div class="thead t-jobs actions"><span>JID</span><span>Class</span><span>Args</span><span>Seq</span><span class="r">Enqueued</span><span></span></div>

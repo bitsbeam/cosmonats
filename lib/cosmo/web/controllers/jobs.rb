@@ -55,7 +55,7 @@ module Cosmo
           ok render("jobs/_queues", { queues: API::Stats.queues, compact: params["compact"].to_s == "1" })
         end
 
-        # Sends a dead job back to its queue.
+        # Sends a dead job back to its stream.
         #
         # @return [Array] the Rack response
         def retry
@@ -63,7 +63,7 @@ module Cosmo
 
           seq = path.split("/").last.to_i
           API::Stream.new("dead").retry(seq)
-          ok flash("Dead job ##{seq} sent back to its queue")
+          ok flash("Dead job ##{seq} sent back to its stream")
         end
 
         # Deletes a dead job.
@@ -156,7 +156,7 @@ module Cosmo
           return ok(panel(name)) if hx_request?
 
           content_for :title, "Jobs"
-          content_for :subtitle, "Queues, in-flight work and everything waiting its turn."
+          content_for :subtitle, "Streams, in-flight work and everything waiting its turn."
           ok render("jobs/index", { panel: panel(name) }, layout: true)
         end
 
