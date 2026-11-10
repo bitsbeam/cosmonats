@@ -35,8 +35,5 @@
 
   <%= render("jobs/_#{@tab}", { jobs: @jobs, total: @total, page: @page, limit: @limit, stream_name: @stream_name, stream_sizes: @stream_sizes, after: @after, query: @query }) %>
 
-  <% if @tab == 'enqueued' -%>
-    <%= render('shared/_cursor_pager', { path: tab_path, query: @query, after: @after, next_after: @next_after, target: '#jobs-panel' }) %>
-  <% end -%>
-  <%= render('shared/_pager', { path: tab_path, query: @query, page: @page, total_pages: @total_pages, target: '#jobs-panel' }) %>
+  <%= render('shared/_pager', { path: tab_path, query: @query, page: @page, total_pages: @total_pages, next_after: @next_after, target: '#jobs-panel' }) %>
 </section>

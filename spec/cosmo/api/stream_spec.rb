@@ -136,6 +136,15 @@ RSpec.describe Cosmo::API::Stream do
       expect(first.map { _1.data[:jid] }).to eq(%w[j0 j1])
       expect(second.map { _1.data[:jid] }).to eq(%w[k1 k2])
     end
+
+    it "finds a page's cursor and a cursor's place across a gap of deleted sequences" do
+      acks = 6.times.map { |i| client.publish("teststreamapi.job", Cosmo::Utils::Json.dump({ class: "W", args: [], jid: "p#{i}" })) }
+      [1, 2].each { stream.delete(acks[_1].seq) }
+      cursor = stream.cursor_after(4)
+
+      expect(stream.messages(limit: 2, after: cursor).map { _1.data[:jid] }).to eq(%w[p3 p4])
+      expect([cursor, stream.skipped(cursor)]).to eq([acks[0].seq, 4])
+    end
   end
 
   describe "#each" do

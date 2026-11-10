@@ -187,16 +187,29 @@ module Cosmo
         def enqueued_locals # rubocop:disable Metrics/AbcSize
           stream_name, stream_sizes = streams
           limit = limit(API::Stream::LIMIT)
-          after = params["after"].to_s[/\A\d+\z/]&.to_i
           locals = { stream_name:, stream_sizes:, page: 1, limit:, total: 0, total_pages: 0, jobs: nil, polling: false,
-                     after:, next_after: nil, query: { stream_name: Rack::Utils.escape(stream_name.to_s), limit: } }
+                     after: nil, next_after: nil, query: { stream_name: Rack::Utils.escape(stream_name.to_s), limit: } }
           return locals if stream_name.to_s.empty?
 
           stream = API::Stream.new(stream_name)
           total = stream_sizes.fetch(stream_name) { stream.total }
+          total_pages = (total.to_f / limit).ceil
+          page, after = enqueued_cursor(stream, total, limit, total_pages)
           jobs = stream.messages(limit: limit + 1, after: after || 0)
           next_after = jobs[limit - 1].seq.to_i if jobs.size > limit
-          locals.merge(total:, jobs: jobs.first(limit), next_after:)
+          locals.merge(total:, total_pages:, page:, after:, jobs: jobs.first(limit), next_after:)
+        end
+
+        # A page number is turned into the cursor that starts it, a cursor into the page number it falls on.
+        def enqueued_cursor(stream, total, limit, total_pages)
+          last = [total_pages, 1].max
+          if params["page"].to_s.match?(/\A\d+\z/)
+            page = params["page"].to_i.clamp(1, last)
+            return [page, (stream.cursor_after((page - 1) * limit, total:) if page > 1)]
+          end
+
+          after = params["after"].to_s[/\A\d+\z/]&.to_i
+          after ? [((stream.skipped(after, total:) / limit) + 1).clamp(1, last), after] : [1, nil]
         end
 
         def scheduled_locals

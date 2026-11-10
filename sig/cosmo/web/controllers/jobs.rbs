@@ -24,6 +24,8 @@ module Cosmo
 
         private
 
+        def enqueued_cursor: (API::Stream stream, ::Integer total, ::Integer limit, ::Integer total_pages) -> [::Integer, ::Integer?]
+
         def job_stream?: (::String name) -> bool
 
         def enqueued_filters: (::String stream_name, ::String name) -> ::Array[::String?]

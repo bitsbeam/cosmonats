@@ -274,12 +274,13 @@ module Cosmo
     #
     # @param stream_name [String]
     # @param filter [String] a subject filter, wildcards allowed
+    # @param since [Integer] the sequence to count from, so only the messages at or after it
     # @return [Integer]
     # @raise [NATS::JetStream::Error] when the stream refuses the read
     # @raise [NATS::Timeout] when no stream with +allow_direct+ answers
-    def count_messages(stream_name, filter)
+    def count_messages(stream_name, filter, since: 1)
       messages = []
-      _, pending = direct_batch(stream_name, { seq: 1, next_by_subj: filter, batch: 1 }, messages)
+      _, pending = direct_batch(stream_name, { seq: since, next_by_subj: filter, batch: 1 }, messages)
       messages.size + pending
     end
 

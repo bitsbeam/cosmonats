@@ -114,6 +114,37 @@ module Cosmo
       end
 
       # @param seq [Integer]
+      # @return [Integer] how many messages sit at or after +seq+, counted by the server however sparse the stream is
+      def pending_from(seq)
+        client.count_messages(name, ">", since: seq)
+      end
+
+      # @param after [Integer] a cursor, the sequence of the last message already seen
+      # @param total [Integer] the stream's messages, when already known
+      # @return [Integer] how many messages sit at or below the cursor, so a page's place in the stream
+      def skipped(after, total: self.total)
+        [total - pending_from(after + 1), 0].max
+      end
+
+      # Finds the cursor that has +skip+ messages at or below it by a binary search over the sequences, as NATS can't
+      # jump to the Nth message: about log2(last sequence) lookups, none of which read a message.
+      #
+      # @param skip [Integer] how many messages come before the page
+      # @param total [Integer] the stream's messages, when already known
+      # @return [Integer] the sequence to read +after+; 0 when nothing is skipped
+      def cursor_after(skip, total: self.total)
+        return 0 unless skip.positive?
+
+        low = 0
+        high = info[:state].last_seq.to_i
+        while low < high
+          mid = (low + high) / 2
+          total - pending_from(mid + 1) >= skip ? high = mid : low = mid + 1
+        end
+        low
+      end
+
+      # @param seq [Integer]
       # @return [Job, nil] nil when the message is gone or is a cron schedule template
       def message(seq)
         job = Job.new(name, client.get_message(name, seq: seq, direct: true))

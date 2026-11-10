@@ -62,7 +62,7 @@ module Cosmo
 
     def direct_messages: (::String stream_name, ::String filter, ?limit: ::Integer?, ?since: ::Time?) -> Array[NATS::Msg]
 
-    def count_messages: (::String stream_name, ::String filter) -> ::Integer
+    def count_messages: (::String stream_name, ::String filter, ?since: ::Integer) -> ::Integer
 
     def subjects: (::String stream_name, ::String filter) -> Array[::String]
 

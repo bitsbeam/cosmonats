@@ -14,7 +14,8 @@
       <% end -%>
     <% end -%>
     <% if @page < @total_pages -%>
-      <a class="btn quiet" hx-get="<%= link.(@page + 1) %>" hx-target="<%= @target %>" hx-swap="outerHTML" hx-indicator="#global-spinner">Next &rarr;</a>
+      <% forward = @next_after ? url_for(@path, Hash(@query).merge(after: @next_after)) : link.(@page + 1) -%>
+      <a class="btn quiet" hx-get="<%= forward %>" hx-target="<%= @target %>" hx-swap="outerHTML" hx-indicator="#global-spinner">Next &rarr;</a>
     <% else -%>
       <span class="btn quiet disabled">Next &rarr;</span>
     <% end -%>

@@ -162,6 +162,10 @@ RSpec.describe Cosmo::Client do
       expect([client.count_messages(stream_name, "test.>"), client.count_messages(stream_name, "test.even.>"),
               client.count_messages(stream_name, "test.*.1"), client.count_messages(stream_name, "test.none")]).to eq([5, 3, 1, 0])
     end
+
+    it "counts only the messages from a sequence on" do
+      expect(client.count_messages(stream_name, "test.>", since: 3)).to eq(3)
+    end
   end
 
   describe "#subjects" do
