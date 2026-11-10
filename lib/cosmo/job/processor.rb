@@ -97,14 +97,16 @@ module Cosmo
             headers = message.header.except(*DISPATCH_HEADERS)
             stream, subject, execute_at = message.header.values_at("X-Stream", "X-Subject", "X-Execute-At")
             scheduler = message.header[NATS::JetStream::Header::SCHEDULER]
+            cron = scheduler&.start_with?("#{API::Cron::Entry::SUBJECT_PREFIX}.")
             if scheduler
-              headers["X-Scheduled-By"] = scheduler if scheduler.start_with?("#{API::Cron::Entry::SUBJECT_PREFIX}.")
+              headers["X-Scheduled-By"] = scheduler if cron
               headers["X-Enqueued-At"] = message.metadata.timestamp.to_f.to_s
             end
             execute_at = execute_at.to_i
 
             if now >= execute_at
-              client.publish(subject, message.data, header: headers, stream:)
+              data, = dispatch_payload(message.data, cron)
+              client.publish(subject, data, header: headers, stream:)
               message.ack
             else
               message.nak(delay: Config.to_ns(execute_at - now))
@@ -120,6 +122,15 @@ module Cosmo
 
           break unless running?
         end
+      end
+
+      # A cron firing is a copy of its schedule's template, jid included, so it gets a jid of its own here.
+      def dispatch_payload(data, cron)
+        body = Utils::Json.parse(data) or return [data, nil]
+        return [data, body[:jid]] unless cron
+
+        jid = SecureRandom.hex(12)
+        [Utils::Json.dump(body.merge(jid:)), jid]
       end
 
       def process(messages, _) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength

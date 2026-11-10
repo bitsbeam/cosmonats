@@ -386,7 +386,7 @@ RSpec.describe Cosmo::Job::Processor do
 
           options stream: :default, retry: 0
 
-          def perform(tag) = Results.instance << { tag: tag, scheduled_by: scheduled_by }
+          def perform(tag) = Results.instance << { tag: tag, scheduled_by: scheduled_by, jid: jid }
         end)
 
         Cosmo::API::Cron.instance.upsert!(class_name: "CronReportJob", stream: "default",
@@ -396,7 +396,16 @@ RSpec.describe Cosmo::Job::Processor do
       it "dispatches the fired schedule to the stream that runs the job" do
         wait_until(timeout: 15) { results.any? }
 
-        expect(results.first).to eq({ tag: "nightly", scheduled_by: "cosmo.cron.default.cron_report_job" })
+        expect(results.first).to include(tag: "nightly", scheduled_by: "cosmo.cron.default.cron_report_job")
+      end
+
+      it "gives each firing a jid of its own" do
+        template = client.get_message("scheduled", subject: "cosmo.cron.default.cron_report_job")
+        wait_until(timeout: 15) { results.size >= 2 }
+
+        jids = results.first(2).map { _1[:jid] }
+        expect(jids.uniq.size).to eq(2)
+        expect(jids).not_to include(Cosmo::Utils::Json.parse(template.data)[:jid])
       end
 
       it "keeps the schedule deployed after it fires" do
