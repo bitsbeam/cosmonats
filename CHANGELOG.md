@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The web UI reported NATS as unreachable for 10s whenever a page read a stream that doesn't exist; it now checks the
+  server answers before saying so
 - Every firing of a cron ran with its template's jid; each firing now gets a jid of its own
 - `KV#direct_values` returns `{}` for no keys instead of sending NATS an empty batched get, which it refuses with
   `408 Empty Request`. The web UI's Jobs page raised it whenever no job was running

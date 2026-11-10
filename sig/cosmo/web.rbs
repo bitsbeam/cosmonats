@@ -20,6 +20,8 @@ module Cosmo
 
     def unavailable: () -> response
 
+    def nats_failure: (Exception error) -> response
+
     def handler: ([singleton(Controllers::Application), ::Symbol] | response route) -> response
   end
 end

@@ -45,9 +45,8 @@ module Cosmo
 
       status, headers, body = Cache.instance.fetch(@request.fullpath) { guarded }
       [status, headers.dup, body.dup]
-    rescue *Circuit::ERRORS
-      Circuit.instance.trip!
-      unavailable
+    rescue *Circuit::ERRORS => e
+      nats_failure(e)
     end
 
     private
@@ -108,6 +107,15 @@ module Cosmo
 
     def unavailable
       Controllers::Application.new(@request).unavailable
+    end
+
+    # Opens the circuit only when NATS doesn't answer: a request that failed while it does, e.g. on a missing stream,
+    # raises on its own instead of making every page report NATS as unreachable.
+    def nats_failure(error)
+      raise error if Circuit.instance.reachable?
+
+      Circuit.instance.trip!
+      unavailable
     end
 
     def handler(response)
