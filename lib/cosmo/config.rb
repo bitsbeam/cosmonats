@@ -81,8 +81,10 @@ module Cosmo
 
     # @param config [Hash] a parsed config file
     # @return [void]
-    # @raise [ConfigError] when +config+ sets a service stream or +batch_expiry+, which Cosmo.configure owns
+    # @raise [ConfigError] when +config+ sets a service stream or +batch_expiry+, which Cosmo.configure owns, or
+    #   +lanes+ that is not a positive integer
     def self.validate!(config)
+      validate_lanes!(config)
       %i[setup consumers].each do |section|
         jobs = config.dig(section, :jobs)
         name = SERVICE_STREAMS.find { jobs.is_a?(::Hash) && jobs.key?(_1) }
@@ -94,6 +96,21 @@ module Cosmo
       return unless config.key?(:batch_expiry)
 
       raise ConfigError, "`batch_expiry` moved out of cosmo.yml: Cosmo.configure { |config| config.batches.expiry = ... }"
+    end
+
+    # @param config [Hash] a parsed config file
+    # @return [void]
+    # @raise [ConfigError] when a job consumer's +lanes+ is not a positive integer
+    def self.validate_lanes!(config)
+      jobs = config.dig(:consumers, :jobs)
+      return unless jobs.is_a?(::Hash)
+
+      jobs.each do |stream_name, c|
+        lanes = c[:lanes] if c.is_a?(::Hash)
+        next if lanes.nil? || (lanes.is_a?(Integer) && lanes.positive?)
+
+        raise ConfigError, "`consumers.jobs.#{stream_name}.lanes` must be a positive integer, got #{lanes.inspect}"
+      end
     end
 
     # Parses durations (+max_age+ and +duplicate_window+ into nanoseconds) and interpolates +%{name}+ in subjects, in place.

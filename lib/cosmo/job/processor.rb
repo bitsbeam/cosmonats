@@ -21,7 +21,7 @@ module Cosmo
 
       # @return [Array<String>] job streams pulled from, plus +scheduled+ when dispatching scheduled jobs
       def subscriptions
-        names = @consumers.map { |(_, config, _)| config[:stream].to_s }
+        names = @consumers.map { |(_, config, _)| config[:stream].to_s }.uniq
         names << StreamFilter::SCHEDULED.to_s if scheduler? && scheduled_config
         names
       end
@@ -62,7 +62,8 @@ module Cosmo
           next if stream_name == StreamFilter::SCHEDULED # scheduled jobs are handled in schedule_loop
           next unless filter.include?(stream_name)
 
-          @consumers << subscribe(stream_name, config)
+          lanes = config[:lanes] ? Array(0...config[:lanes]) : [nil]
+          lanes.each { |lane| @consumers << subscribe(stream_name, config, lane) }
         rescue NATS::JetStream::Error::NotFound
           Logger.warn "stream #{stream_name} does not exist, skipping it (run `cosmo --setup` to create it)"
         end
@@ -105,8 +106,8 @@ module Cosmo
             execute_at = execute_at.to_i
 
             if now >= execute_at
-              data, = dispatch_payload(message.data, cron)
-              client.publish(subject, data, header: headers, stream:)
+              data, jid = dispatch_payload(message.data, cron)
+              client.publish(Lane.route(stream, subject, jid), data, header: headers, stream:)
               message.ack
             else
               message.nak(delay: Config.to_ns(execute_at - now))
@@ -257,12 +258,14 @@ module Cosmo
         (current_attempt**4) + 15
       end
 
-      def subscribe(stream_name, config)
+      def subscribe(stream_name, config, lane = nil)
         config = config.dup
         config[:batch_size] = 1
         config[:stream] = stream_name
-        config[:consumer] = consumer_name(stream_name)
-        subscription = client.subscribe(config[:subject], config[:consumer], config.except(:subject, :priority, :stream, :batch_size, :consumer))
+        config[:consumer] = consumer_name(stream_name, lane)
+        config[:subject] = Lane.filter(stream_name, lane) if lane
+        consumer_config = config.except(:subject, :priority, :stream, :batch_size, :consumer, :lanes)
+        subscription = client.subscribe(config[:subject], config[:consumer], consumer_config)
         [subscription, config, nil]
       end
 
@@ -315,14 +318,31 @@ module Cosmo
         forwarded ? Time.at(forwarded.to_f) : message.metadata.timestamp
       end
 
-      # Durable and per stream, so every process pulls from the same consumer and shares the work.
-      def consumer_name(stream_name)
-        "consumer-#{stream_name}"
+      # Durable and per stream (or lane), so every process pulls from the same consumer and shares the work.
+      def consumer_name(stream_name, lane = nil)
+        lane ? "consumer-#{stream_name}-#{Lane.name(lane)}" : "consumer-#{stream_name}"
       end
 
+      # A stream's priority weighs the stream, whatever its number of lanes, and each pick of it takes its next lane.
       def consumers
-        @weights ||= @consumers.filter_map { |(_, c, _)| [c[:stream]] * [c[:priority].to_i, 1].max }.flatten
-        @weights.shuffle.map { |s| @consumers.find { |(_, c, _)| c[:stream] == s } }
+        @lanes ||= @consumers.group_by { |(_, c, _)| c[:stream] }
+        @weights ||= @lanes.flat_map { |s, lanes| [s] * [lanes.first[1][:priority].to_i, 1].max }
+        @weights.shuffle.map { |s| next_lane(@lanes[s]) }
+      end
+
+      # Skips the lanes backing off on empty fetches, so the stream keeps its share while only some lanes have jobs.
+      def next_lane(lanes)
+        index = lanes.index { |(_, c, _)| !backing_off?(c) } || 0
+        lanes.rotate!(index + 1).last
+      end
+
+      def backing_off?(config)
+        _, wake_at = consumer_state[backoff_key(config)]
+        wake_at && Time.now < wake_at
+      end
+
+      def backoff_key(config)
+        config[:consumer]
       end
 
       def fetch_subjects(config)

@@ -88,7 +88,12 @@ module Cosmo
       private
 
       def subject_for(stream)
-        "jobs.#{stream}.#{Utils::String.underscore(@class_name)}"
+        Lane.subject(stream, Utils::String.underscore(@class_name), lane_key)
+      end
+
+      # The +lane+ option, else the batch, so a batch's jobs share a lane, else the jid, spreading jobs over the lanes.
+      def lane_key
+        @options.fetch(:lane) { batch_id || jid }
       end
 
       def validate!

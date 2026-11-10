@@ -1,0 +1,17 @@
+module Cosmo
+  module Job
+    module Lane
+      def self.count: (::String | Symbol stream) -> Integer?
+
+      def self.pick: (::String | Symbol stream, untyped key) -> Integer?
+
+      def self.subject: (::String | Symbol stream, ::String job_name, untyped key) -> ::String
+
+      def self.route: (::String | Symbol stream, ::String subject, untyped key) -> ::String
+
+      def self.filter: (::String | Symbol stream, Integer lane) -> ::String
+
+      def self.name: (Integer lane) -> ::String
+    end
+  end
+end

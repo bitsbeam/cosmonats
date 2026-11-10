@@ -7,7 +7,7 @@ module Cosmo
     #   ReportJob.set(stream: :critical, retry: 0).perform_async(42)
     class Setter
       # Options carried by the job's message. The rest (+limit+, +retry_in+) are read from the class by the worker.
-      OPTIONS = %i[stream retry dead subject].freeze
+      OPTIONS = %i[stream retry dead subject lane].freeze
 
       # @param job_class [Class] the job class including {Job}
       # @param options [Hash] a subset of {OPTIONS}

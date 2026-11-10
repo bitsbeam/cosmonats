@@ -9,9 +9,10 @@ RSpec.describe Cosmo::Job::Processor do
   let(:results)     { Results.instance }
   let(:scheduled_enabled) { true }
   let(:missing_streams) { [] }
+  let(:overrides) { nil }
 
   before do
-    Cosmo::Config.load("spec/support/cosmo.yml")
+    Cosmo::Config.load("spec/support/cosmo.yml", overrides:)
     Cosmo.configure { |config| config.scheduled.enabled = scheduled_enabled }
     # Keep the scheduler fetch timeout short so teardown
     # isn't blocked by the default 5-second NATS pull window.
@@ -127,6 +128,55 @@ RSpec.describe Cosmo::Job::Processor do
 
       wait_until(timeout: 5) { results.size >= 4 }
       expect(results).to contain_exactly("default", "high", "critical", "low")
+    end
+
+    context "with lanes on a stream" do
+      let(:concurrency) { 1 }
+      let(:overrides) { { consumers: { jobs: { default: { lanes: 2 } } } } }
+
+      before do
+        stub_const("LaneJob", Class.new do
+          include Cosmo::Job
+
+          options stream: :default, retry: 0
+
+          def perform(tag)
+            sleep 0.05
+            Results.instance << tag
+          end
+        end)
+      end
+
+      after { Cosmo::Config.load("spec/support/cosmo.yml") }
+
+      it "subscribes one consumer per lane instead of one for the stream" do
+        names = client.list_consumers("default").map { _1["name"] }
+
+        expect(names).to contain_exactly("consumer-default-lane-0", "consumer-default-lane-1")
+        expect(processor.subscriptions).to eq(%w[critical high default low scheduled])
+      end
+
+      it "runs a job on a free lane while another lane holds a long run of jobs" do
+        LaneJob.set(lane: 0).perform_bulk(Array.new(40) { ["busy"] })
+        LaneJob.set(lane: 1).perform_async("free")
+        wait_until(timeout: 5) { results.include?("free") }
+
+        expect(results.count("busy")).to be < 20
+      end
+
+      it "puts each cron firing on a lane when dispatching it" do
+        Cosmo::API::Cron.instance.upsert!(class_name: "LaneJob", stream: "default", schedule: "@every 1s", args: ["cron"])
+        wait_until(timeout: 15) { results.include?("cron") }
+
+        expect(Cosmo::API::Cron.instance.all.first[:dispatch_subject]).to eq("jobs.default.lane_job")
+      end
+
+      it "puts a cron run now on a lane" do
+        cron = Cosmo::API::Cron.instance.upsert!(class_name: "LaneJob", stream: "default", schedule: "@yearly", args: ["now"])
+        Cosmo::API::Cron.instance.run_now!(cron[:schedule_subject])
+
+        wait_until(timeout: 5) { results.include?("now") }
+      end
     end
 
     context "with a stream filter (--streams)" do

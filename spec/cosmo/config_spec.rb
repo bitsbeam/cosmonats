@@ -271,6 +271,13 @@ RSpec.describe Cosmo::Config do
         .to raise_error(Cosmo::ConfigError, /`consumers.jobs.scheduled` is a Cosmo service stream/)
     end
 
+    it "rejects lanes that are not a positive integer" do
+      expect { load_yaml("consumers:\n  jobs:\n    default:\n      lanes: 0\n") }
+        .to raise_error(Cosmo::ConfigError, /`consumers.jobs.default.lanes` must be a positive integer, got 0/)
+      expect { load_yaml("consumers:\n  jobs:\n    default:\n      lanes: two\n") }
+        .to raise_error(Cosmo::ConfigError, /must be a positive integer, got "two"/)
+    end
+
     it "rejects batch_expiry, which moved to Cosmo.configure" do
       expect { load_yaml("batch_expiry: 60\n") }.to raise_error(Cosmo::ConfigError, /config.batches.expiry/)
     end

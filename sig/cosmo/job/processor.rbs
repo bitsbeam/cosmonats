@@ -5,6 +5,7 @@ module Cosmo
       ARGS_LIMIT: ::Integer
 
       @weights: Array[Symbol]?
+      @lanes: Hash[Symbol, Array[untyped]]?
 
       def self.validate_options!: (Hash[Symbol, untyped] options) -> void
 
@@ -24,7 +25,7 @@ module Cosmo
 
       def scheduled_config: () -> Hash[Symbol, untyped]?
 
-      def consumer_name: (::String | Symbol stream_name) -> ::String
+      def consumer_name: (::String | Symbol stream_name, ?Integer? lane) -> ::String
 
       def schedule_loop: () -> void
 
@@ -37,6 +38,12 @@ module Cosmo
       def scheduler?: () -> bool
 
       def consumers: () -> Array[untyped]
+
+      def next_lane: (Array[untyped] lanes) -> untyped
+
+      def backing_off?: (Hash[Symbol, untyped] config) -> bool
+
+      def backoff_key: (Hash[Symbol, untyped] config) -> ::String
 
       def fetch_subjects: (Hash[Symbol, untyped] config) -> untyped
 
@@ -64,7 +71,7 @@ module Cosmo
 
       def default_retry_delay: (Integer current_attempt) -> Integer
 
-      def subscribe: (Symbol stream_name, Hash[Symbol, untyped] config) -> [untyped, Hash[Symbol, untyped], nil]
+      def subscribe: (Symbol stream_name, Hash[Symbol, untyped] config, ?Integer? lane) -> [untyped, Hash[Symbol, untyped], nil]
 
       def drop_message: (untyped message, Hash[Symbol, untyped]? data) -> void
 

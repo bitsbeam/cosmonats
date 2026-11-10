@@ -38,7 +38,7 @@ CLI → Engine → ThreadPool
   `publish(subject, data, ...)`.
 - **`Cosmo::Job::Enqueuer`** (`lib/cosmo/job/enqueuer.rb`) — `enqueue(class_name, args, options, batch:)`, the one
   path a job takes onto its stream, for `perform_async`/`perform_in`/`perform_at` (also via `set(...)`, `Job::Setter`, which only takes the options the
-  message carries: `stream`, `retry`, `dead`, `subject`) and the ActiveJob adapter. `enqueue_many` is `perform_bulk`:
+  message carries: `stream`, `retry`, `dead`, `subject`, `lane`) and the ActiveJob adapter. `enqueue_many` is `perform_bulk`:
   chunks of `CHUNK_SIZE` through `Client#publish_many` (pipelined, one ack wait per chunk), raising
   `BulkEnqueueError` (`jids`, `errors` by index) when the stream refuses jobs. Only
   `Cosmo::Job` passes `batch: Batch.current`; ActiveJob jobs never join a Cosmo batch.
@@ -192,6 +192,12 @@ are eagerly loaded by the CLI.
   substitutes `Stream::Data::DEFAULTS[:fetch_timeout]` (10s). Job consumers ignore the configured value
   entirely (`Job::Processor#fetch_timeout`).
 - Priority queues: `priority:` in consumer config fills a weighted array — higher number = polled more frequently.
+- Lanes (`Job::Lane`): `lanes: N` in a job consumer's config subscribes `consumer-<stream>-lane-<n>` filtering
+  `jobs.<stream>.lane-<n>.>` instead of `consumer-<stream>`. `Job::Data` puts the lane in the subject, from the `lane:`
+  option, else the batch id, else the jid (`Lane.pick`: an Integer modulo N, anything else crc32'd). The `scheduled`
+  stream never has lanes; a cron template's `X-Subject` stays plain and `schedule_loop` (and `API::Cron#run_now!`) routes
+  each firing to a lane by its jid (`Lane.route`), while a delayed job's `X-Subject` already carries its lane. The stream's priority weighs all its lanes, each pick takes the next lane not backing off
+  (`Job::Processor#next_lane`), and backoff is per consumer.
 
 ---
 

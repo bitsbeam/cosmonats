@@ -32,6 +32,8 @@ module Cosmo
 
       def subject_for: (Symbol | ::String stream) -> ::String
 
+      def lane_key: () -> untyped
+
       def validate!: () -> void
 
       def retries: () -> Integer

@@ -24,6 +24,8 @@ module Cosmo
 
     def self.validate!: (Hash[Symbol, untyped] config) -> void
 
+    def self.validate_lanes!: (Hash[Symbol, untyped] config) -> void
+
     def self.normalize!: (Hash[Symbol, untyped] config) -> void
 
     def self.deliver_policy: (Symbol | ::String | Time start_position) -> Hash[Symbol, ::String]

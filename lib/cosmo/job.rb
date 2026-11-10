@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "cosmo/job/lane"
 require "cosmo/job/data"
 require "cosmo/job/enqueuer"
 require "cosmo/job/setter"
@@ -24,6 +25,8 @@ module Cosmo
       #   the assigned stream's consumer +max_deliver+ (a coarse, shared safety ceiling, not a per-job budget) --
       #   a job whose +retry:+ exceeds it is capped and dead-lettered a delivery early, with a warning logged.
       # @option config [Boolean] :dead move to dead-letter stream after retries exhausted (default: true)
+      # @option config [Object] :lane on a stream with lanes, the job's lane: an Integer, or a key hashed into one
+      #   (default: the batch id, else the jid), see {Lane.pick}
       # @option config [Hash] :limit execution limits:
       #
       #   limit: { duration: 30 }
@@ -138,7 +141,7 @@ module Cosmo
       #
       #   ReportJob.set(stream: :critical, retry: 0).perform_async(42)
       #
-      # @param options [Hash] +stream+, +retry+, +dead+ or +subject+, see {#options}
+      # @param options [Hash] +stream+, +retry+, +dead+, +subject+ or +lane+, see {#options} and {Lane.pick}
       # @return [Setter]
       # @raise [ArgumentError] for any other option
       def set(**options)

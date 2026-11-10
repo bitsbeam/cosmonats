@@ -71,14 +71,15 @@ module Cosmo
         target = headers["X-Subject"]
         return unless target && body[:class]
 
+        jid = SecureRandom.hex(12)
         payload = Utils::Json.dump({
-                                     jid: SecureRandom.hex(12),
+                                     jid:,
                                      class: body[:class],
                                      args: body[:args] || [],
                                      retry: body[:retry] || ::Cosmo::Job::Data.default_retry,
                                      dead: body[:dead].nil? ? ::Cosmo::Job::Data::DEFAULTS[:dead] : body[:dead]
                                    })
-        client.publish(target, payload, stream: headers["X-Stream"])
+        client.publish(::Cosmo::Job::Lane.route(headers["X-Stream"], target, jid), payload, stream: headers["X-Stream"])
       rescue NATS::JetStream::Error::NotFound
         nil
       end

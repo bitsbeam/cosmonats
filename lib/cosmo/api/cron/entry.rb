@@ -69,7 +69,8 @@ module Cosmo
           "jobs.#{::Cosmo::Job::StreamFilter::SCHEDULED}.#{job_name}"
         end
 
-        # Subject the scheduler dispatches the fired job to, on the stream that runs it.
+        # Subject the scheduler dispatches the fired job to, on the stream that runs it. It carries no lane: the
+        # scheduler picks one for each firing (see {Job::Lane.route}).
         #
         # @return [String]
         def dispatch_subject

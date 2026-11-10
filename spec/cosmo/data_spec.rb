@@ -38,6 +38,28 @@ RSpec.describe Cosmo::Job::Data do
 
       expect(data.subject).to eq("cosmo.delayed.batches-nurse_job.#{data.jid}")
     end
+
+    context "with lanes on the stream" do
+      before { Cosmo::Config.load(nil, overrides: { consumers: { jobs: { default: { lanes: 4 } } } }) }
+      after { Cosmo::Config.load("spec/support/cosmo.yml") }
+
+      it "puts the job on the lane its lane option names" do
+        expect(described_class.new("MyJob", "args", stream: "default", lane: 6).subject).to eq("jobs.default.lane-2.my_job")
+      end
+
+      it "keeps a batch's jobs on one lane" do
+        subjects = Array.new(5) { described_class.new("MyJob", "args", stream: "default", batch_id: "bid123").subject }
+
+        expect(subjects.uniq.size).to eq(1)
+        expect(subjects.first).to match(/\Ajobs\.default\.lane-[0-3]\.my_job\z/)
+      end
+
+      it "dispatches a delayed job to its lane" do
+        data = described_class.new("MyJob", "args", stream: "default", at: 1_700_000_000, lane: 1)
+
+        expect(data.headers).to include("Nats-Schedule-Target" => "jobs.scheduled.my_job", "X-Subject" => "jobs.default.lane-1.my_job")
+      end
+    end
   end
 
   describe "#headers" do
