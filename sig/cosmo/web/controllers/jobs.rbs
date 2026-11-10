@@ -20,7 +20,13 @@ module Cosmo
 
         def delete_enqueued: () -> Web::response
 
+        def purge_enqueued: () -> Web::response
+
         private
+
+        def job_stream?: (::String name) -> bool
+
+        def enqueued_filters: (::String stream_name, ::String name) -> ::Array[::String?]
 
         def tab: (::String name) -> Web::response
 

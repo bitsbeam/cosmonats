@@ -126,7 +126,31 @@ module Cosmo
           ok panel("enqueued") + flash("Message ##{seq} removed from #{stream_name}")
         end
 
+        # Purges the pending jobs of one class (+class+, its underscored name) on a job stream or, without it, every
+        # pending job there. Lane subjects are covered. Jobs a worker already picked up keep running.
+        #
+        # @return [Array] the Rack response
+        def purge_enqueued
+          stream_name = params["stream_name"].to_s
+          name = params["class"].to_s
+          return not_found unless job_stream?(stream_name) && (name.empty? || name.match?(CLASS_TOKEN))
+
+          purged = enqueued_filters(stream_name, name).sum { Client.instance.purge(stream_name, _1).to_i }
+          scope = name.empty? ? "" : " #{name}"
+          ok panel("enqueued") + flash("Purged #{purged} pending#{scope} #{purged == 1 ? "job" : "jobs"} from #{stream_name}")
+        end
+
         private
+
+        def job_stream?(name)
+          API::Stream.jobs.any? { _1.name == name }
+        end
+
+        def enqueued_filters(stream_name, name)
+          return [nil] if name.empty?
+
+          ["jobs.#{stream_name}.#{name}", "jobs.#{stream_name}.*.#{name}"]
+        end
 
         def tab(name)
           return ok(panel(name)) if hx_request?

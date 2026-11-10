@@ -1,3 +1,4 @@
+<% purge_note = "Purged jobs are lost: they are not retried or sent to the dead stream.\nJobs already running keep going, but a failed one can no longer be retried.\nA batch waiting on purged jobs never fires its callbacks." -%>
 <div class="subbar">
   <div class="seg">
     <% @stream_sizes.each do |name, size| -%>
@@ -8,6 +9,12 @@
   </div>
   <span class="spacer"></span>
   <span class="small-mono"><%= format_numbers(@total.to_i) %> message(s) pending</span>
+  <% if @total.to_i.positive? -%>
+    <button type="button" class="btn danger" title="Remove every pending job from this stream"
+            hx-delete="<%= url_for('/jobs/enqueued/purge', stream_name: u(@stream_name)) %>"
+            hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"
+            hx-confirm="<%= h("Purge all #{format_numbers(@total.to_i)} pending jobs from #{@stream_name}?\n\n#{purge_note}") %>">Purge all</button>
+  <% end -%>
 </div>
 <% if @jobs.nil? -%>
   <div class="empty"><b>No job streams</b>Run <code>cosmo --setup</code> to create them.</div>
@@ -28,6 +35,10 @@
                   hx-delete="<%= url_for("/jobs/enqueued/#{job.seq}", { stream_name: u(@stream_name), after: @after, limit: @limit }.compact) %>"
                   hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"
                   hx-confirm="Remove message #<%= job.seq %> from <%= h(@stream_name) %>?">✕</button>
+          <button type="button" class="btn danger" title="Purge every pending <%= h(job.data[:class]) %>"
+                  hx-delete="<%= url_for('/jobs/enqueued/purge', { stream_name: u(@stream_name), class: u(Cosmo::Utils::String.underscore(job.data[:class])) }) %>"
+                  hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"
+                  hx-confirm="<%= h("Purge every pending #{job.data[:class]} from #{@stream_name}?\n\n#{purge_note}") %>">✕✕</button>
         </div>
       </div>
     <% end -%>
