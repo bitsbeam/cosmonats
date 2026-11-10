@@ -7,8 +7,7 @@ module Cosmo
       self.@instance: Registry
       @kv: KV
       @keys_mutex: Mutex
-      @keys: Array[::String]
-      @keys_at: Float
+      @keys_cache: Hash[::String?, [Array[::String], Float]]
 
       def self.instance: () -> instance
 
@@ -22,7 +21,7 @@ module Cosmo
 
       def remove: (::String | ::Integer key) -> void
 
-      def list: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+      def list: (?page: ::Integer?, ?limit: ::Integer, ?filter: ::String?) -> Array[Hash[Symbol, untyped]]
 
       def all: () -> Array[Hash[Symbol, untyped]]
 
@@ -30,7 +29,7 @@ module Cosmo
 
       private
 
-      def keys: () -> Array[::String]
+      def keys: (?::String? filter) -> Array[::String]
 
       def bucket: () -> KV
 

@@ -21,7 +21,9 @@ module Cosmo
 
         def sample: (::Integer limit) -> Array[Hash[Symbol, untyped]]
 
-        def longest: (?page: ::Integer?, ?limit: ::Integer) -> Array[Hash[Symbol, untyped]]
+        def list: (?page: ::Integer?, ?limit: ::Integer, ?stream: ::String?) -> Array[Hash[Symbol, untyped]]
+
+        def longest: (?page: ::Integer?, ?limit: ::Integer, ?stream: ::String?) -> Array[Hash[Symbol, untyped]]
 
         private
 

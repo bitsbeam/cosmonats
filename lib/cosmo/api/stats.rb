@@ -36,12 +36,13 @@ module Cosmo
 
       # @param page [Integer]
       # @param limit [Integer]
+      # @param stream [String, nil] only the jobs on this stream
       # @param longest [Boolean] longest running first, which reads every running job (at most once per
       #   Jobs::LONGEST_TTL) instead of only the page
       # @return [Array<Hash>] the jobs running right now on a page, in stream, worker and job id order unless
       #   +longest+, each with the +:worker+ running it; see {.busy} for how many there are
-      def running_page(page:, limit:, longest: false)
-        longest ? Jobs.instance.longest(page:, limit:) : Jobs.instance.list(page:, limit:)
+      def running_page(page:, limit:, longest: false, stream: nil)
+        longest ? Jobs.instance.longest(page:, limit:, stream:) : Jobs.instance.list(page:, limit:, stream:)
       end
 
       # @return [Integer] jobs running right now across all workers, counted by the server

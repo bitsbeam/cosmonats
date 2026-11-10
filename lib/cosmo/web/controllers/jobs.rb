@@ -148,13 +148,16 @@ module Cosmo
         end
 
         def busy_locals
-          total = API::Stats.busy
+          stream_sizes = API::Stats.busy_streams
+          stream_name = params["stream_name"] if stream_sizes.key?(params["stream_name"])
+          total = stream_name ? stream_sizes[stream_name] : stream_sizes.values.sum
           page, limit, total_pages = paginate(total, API::Registry::LIMIT)
           polling = params["poll"].to_s != "0"
           longest = params["order"] == "longest"
-          jobs = API::Stats.running_page(page:, limit:, longest:)
-          { jobs:, total:, page:, limit:, total_pages:, polling:,
-            query: { limit:, poll: (0 unless polling), order: ("longest" if longest) }.compact }
+          jobs = API::Stats.running_page(page:, limit:, longest:, stream: stream_name)
+          { jobs:, total:, page:, limit:, total_pages:, polling:, stream_name:, stream_sizes:,
+            query: { stream_name: (Rack::Utils.escape(stream_name) if stream_name), limit:, poll: (0 unless polling),
+                     order: ("longest" if longest) }.compact }
         end
 
         def enqueued_locals # rubocop:disable Metrics/AbcSize

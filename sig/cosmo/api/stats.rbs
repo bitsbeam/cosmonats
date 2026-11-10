@@ -9,7 +9,7 @@ module Cosmo
 
       def self.running: (::Integer limit) -> Array[Hash[Symbol, untyped]]
 
-      def self.running_page: (page: ::Integer, limit: ::Integer, ?longest: bool) -> Array[Hash[Symbol, untyped]]
+      def self.running_page: (page: ::Integer, limit: ::Integer, ?longest: bool, ?stream: ::String?) -> Array[Hash[Symbol, untyped]]
 
       def self.busy: () -> ::Integer
 

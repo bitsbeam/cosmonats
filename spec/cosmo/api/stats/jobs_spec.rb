@@ -79,6 +79,10 @@ RSpec.describe Cosmo::API::Stats::Jobs do
       expect(jobs.longest(limit: 5).size).to eq(3)
     end
 
+    it "pages only the jobs of one stream" do
+      expect(jobs.longest(stream: "default").map { _1[:jid] }).to eq(%w[mid late])
+    end
+
     it "reads again once its ttl has passed" do
       jobs.longest
       jobs.clear("web-1")
@@ -111,6 +115,11 @@ RSpec.describe Cosmo::API::Stats::Jobs do
 
     it "counts them without reading them" do
       expect(jobs.size).to eq(3)
+    end
+
+    it "lists only the jobs of one stream" do
+      expect(jobs.list(stream: "default").map { _1[:jid] }).to eq(%w[a c])
+      expect(jobs.list(stream: "low").map { _1[:jid] }).to eq(%w[b])
     end
   end
 end

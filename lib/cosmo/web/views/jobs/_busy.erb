@@ -1,5 +1,20 @@
+<div class="subbar">
+  <div class="seg">
+    <a class="<%= 'on' if @stream_name.nil? %>" href="<%= url_for('/jobs/busy', @query.except(:stream_name, :page)) %>"
+       hx-get="<%= url_for('/jobs/busy', @query.except(:stream_name, :page)) %>" hx-target="#jobs-panel" hx-swap="outerHTML"
+       hx-push-url="true" hx-indicator="#global-spinner">All<span class="<%= 'has' if @stream_sizes.values.sum.positive? %>"><%= compact_number(@stream_sizes.values.sum) %></span></a>
+    <% @stream_sizes.each do |name, size| -%>
+      <% href = url_for('/jobs/busy', @query.except(:page).merge(stream_name: u(name))) -%>
+      <a class="<%= 'on' if @stream_name == name %>" href="<%= href %>"
+         hx-get="<%= href %>" hx-target="#jobs-panel" hx-swap="outerHTML"
+         hx-push-url="true" hx-indicator="#global-spinner"><%= h(name) %><span class="<%= 'has' if size.positive? %>"><%= compact_number(size) %></span></a>
+    <% end -%>
+  </div>
+  <span class="spacer"></span>
+  <span class="small-mono"><%= format_numbers(@total.to_i) %> running</span>
+</div>
 <% if @jobs.empty? -%>
-  <div class="empty"><b>All quiet</b>No jobs are running right now.</div>
+  <div class="empty"><b>All quiet</b>No jobs are running<%= " on #{h(@stream_name)}" if @stream_name %> right now.</div>
 <% else -%>
   <div class="scroll"><div style="min-width:860px">
     <div class="thead t-jobs"><span>JID</span><span>Class</span><span>Args</span><span>Stream</span><span class="r">Try</span><span class="r">Running for</span></div>

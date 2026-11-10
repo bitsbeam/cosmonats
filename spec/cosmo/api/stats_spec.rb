@@ -12,8 +12,8 @@ RSpec.describe Cosmo::API::Stats do
     allow(Cosmo::API::Stats::Totals).to receive(:instance).and_return(counter)
     allow(Cosmo::API::Stats::Jobs).to receive(:instance).and_return(jobs)
     allow(jobs).to receive(:sample) { |limit| running.first(limit) }
-    allow(jobs).to receive(:longest) { |page:, limit:| running.sort_by { -_1[:started_at] }.slice((page - 1) * limit, limit) }
-    allow(jobs).to receive(:list) { |page:, limit:| running.slice((page - 1) * limit, limit) }
+    allow(jobs).to receive(:longest) { |page:, limit:, **| running.sort_by { -_1[:started_at] }.slice((page - 1) * limit, limit) }
+    allow(jobs).to receive(:list) { |page:, limit:, **| running.slice((page - 1) * limit, limit) }
     allow(jobs).to receive(:count) { |stream| stream ? running.count { _1[:stream] == stream } : running.size }
     allow(Cosmo::API::Stream).to receive(:jobs).and_return([])
     allow(Cosmo::API::Stream).to receive(:new).with("scheduled").and_return(double(size: 5))

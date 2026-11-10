@@ -28,6 +28,7 @@ module Cosmo
       def initialize
         @kv = bucket
         @keys_mutex = Mutex.new
+        @keys_cache = {}
       end
 
       # Writes or refreshes an entry, recreating the bucket if it was deleted under a running writer.
@@ -65,10 +66,11 @@ module Cosmo
 
       # @param page [Integer, nil]
       # @param limit [Integer]
+      # @param filter [String, nil] a key filter, every key when nil
       # @return [Array<Hash>] the entries on the page, in key order, read in one batched get
-      def list(page: nil, limit: LIMIT)
+      def list(page: nil, limit: LIMIT, filter: nil)
         offset = ([page.to_i, 1].max - 1) * limit
-        page_keys = keys.slice(offset, limit).to_a
+        page_keys = keys(filter).slice(offset, limit).to_a
         @kv.direct_values(page_keys).values_at(*page_keys).filter_map { _1 && Utils::Json.parse(_1) }
       end
 
@@ -86,14 +88,12 @@ module Cosmo
 
       private
 
-      def keys
+      def keys(filter = nil)
         @keys_mutex.synchronize do
           now = ::Process.clock_gettime(::Process::CLOCK_MONOTONIC)
-          unless @keys && now - @keys_at < self.class::KEYS_TTL
-            @keys = @kv.direct_keys.freeze
-            @keys_at = now
-          end
-          @keys
+          @keys_cache.delete_if { |_, (_, at)| now - at >= self.class::KEYS_TTL }
+          @keys_cache[filter] ||= [@kv.direct_keys(filter).freeze, now]
+          @keys_cache[filter].first
         end
       end
 

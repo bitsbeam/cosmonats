@@ -40,7 +40,15 @@ module Cosmo
         # @param stream [String, nil] only the jobs on this stream
         # @return [Integer] the jobs running, counted by the server
         def count(stream = nil)
-          @kv.direct_count(stream && "#{Registry.token(stream)}.>")
+          @kv.direct_count(stream_filter(stream))
+        end
+
+        # @param page [Integer, nil]
+        # @param limit [Integer]
+        # @param stream [String, nil] only the jobs on this stream
+        # @return [Array<Hash>]
+        def list(page: nil, limit: LIMIT, stream: nil)
+          super(page:, limit:, filter: stream_filter(stream))
         end
 
         # Some running jobs, as many as +limit+, with no say in which: the first ones NATS holds. Costs one small read
@@ -57,19 +65,25 @@ module Cosmo
         #
         # @param page [Integer, nil]
         # @param limit [Integer]
+        # @param stream [String, nil] only the jobs on this stream
         # @return [Array<Hash>]
-        def longest(page: nil, limit: LIMIT)
+        def longest(page: nil, limit: LIMIT, stream: nil)
           @mutex.synchronize do
             now = ::Process.clock_gettime(::Process::CLOCK_MONOTONIC)
             unless @longest && now - @longest_at < LONGEST_TTL
               @longest = all.sort_by { _1[:started_at].to_i }.freeze
               @longest_at = now
             end
-            @longest.slice(([page.to_i, 1].max - 1) * limit, limit).to_a
+            jobs = stream ? @longest.select { Registry.token(_1[:stream]) == Registry.token(stream) } : @longest
+            jobs.slice(([page.to_i, 1].max - 1) * limit, limit).to_a
           end
         end
 
         private
+
+        def stream_filter(stream)
+          stream && "#{Registry.token(stream)}.>"
+        end
 
         def bucket
           KV.new(BUCKET, { allow_msg_ttl: true, max_age: Config.to_ns(TTL), replicas: Config.services.num_replicas })
