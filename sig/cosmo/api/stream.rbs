@@ -31,7 +31,7 @@ module Cosmo
 
       def each: () { (Job) -> void } -> void
 
-      def messages: (?page: ::Integer?, ?limit: ::Integer?, ?order: :asc | :desc) -> Array[Job]
+      def messages: (?page: ::Integer?, ?limit: ::Integer?, ?order: :asc | :desc, ?after: ::Integer?) -> Array[Job]
 
       def message: (::Integer seq) -> Job?
 

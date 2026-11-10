@@ -25,7 +25,7 @@
         <span class="mono mute r" style="font-size:11.5px"><%= (at = job.stored_at) ? "#{elapsed(at)} ago" : '—' %></span>
         <div class="btns">
           <button type="button" class="btn danger" title="Remove message"
-                  hx-delete="<%= url_for("/jobs/enqueued/#{job.seq}", { stream_name: u(@stream_name), page: @page, limit: @limit }) %>"
+                  hx-delete="<%= url_for("/jobs/enqueued/#{job.seq}", { stream_name: u(@stream_name), after: @after, limit: @limit }.compact) %>"
                   hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"
                   hx-confirm="Remove message #<%= job.seq %> from <%= h(@stream_name) %>?">✕</button>
         </div>

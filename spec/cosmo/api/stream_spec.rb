@@ -124,6 +124,18 @@ RSpec.describe Cosmo::API::Stream do
       expect(stream.messages(limit: 2, order: :desc).map { _1.data[:jid] }).to eq(%w[j2 j1])
       expect(stream.messages(page: 2, limit: 2, order: :desc).map { _1.data[:jid] }).to eq(%w[j0])
     end
+
+    it "pages forward from a cursor, across a gap of deleted sequences" do
+      acks = 3.times.map { |i| client.publish("teststreamapi.job", Cosmo::Utils::Json.dump({ class: "W", args: [], jid: "k#{i}" })) }
+      stream.delete(acks.first.seq - 1)
+      stream.delete(acks.first.seq)
+
+      first = stream.messages(limit: 2, after: 0)
+      second = stream.messages(limit: 2, after: first.last.seq.to_i)
+
+      expect(first.map { _1.data[:jid] }).to eq(%w[j0 j1])
+      expect(second.map { _1.data[:jid] }).to eq(%w[k1 k2])
+    end
   end
 
   describe "#each" do

@@ -160,16 +160,16 @@ module Cosmo
         def enqueued_locals # rubocop:disable Metrics/AbcSize
           stream_name, stream_sizes = streams
           limit = limit(API::Stream::LIMIT)
-          page = [params["page"].to_i, 1].max
-          locals = { stream_name:, stream_sizes:, page:, limit:, total: 0, total_pages: 0, jobs: nil, polling: false,
-                     query: { stream_name: Rack::Utils.escape(stream_name.to_s), limit: } }
+          after = params["after"].to_s[/\A\d+\z/]&.to_i
+          locals = { stream_name:, stream_sizes:, page: 1, limit:, total: 0, total_pages: 0, jobs: nil, polling: false,
+                     after:, next_after: nil, query: { stream_name: Rack::Utils.escape(stream_name.to_s), limit: } }
           return locals if stream_name.to_s.empty?
 
           stream = API::Stream.new(stream_name)
           total = stream_sizes.fetch(stream_name) { stream.total }
-          total_pages = (total.to_f / limit).ceil
-          page = page.clamp(1, [total_pages, 1].max)
-          locals.merge(total:, total_pages:, page:, jobs: stream.messages(page:, limit:))
+          jobs = stream.messages(limit: limit + 1, after: after || 0)
+          next_after = jobs[limit - 1].seq.to_i if jobs.size > limit
+          locals.merge(total:, jobs: jobs.first(limit), next_after:)
         end
 
         def scheduled_locals

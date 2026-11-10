@@ -102,9 +102,13 @@ module Cosmo
       # @param page [Integer, nil] 1-based page, counted in sequences from the first message (or the last, for +:desc+)
       # @param limit [Integer, nil] jobs per page, {LIMIT} when nil
       # @param order [Symbol] +:asc+ for oldest first, +:desc+ for newest first
+      # @param after [Integer, nil] a cursor: the sequence of the last job already seen, read oldest first and costing
+      #   one lookup per job however sparse the stream is; +page+ is ignored when it is given
       # @return [Array<Job>]
-      def messages(page: nil, limit: nil, order: :asc)
+      def messages(page: nil, limit: nil, order: :asc, after: nil)
         limit = (limit || LIMIT).to_i
+        return offset(after.to_i + 1).first(limit) if after
+
         page = [page.to_i, 1].max
         order == :desc ? messages_desc(page, limit) : messages_asc(page, limit)
       end
