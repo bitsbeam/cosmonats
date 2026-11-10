@@ -25,6 +25,7 @@ consumer_config: &consumer_config
   ack_policy: explicit    # every message is acked on its own
   max_deliver: 30         # deliveries before a message is given up on; keep it above every job class's retry
   max_ack_pending: 20     # unacked messages before the server stops delivering more
+  max_waiting: 512        # pulls the server parks per consumer, raise it when many idle threads poll one stream
   ack_wait: 60            # seconds before an unacked message is redelivered
   subject: jobs.%{name}.> # %{name} is the stream name
 

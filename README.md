@@ -393,6 +393,7 @@ consumer_config: &consumer_config
   ack_policy: explicit
   max_deliver: 30       # keep it above every job class's retry
   max_ack_pending: 20
+  max_waiting: 512      # pulls the server parks per consumer, raise it when many idle threads poll one stream
   ack_wait: 60          # seconds
   subject: jobs.%{name}.>
 
