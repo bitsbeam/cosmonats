@@ -100,6 +100,7 @@ module Cosmo
       end
 
       # @param page [Integer, nil] 1-based page, counted in sequences from the first message (or the last, for +:desc+)
+      #   where +:desc+ counts messages, so deleted ones leave no gaps
       # @param limit [Integer, nil] jobs per page, {LIMIT} when nil
       # @param order [Symbol] +:asc+ for oldest first, +:desc+ for newest first
       # @param after [Integer, nil] a cursor: the sequence of the last job already seen, read oldest first and costing
@@ -199,12 +200,16 @@ module Cosmo
         offset(info[:state].first_seq.to_i + ((page - 1) * limit)).first(limit)
       end
 
-      # Page +page+ covers the +limit+ sequences ending +(page - 1) * limit+ below the last one, read forward and
-      # reversed, as direct gets can't walk a stream backwards.
+      # Page +page+ holds the +limit+ messages ending +(page - 1) * limit+ messages below the newest one, counted by the
+      # server rather than by sequence so a run of deleted messages at the top can't leave a page empty. Read forward
+      # and reversed, as direct gets can't walk a stream backwards.
       def messages_desc(page, limit)
-        state = info[:state]
-        upto = state.last_seq.to_i - ((page - 1) * limit)
-        offset([upto - limit + 1, state.first_seq.to_i].max).take_while { _1.seq.to_i <= upto }.reverse
+        total = self.total
+        skip = [total - (page * limit), 0].max
+        count = total - ((page - 1) * limit) - skip
+        return [] unless count.positive?
+
+        offset(cursor_after(skip, total:) + 1).first(count).reverse
       end
 
       def scan_range
