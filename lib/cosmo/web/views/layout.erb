@@ -9,9 +9,10 @@
   <link rel="stylesheet" href="<%= url_for('/assets/app.css') %>">
   <link rel="icon" href="<%= url_for('/assets/logo.svg') %>" type="image/svg+xml">
   <script src="<%= url_for('/assets/htmx.min.js.gz') %>" defer></script>
+  <script src="<%= url_for('/assets/idiomorph.min.js.gz') %>" defer></script>
   <script src="<%= url_for('/assets/app.js') %>" defer></script>
 </head>
-<body>
+<body hx-ext="morph">
 <% server = nats_server -%>
 <% section = current_section -%>
   <div class="backdrop" data-action="close-menu"></div>

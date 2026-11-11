@@ -21,7 +21,7 @@
     <% @jobs.each do |job| -%>
       <% delivery = job[:delivery].to_i -%>
       <% retries = job[:retry] -%>
-      <div class="trow hover t-jobs">
+      <div class="trow hover t-jobs" id="busy-<%= h(job[:jid]) %>">
         <%= jid_cell(job, stream: job[:stream]) %>
         <div class="stack">
           <span class="strong ellip"><%= h(job[:class]) %></span>

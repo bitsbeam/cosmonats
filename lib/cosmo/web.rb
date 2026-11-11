@@ -92,6 +92,9 @@ module Cosmo
                  in [:get,    "/assets/htmx.min.js.gz"] then serve("htmx.2.0.8.min.js.gz",
                                                                    "application/javascript",
                                                                    { "content-encoding" => "gzip" })
+                 in [:get,    "/assets/idiomorph.min.js.gz"] then serve("idiomorph.0.7.3.min.js.gz",
+                                                                        "application/javascript",
+                                                                        { "content-encoding" => "gzip" })
                  in [:get, "/assets/app.css"]              then serve("app.css", "text/css")
                  in [:get, "/assets/app.js"]               then serve("app.js", "application/javascript")
                  in [:get, "/assets/logo.svg"]             then serve("logo.svg", "image/svg+xml")

@@ -63,7 +63,7 @@ module Cosmo
 
           seq = path.split("/").last.to_i
           API::Stream.new("dead").retry(seq)
-          ok flash("Dead job ##{seq} sent back to its stream")
+          ok panel("dead") + flash("Dead job ##{seq} sent back to its stream")
         end
 
         # Deletes a dead job.
@@ -74,7 +74,7 @@ module Cosmo
 
           seq = path.split("/").last.to_i
           API::Stream.new("dead").delete(seq)
-          ok flash("Dead job ##{seq} deleted")
+          ok panel("dead") + flash("Dead job ##{seq} deleted")
         end
 
         # Purges every dead job.
@@ -227,7 +227,7 @@ module Cosmo
         end
 
         def dead_locals
-          stored_locals("dead", order: :desc).merge(polling: false)
+          stored_locals("dead", order: :desc).merge(polling: true)
         end
 
         def stored_locals(name, order: :asc)

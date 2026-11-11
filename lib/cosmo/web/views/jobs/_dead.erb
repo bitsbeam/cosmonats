@@ -4,7 +4,7 @@
   <div class="scroll"><div style="min-width:860px">
     <div class="thead t-jobs actions"><span>JID</span><span>Class</span><span>Args</span><span>Stream</span><span class="r">Failed</span><span></span></div>
     <% @jobs.each do |job| -%>
-      <div class="trow hover t-jobs actions">
+      <div class="trow hover t-jobs actions" id="dead-<%= job.seq %>">
         <%= jid_cell(job.data, stream: job.x_stream) %>
         <span class="strong ellip"><%= h(job.data[:class]) %></span>
         <%= render('jobs/_args', { args: job.data[:args] }) %>
@@ -16,10 +16,10 @@
         <% end -%>
         <div class="btns">
           <button type="button" class="btn" title="Retry"
-                  hx-patch="<%= url_for("/jobs/retry/#{job.seq}") %>" hx-target="closest .trow" hx-swap="outerHTML"
+                  hx-patch="<%= url_for("/jobs/retry/#{job.seq}", { page: @page, limit: @limit }) %>" hx-target="#jobs-panel" hx-swap="outerHTML"
                   hx-indicator="#global-spinner">↻</button>
           <button type="button" class="btn danger" title="Delete"
-                  hx-delete="<%= url_for("/jobs/delete/#{job.seq}") %>" hx-target="closest .trow" hx-swap="outerHTML"
+                  hx-delete="<%= url_for("/jobs/delete/#{job.seq}", { page: @page, limit: @limit }) %>" hx-target="#jobs-panel" hx-swap="outerHTML"
                   hx-indicator="#global-spinner" hx-confirm="Delete dead job #<%= job.seq %>?">✕</button>
         </div>
         <div class="full error-line">

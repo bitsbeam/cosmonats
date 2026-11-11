@@ -4,7 +4,7 @@
   <div class="scroll"><div style="min-width:820px">
     <div class="thead t-jobs actions scheduled"><span>JID</span><span>Class</span><span>Args</span><span>Stream</span><span class="r">When</span><span></span></div>
     <% @jobs.each do |job| -%>
-      <div class="trow hover t-jobs actions scheduled">
+      <div class="trow hover t-jobs actions scheduled" id="scheduled-<%= job.seq %>">
         <%= jid_cell(job.data, stream: job.x_stream) %>
         <span class="strong ellip"><%= h(job.data[:class]) %></span>
         <%= render('jobs/_args', { args: job.data[:args] }) %>
