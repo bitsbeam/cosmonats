@@ -77,6 +77,16 @@ module Cosmo
           ok flash("Dead job ##{seq} deleted")
         end
 
+        # Purges every dead job.
+        #
+        # @return [Array] the Rack response
+        def purge_dead
+          return not_found unless Config.dead.enabled
+
+          purged = Client.instance.purge("dead", nil)
+          ok panel("dead") + flash("Purged #{purged} dead #{purged == 1 ? "job" : "jobs"}")
+        end
+
         # Enqueues a scheduled job now: sends it to the stream that runs it and drops its schedule.
         #
         # @return [Array] the Rack response

@@ -30,6 +30,11 @@
                 hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"
                 hx-confirm="Delete every scheduled job?">Purge all</button>
       <% end -%>
+      <% if @tab == 'dead' && @total.to_i.positive? -%>
+        <button type="button" class="btn danger" hx-delete="<%= url_for('/jobs/dead/purge', { limit: @limit }) %>"
+                hx-target="#jobs-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"
+                hx-confirm="Delete every dead job?">Purge all</button>
+      <% end -%>
     </div>
   </div>
 
