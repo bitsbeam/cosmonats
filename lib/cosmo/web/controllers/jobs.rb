@@ -186,7 +186,7 @@ module Cosmo
           stream_name = params["stream_name"] if stream_sizes.key?(params["stream_name"])
           total = stream_name ? stream_sizes[stream_name] : stream_sizes.values.sum
           page, limit, total_pages = paginate(total, API::Registry::LIMIT)
-          polling = params["poll"].to_s != "0"
+          polling = polling?
           longest = params["order"] == "longest"
           jobs = API::Stats.running_page(page:, limit:, longest:, stream: stream_name)
           { jobs:, total:, page:, limit:, total_pages:, polling:, stream_name:, stream_sizes:,
@@ -197,8 +197,10 @@ module Cosmo
         def enqueued_locals # rubocop:disable Metrics/AbcSize
           stream_name, stream_sizes = streams
           limit = limit(API::Stream::LIMIT)
-          locals = { stream_name:, stream_sizes:, page: 1, limit:, total: 0, total_pages: 0, jobs: nil, polling: false,
-                     after: nil, next_after: nil, query: { stream_name: Rack::Utils.escape(stream_name.to_s), limit: } }
+          polling = polling?
+          locals = { stream_name:, stream_sizes:, page: 1, limit:, total: 0, total_pages: 0, jobs: nil, polling:,
+                     after: nil, next_after: nil,
+                     query: { stream_name: Rack::Utils.escape(stream_name.to_s), limit:, poll: (0 unless polling) }.compact }
           return locals if stream_name.to_s.empty?
 
           stream = API::Stream.new(stream_name)
@@ -223,18 +225,24 @@ module Cosmo
         end
 
         def scheduled_locals
-          stored_locals("scheduled").merge(polling: true)
+          stored_locals("scheduled")
         end
 
         def dead_locals
-          stored_locals("dead", order: :desc).merge(polling: true)
+          stored_locals("dead", order: :desc)
         end
 
         def stored_locals(name, order: :asc)
           stream = API::Stream.new(name)
           total = stream.total
           page, limit, total_pages = paginate(total, API::Stream::LIMIT)
-          { jobs: stream.messages(page:, limit:, order:), total:, page:, limit:, total_pages:, query: { limit: } }
+          polling = polling?
+          { jobs: stream.messages(page:, limit:, order:), total:, page:, limit:, total_pages:, polling:,
+            query: { limit:, poll: (0 unless polling) }.compact }
+        end
+
+        def polling?
+          params["poll"].to_s != "0"
         end
 
         def paginate(total, default_limit)
