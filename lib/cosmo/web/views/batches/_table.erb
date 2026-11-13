@@ -1,6 +1,42 @@
 <div id="batches-panel" hx-get="<%= url_for('/batches/_table', @query.merge(@cursor)) %>" hx-trigger="cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="outerHTML">
+<div class="seg batch-view">
+  <% { 'cards' => '▦ Cards', 'table' => '☰ Table' }.each do |mode, label| -%>
+    <a class="<%= 'on' if mode == @view %>" href="<%= url_for('/batches', { view: mode }) %>"><%= label %></a>
+  <% end -%>
+</div>
 <% if @page.batches.empty? -%>
   <section class="card"><div class="empty"><b>No batches tracked</b>Group jobs with <code>Cosmo::Batch.new.jobs { … }</code>.</div></section>
+<% elsif @view == 'table' -%>
+  <section class="card"><div class="scroll"><div style="min-width:760px">
+    <div class="thead t-batches"><span>Batch</span><span>Status</span><span>Progress</span><span>Succeeded</span><span>Failed</span><span>Pending</span><span>Started</span></div>
+    <% @page.batches.each do |b| -%>
+      <% stats = b.stats -%>
+      <% total = stats[:total].to_i -%>
+      <% failed = stats[:failed].to_i -%>
+      <% done = total - stats[:pending].to_i -%>
+      <% status, tone = if !b.ready? then ['open', 'var(--acc)'] elsif failed.positive? then ['failed', 'var(--warn)'] else ['success', 'var(--ok)'] end -%>
+      <div class="trow hover t-batches">
+        <div class="stack">
+          <span class="mono strong ellip"><%= h(b.bid) %></span>
+          <% if b.parent_id -%><span class="small-mono ellip">parent <%= h(b.parent_id) %></span><% end -%>
+        </div>
+        <span class="pill" style="--tone:<%= tone %>"><%= status %></span>
+        <div class="stack" style="gap:4px">
+          <span class="mono" style="font-size:12px"><%= total.positive? ? (done * 100 / total).clamp(0, 100) : 0 %>% · <%= compact_number(done) %> / <%= compact_number(total) %></span>
+          <div class="progress">
+            <% if total.positive? -%>
+              <i style="width:<%= (stats[:succeeded].to_i * 100.0 / total).round(2) %>%;background:<%= hue(b.bid) %>"></i>
+              <% if failed.positive? -%><i style="width:<%= [failed * 100.0 / total, 0.6].max.round(2) %>%;background:var(--err)"></i><% end -%>
+            <% end -%>
+          </div>
+        </div>
+        <span class="num"><%= format_numbers(stats[:succeeded]) %></span>
+        <span class="num" style="color:<%= failed.positive? ? 'var(--err)' : 'var(--faint)' %>"><%= format_numbers(failed) %></span>
+        <span class="num"><%= format_numbers(stats[:pending]) %></span>
+        <span class="mute"><%= b.created_at ? "#{elapsed(b.created_at)} ago" : '—' %></span>
+      </div>
+    <% end -%>
+  </div></div></section>
 <% else -%>
   <div class="batches">
     <% @page.batches.each do |b| -%>

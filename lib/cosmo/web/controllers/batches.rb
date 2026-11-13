@@ -21,13 +21,17 @@ module Cosmo
         def _table
           limit = limit(API::Batch::LIMIT)
           page = API::Batch.page(before: cursor("before"), after: cursor("after"), limit:)
-          ok render("batches/_table", { page:, query: query, cursor: { before: cursor("before"), after: cursor("after") }.compact })
+          ok render("batches/_table", { page:, view:, query: query, cursor: { before: cursor("before"), after: cursor("after") }.compact })
         end
 
         private
 
+        def view
+          params["view"] == "table" ? "table" : "cards"
+        end
+
         def query
-          { limit: limit(API::Batch::LIMIT) }
+          { view:, limit: limit(API::Batch::LIMIT) }
         end
 
         def cursor(name)

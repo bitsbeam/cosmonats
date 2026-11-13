@@ -234,6 +234,9 @@ details[open]>summary{margin-bottom:8px}
 /* batches */
 .batches{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:20px}
 .batch{display:flex;flex-direction:column;gap:16px;padding:20px 22px}
+.batch-view{width:max-content;margin-bottom:14px}
+.t-batches{grid-template-columns:minmax(0,1.5fr) 90px minmax(0,1.4fr) 80px 60px 70px 90px;gap:10px}
+.trow.t-batches{font-size:13px}
 .batch-top{display:flex;align-items:flex-start;gap:12px}
 .batch-pct{display:flex;align-items:baseline;gap:8px}
 .batch-pct b{font-size:32px;font-weight:400;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
