@@ -24,7 +24,8 @@ module Cosmo
     # +config.web+ in Cosmo.configure: settings for the monitoring UI ({Cosmo::Web}). +jid_link+ turns every job ID
     # into a link, e.g. to the job's logs in Grafana: a URL template whose +%{jid}+, +%{class}+ and +%{stream}+ are
     # filled in URL-escaped, or a callable given the job's payload Hash (+:jid+, +:class+, +:args+, ...) that returns
-    # the URL, or +nil+ for plain text. Only http(s) URLs are linked.
-    WebUI = Struct.new(:jid_link, keyword_init: true)
+    # the URL, or +nil+ for plain text. Only http(s) URLs are linked. +bid_link+ does the same for batch IDs, with
+    # +%{bid}+ and +%{parent_id}+ in a template, or a callable given +:bid+, +:parent_id+ and +:description+.
+    WebUI = Struct.new(:jid_link, :bid_link, keyword_init: true)
   end
 end

@@ -37,7 +37,9 @@ module Cosmo
     class WebUI
       attr_accessor jid_link: (::String | ^(Hash[Symbol, untyped]) -> ::String?)?
 
-      def self.new: (jid_link: (::String | ^(Hash[Symbol, untyped]) -> ::String?)?) -> WebUI
+      attr_accessor bid_link: (::String | ^(Hash[Symbol, untyped]) -> ::String?)?
+
+      def self.new: (?jid_link: (::String | ^(Hash[Symbol, untyped]) -> ::String?)?, ?bid_link: (::String | ^(Hash[Symbol, untyped]) -> ::String?)?) -> WebUI
     end
   end
 end

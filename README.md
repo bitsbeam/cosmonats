@@ -1001,6 +1001,9 @@ Cosmo.configure do |config|
 end
 ```
 
+**Batch ID links** — `config.web.bid_link` does the same for batch IDs on the Batches page: a URL template with `%{bid}`
+and `%{parent_id}`, or a callable given `:bid`, `:parent_id` and `:description`.
+
 Each panel refreshes `COSMO_WEB_POLL_INTERVAL` seconds after its previous response, never on top of one still
 running, backs off while refreshes fail, and pauses in a hidden tab. Identical refreshes from several viewers share a
 single NATS read for `COSMO_WEB_CACHE_TTL` seconds, and while NATS is unreachable the UI answers at once instead of

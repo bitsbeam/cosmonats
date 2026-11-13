@@ -293,6 +293,7 @@ RSpec.describe Cosmo::Config do
       expect(config.batches.expiry).to eq(259_200)
       expect(config.metrics.to_h).to eq(enabled: true, retention: "30d")
       expect(config.web.jid_link).to be_nil
+      expect(config.web.bid_link).to be_nil
     end
 
     it "keeps settings from Cosmo.configure when a config file is loaded afterwards" do

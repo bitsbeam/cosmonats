@@ -48,7 +48,8 @@ CLI → Engine → ThreadPool
   mounted, `Rack::Auth::Basic` standalone). It also has **no CSRF protection** yet, while exposing
   destructive routes (retry/delete dead jobs, pause streams, delete/run crons).
   `config.web.jid_link` (`Config::WebUI`; a `%{jid}`/`%{class}`/`%{stream}` URL template or a callable given the
-  payload) turns job IDs into links via `Helpers::Links#jid_cell`; only http(s) URLs, errors fall back to text.
+  payload) turns job IDs into links via `Helpers::Links#jid_cell`; `config.web.bid_link` does the same for batch IDs
+  (`bid_cell`; `%{bid}`/`%{parent_id}`, or a callable given `:bid`/`:parent_id`/`:description`); only http(s) URLs, errors fall back to text.
 - **`Cosmo::Heartbeat`** (`lib/cosmo/heartbeat.rb`) — started by `Engine#run`; every 10s writes this process's
   details (`hostname-pid`, IP, cmdline, subscriptions, busy, `running`/`quiet`/`stopping`) to the `_cosmoprocesses` KV
   bucket via `API::Stats::Processes`, and one entry per job it's running (`Job::Processor#jobs`: jid, class, args cut

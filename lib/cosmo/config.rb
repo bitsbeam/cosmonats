@@ -213,7 +213,7 @@ module Cosmo
 
     # @return [WebUI]
     def web
-      @web ||= WebUI.new(jid_link: nil)
+      @web ||= WebUI.new(jid_link: nil, bid_link: nil)
     end
 
     # Callables given every error Cosmo rescues: failed jobs and stream batches, fetch and scheduler errors, rejected

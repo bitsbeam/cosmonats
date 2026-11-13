@@ -17,7 +17,7 @@
       <% status, tone = if !b.ready? then ['open', 'var(--acc)'] elsif failed.positive? then ['failed', 'var(--warn)'] else ['success', 'var(--ok)'] end -%>
       <div class="trow hover t-batches">
         <div class="stack">
-          <span class="mono strong ellip"><%= h(b.bid) %></span>
+          <%= bid_cell(b) %>
           <% if b.description -%><span class="batch-desc ellip"><%= description_html(b.description) %></span><% end -%>
           <% if b.parent_id -%><span class="small-mono ellip">parent <%= h(b.parent_id) %></span><% end -%>
         </div>
@@ -51,7 +51,7 @@
       <section class="card batch">
         <div class="batch-top">
           <div class="stack" style="flex:1;gap:4px">
-            <div class="mono strong ellip"><%= h(b.bid) %></div>
+            <div><%= bid_cell(b) %></div>
             <div class="small-mono ellip">
               <% if b.parent_id -%>parent <%= h(b.parent_id) %> · <% end -%>started <%= b.created_at ? "#{elapsed(b.created_at)} ago" : '—' %>
             </div>

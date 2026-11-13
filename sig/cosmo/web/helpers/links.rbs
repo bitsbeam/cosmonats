@@ -4,7 +4,15 @@ module Cosmo
       module Links
         def jid_cell: (::Hash[::Symbol, untyped] data, ?stream: (::String | ::Symbol)?) -> ::String
 
+        def bid_cell: (untyped batch, ?attrs: ::String) -> ::String
+
+        def bid_url: (::Hash[::Symbol, untyped] data) -> ::String?
+
         def jid_url: (::Hash[::Symbol, untyped] data) -> ::String?
+
+        private
+
+        def resolve_link: (untyped link, ::Hash[::Symbol, untyped] data, ::Array[::String] keys, untyped id) -> ::String?
 
         # provided by Helpers::Application
         def h: (untyped value) -> ::String
