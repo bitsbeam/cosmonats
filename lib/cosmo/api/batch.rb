@@ -74,6 +74,11 @@ module Cosmo
         meta[:parent_id]
       end
 
+      # @return [String, nil] the description given to +Cosmo::Batch.new+
+      def description
+        meta[:description]
+      end
+
       # @return [Integer, nil]
       def created_at
         meta[:created_at]

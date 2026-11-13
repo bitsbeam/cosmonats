@@ -18,12 +18,15 @@ module Cosmo
 
     @bid: ::String
     @parent_id: ::String?
+    @description: ::String?
 
     attr_reader bid: ::String
 
     attr_reader parent_id: ::String?
 
-    def initialize: (?bid: ::String?, ?parent: ::String?) -> void
+    attr_reader description: ::String?
+
+    def initialize: (?bid: ::String?, ?parent: ::String?, ?description: ::String?) -> void
 
     def jobs: [T] () { () -> T } -> T
 

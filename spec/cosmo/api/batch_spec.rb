@@ -96,6 +96,14 @@ RSpec.describe Cosmo::API::Batch do
       expect(entry.created_at).to be_within(5).of(Time.now.to_i)
     end
 
+    it "exposes the description given at creation" do
+      batch = Cosmo::Batch.new(description: 'Import <a href="https://example.com">#1</a>')
+      batch.jobs {}
+
+      expect(described_class.new(batch.bid).description).to eq('Import <a href="https://example.com">#1</a>')
+      expect(described_class.new(Cosmo::Batch.new.bid).description).to be_nil
+    end
+
     it "exposes the parent bid for a nested batch" do
       parent = Cosmo::Batch.new
       parent.jobs {}

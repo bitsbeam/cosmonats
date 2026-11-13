@@ -238,6 +238,8 @@ details[open]>summary{margin-bottom:8px}
 .t-batches{grid-template-columns:minmax(0,1.5fr) 90px minmax(0,1.4fr) 80px 60px 70px 90px;gap:10px}
 .trow.t-batches{font-size:13px}
 .batch-top{display:flex;align-items:flex-start;gap:12px}
+.batch-desc{font-size:12.5px;color:var(--mute);overflow-wrap:anywhere}
+.batch-desc a{color:var(--acc);text-decoration:underline}
 .batch-pct{display:flex;align-items:baseline;gap:8px}
 .batch-pct b{font-size:32px;font-weight:400;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .progress{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--panel2);gap:2px}

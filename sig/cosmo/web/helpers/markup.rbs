@@ -1,0 +1,23 @@
+module Cosmo
+  class Web
+    module Helpers
+      module Markup
+        TAG: ::Regexp
+        TAGS: ::Array[::String]
+        HREF: ::Regexp
+        URL: ::Regexp
+
+        def description_html: (::String? text) -> ::String
+
+        private
+
+        def tag_html: (::MatchData match) -> ::String
+
+        def link_html: (::MatchData match) -> ::String
+
+        # provided by Helpers::Application
+        def h: (untyped value) -> ::String
+      end
+    end
+  end
+end

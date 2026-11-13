@@ -21,6 +21,8 @@ module Cosmo
 
       def parent_id: () -> ::String?
 
+      def description: () -> ::String?
+
       def created_at: () -> ::Integer?
 
       def ready?: () -> bool

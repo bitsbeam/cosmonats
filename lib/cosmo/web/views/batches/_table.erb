@@ -18,6 +18,7 @@
       <div class="trow hover t-batches">
         <div class="stack">
           <span class="mono strong ellip"><%= h(b.bid) %></span>
+          <% if b.description -%><span class="batch-desc ellip"><%= description_html(b.description) %></span><% end -%>
           <% if b.parent_id -%><span class="small-mono ellip">parent <%= h(b.parent_id) %></span><% end -%>
         </div>
         <span class="pill" style="--tone:<%= tone %>"><%= status %></span>
@@ -54,6 +55,7 @@
             <div class="small-mono ellip">
               <% if b.parent_id -%>parent <%= h(b.parent_id) %> · <% end -%>started <%= b.created_at ? "#{elapsed(b.created_at)} ago" : '—' %>
             </div>
+            <% if b.description -%><div class="batch-desc"><%= description_html(b.description) %></div><% end -%>
           </div>
           <span class="pill" style="--tone:<%= tone %>"><%= status %></span>
         </div>

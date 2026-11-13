@@ -2,12 +2,14 @@
 
 require "cosmo/web/helpers/application"
 require "cosmo/web/helpers/links"
+require "cosmo/web/helpers/markup"
 
 module Cosmo
   class Web
     class Context
       include Helpers::Application
       include Helpers::Links
+      include Helpers::Markup
 
       # @param locals [Hash{Symbol => Object}] set as instance variables the view reads
       # @param content_for [Hash{Symbol => String}, nil] the blocks the layout yields

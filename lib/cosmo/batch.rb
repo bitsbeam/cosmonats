@@ -47,6 +47,11 @@ module Cosmo
   #
   # Same meaning as a plain #new either way - it's still a fresh batch.
   #
+  # A description is shown on the batch's card and table row in the web UI. It may hold a little HTML
+  # (links, bold, code), anything else is escaped:
+  #
+  #   Cosmo::Batch.new(description: 'Import <a href="https://example.com/imports/1">#1</a>')
+  #
   # == How this is actually stored in NATS
   #
   # Every batch has an id (bid, a random hex string). State lives
@@ -68,7 +73,7 @@ module Cosmo
   #
   # 2. A KV bucket (BUCKET, ttl'd so old batches clean themselves up):
   #
-  #      <bid>.meta               - { parent_id, created_at }, written once at creation
+  #      <bid>.meta               - { parent_id, created_at, description }, written once at creation
   #      <bid>.callback.success   - { class, opts } from #on(:success, ...)
   #      <bid>.callback.complete  - { class, opts } from #on(:complete, ...)
   #      <bid>.ready              - { total, succeeded, failed }, written once
@@ -115,12 +120,16 @@ module Cosmo
       @kv ||= API::KV.new(BUCKET, ttl: Utils::Duration.parse(Config.batches.expiry), replicas: Config.services.num_replicas)
     end
 
-    attr_reader :bid, :parent_id
+    attr_reader :bid, :parent_id, :description
 
-    def initialize(bid: nil, parent: nil)
+    # @param bid [String, nil] your own batch id instead of a generated one
+    # @param parent [String, nil] the enclosing batch's id
+    # @param description [String, nil] free text, optionally with links, shown in the web UI
+    def initialize(bid: nil, parent: nil, description: nil)
       @bid = bid || SecureRandom.hex(8)
       @parent_id = parent
-      kv.set("#{@bid}.meta", Utils::Json.dump({ parent_id: @parent_id, created_at: Time.now.to_i }))
+      @description = description
+      kv.set("#{@bid}.meta", Utils::Json.dump({ parent_id: @parent_id, created_at: Time.now.to_i, description: @description }))
       link(@parent_id) if @parent_id
     end
 
