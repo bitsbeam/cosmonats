@@ -12,15 +12,26 @@ module Cosmo
         def index
           content_for :title, "Batches"
           content_for :subtitle, "Grouped jobs with a callback when the last one lands."
-          ok render("batches/index", layout: true)
+          ok render("batches/index", { query: query }, layout: true)
         end
 
-        # Renders the batches table.
+        # Renders the batches panel: one page of batches and the links to its neighbours.
         #
         # @return [Array] the Rack response
         def _table
           limit = limit(API::Batch::LIMIT)
-          ok render("batches/_table", { batches: API::Batch.all(limit:) })
+          page = API::Batch.page(before: cursor("before"), after: cursor("after"), limit:)
+          ok render("batches/_table", { page:, query: query, cursor: { before: cursor("before"), after: cursor("after") }.compact })
+        end
+
+        private
+
+        def query
+          { limit: limit(API::Batch::LIMIT) }
+        end
+
+        def cursor(name)
+          Integer(params[name], exception: false)&.positive? ? params[name].to_i : nil
         end
       end
     end

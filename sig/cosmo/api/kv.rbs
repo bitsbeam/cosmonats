@@ -26,7 +26,11 @@ module Cosmo
 
       def direct_entries: (?::String? subject, ?limit: ::Integer?) -> Array[[::String, ::String]]
 
-      def direct_count: (?::String? subject) -> ::Integer
+      def direct_before: (?::String? subject, ?before: ::Integer?, ?limit: ::Integer) -> Array[[::String, ::String, ::Integer]]
+
+      def direct_after: (?::String? subject, after: ::Integer, ?limit: ::Integer) -> Array[[::String, ::String, ::Integer]]
+
+      def direct_count: (?::String? subject, ?since: ::Integer) -> ::Integer
 
       def direct_keys: (?::String? subject) -> Array[::String]
 

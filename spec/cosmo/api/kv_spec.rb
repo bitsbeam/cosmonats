@@ -125,6 +125,29 @@ RSpec.describe Cosmo::API::KV do
     end
   end
 
+  describe "#direct_before and #direct_after" do
+    before do
+      7.times { kv.set("#{_1}.meta", "m#{_1}") }
+      3.times { kv.set("#{_1}.ready", "r") }
+    end
+
+    it "walks the matching entries newest first by cursor, widening past the other keys" do
+      first = kv.direct_before("*.meta", limit: 3)
+      second = kv.direct_before("*.meta", before: first.last.last, limit: 3)
+      third = kv.direct_before("*.meta", before: second.last.last, limit: 3)
+
+      expect([first, second, third].map { |t| t.map(&:first) }).to eq([%w[6.meta 5.meta 4.meta], %w[3.meta 2.meta 1.meta], %w[0.meta]])
+      expect(kv.direct_before("*.meta", before: third.last.last, limit: 3)).to eq([])
+    end
+
+    it "reads the entries above a cursor, still newest first" do
+      cursor = kv.direct_before("*.meta", limit: 7)[4].last
+
+      expect(kv.direct_after("*.meta", after: cursor, limit: 5).map(&:first)).to eq(%w[6.meta 5.meta 4.meta 3.meta])
+      expect(kv.direct_after("*.meta", after: cursor, limit: 2).map(&:first)).to eq(%w[4.meta 3.meta])
+    end
+  end
+
   describe "#direct_entries" do
     it "reads every live key in the order it was last written" do
       %w[a b c d].each { kv.set(_1, "#{_1}1") }

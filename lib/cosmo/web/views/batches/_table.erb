@@ -1,8 +1,9 @@
-<% if @batches.empty? -%>
+<div id="batches-panel" hx-get="<%= url_for('/batches/_table', @query.merge(@cursor)) %>" hx-trigger="cosmo:poll" data-poll="<%= poll_interval %>" hx-swap="outerHTML">
+<% if @page.batches.empty? -%>
   <section class="card"><div class="empty"><b>No batches tracked</b>Group jobs with <code>Cosmo::Batch.new.jobs { … }</code>.</div></section>
 <% else -%>
   <div class="batches">
-    <% @batches.each do |b| -%>
+    <% @page.batches.each do |b| -%>
       <% stats = b.stats -%>
       <% total = stats[:total].to_i -%>
       <% succeeded = stats[:succeeded].to_i -%>
@@ -44,3 +45,15 @@
     <% end -%>
   </div>
 <% end -%>
+<% if @page.newer || @page.older -%>
+  <nav class="pager">
+    <% { newer: ['&larr; Newer', :after], older: ['Older &rarr;', :before] }.each do |dir, (label, param)| -%>
+      <% if @page.public_send(dir) -%>
+        <a class="btn quiet" hx-get="<%= url_for('/batches/_table', @query.merge(param => @page.public_send(dir))) %>" hx-target="#batches-panel" hx-swap="outerHTML" hx-indicator="#global-spinner"><%= label %></a>
+      <% else -%>
+        <span class="btn quiet disabled"><%= label %></span>
+      <% end -%>
+    <% end -%>
+  </nav>
+<% end -%>
+</div>

@@ -34,15 +34,17 @@ RSpec.describe Cosmo::API::Batch do
     ENV.delete("COSMO_STREAM_EMPTY_BACKOFF_MAX")
   end
 
-  describe ".all" do
-    it "lists batches by bid" do
-      first = Cosmo::Batch.new
-      first.jobs {}
-      second = Cosmo::Batch.new
-      second.jobs {}
+  describe ".page" do
+    let!(:bids) { Array.new(5) { Cosmo::Batch.new.tap { |b| b.jobs {} }.bid } }
 
-      bids = described_class.all.map(&:bid)
-      expect(bids).to include(first.bid, second.bid)
+    it "lists the newest batches first and walks to older and newer ones by cursor" do
+      first = described_class.page(limit: 2)
+      second = described_class.page(before: first.older, limit: 2)
+      third = described_class.page(before: second.older, limit: 2)
+
+      expect([first, second, third].map { |p| p.batches.map(&:bid) }).to eq([bids.last(2).reverse, bids[1, 2].reverse, [bids.first]])
+      expect([first.newer, third.older]).to eq([nil, nil])
+      expect(described_class.page(after: third.newer, limit: 2).batches.map(&:bid)).to eq(second.batches.map(&:bid))
     end
   end
 

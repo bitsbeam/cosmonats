@@ -252,12 +252,13 @@ module Cosmo
     # @param filter [String] a subject filter, wildcards allowed
     # @param limit [Integer, nil] the most messages to read, nil for every one
     # @param since [Time, nil] start at the first message stored at or after it, instead of the first one
+    # @param seq [Integer] start at the first message at or after this sequence; ignored when +since+ is given
     # @return [Array<NATS::Msg>]
     # @raise [NATS::JetStream::Error] when the stream refuses the read
     # @raise [NATS::Timeout] when a batch stops arriving, or never starts: no stream, or none with +allow_direct+
-    def direct_messages(stream_name, filter, limit: nil, since: nil)
+    def direct_messages(stream_name, filter, limit: nil, since: nil, seq: 1)
       messages = []
-      start = since ? { start_time: since.utc.iso8601(9) } : { seq: 1 }
+      start = since ? { start_time: since.utc.iso8601(9) } : { seq: }
       loop do
         batch = [DIRECT_BATCH, limit && (limit - messages.size)].compact.min
         seq, pending = direct_batch(stream_name, { **start, next_by_subj: filter, batch: }, messages)

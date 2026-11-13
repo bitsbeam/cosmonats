@@ -4,6 +4,7 @@ module Cosmo
   module API
     class KV
       LIMIT = 25
+      WINDOW = 4
 
       attr_reader :kv
 
@@ -91,21 +92,53 @@ module Cosmo
       # @return [Array<Array(String, String)>] +[key, value]+ pairs
       def direct_entries(subject = nil, limit: nil)
         direct!
-        messages = client.direct_messages("KV_#{@name}", "$KV.#{@name}.#{subject || ">"}", limit:)
-        messages.filter_map do |msg|
-          header = msg.header
-          [header[NATS::JetStream::Header::SUBJECT].delete_prefix("$KV.#{@name}."), msg.data] unless header["KV-Operation"]
+        pairs(client.direct_messages("KV_#{@name}", "$KV.#{@name}.#{subject || ">"}", limit:))
+      end
+
+      # Up to +limit+ entries written before sequence +before+ (the newest ones when nil), newest write first. Direct
+      # gets only read forward, so this reads the window of sequences just below +before+ and widens it, doubling,
+      # until it holds +limit+ entries or reaches the start; nothing is counted. Turns on direct gets for the
+      # bucket first, see #direct!.
+      #
+      # @param subject [String, nil] a key filter, every key when nil
+      # @param before [Integer, nil] a cursor: only entries below this sequence
+      # @param limit [Integer]
+      # @return [Array<Array(String, String, Integer)>] +[key, value, sequence]+ triples
+      def direct_before(subject = nil, before: nil, limit: LIMIT)
+        direct!
+        upto = before || (client.stream_info("KV_#{@name}").state.last_seq.to_i + 1)
+        width = limit * WINDOW
+        loop do
+          from = [upto - width, 1].max
+          found = window(subject, from:, width:).select { _1.last < upto }
+          return found.last(limit).reverse if found.size >= limit || from == 1
+
+          width *= 2
         end
+      end
+
+      # Up to +limit+ entries written after sequence +after+, newest write first: one forward read, reversed. Turns
+      # on direct gets for the bucket first, see #direct!.
+      #
+      # @param subject [String, nil] a key filter, every key when nil
+      # @param after [Integer] a cursor: only entries above this sequence
+      # @param limit [Integer]
+      # @return [Array<Array(String, String, Integer)>] +[key, value, sequence]+ triples
+      def direct_after(subject = nil, after:, limit: LIMIT)
+        direct!
+        messages = client.direct_messages("KV_#{@name}", "$KV.#{@name}.#{subject || ">"}", limit:, seq: after + 1)
+        triples(messages).reverse
       end
 
       # How many keys match +subject+, counted by the server without reading any value: one request however many
       # keys there are. Turns on direct gets for the bucket first, see #direct!.
       #
       # @param subject [String, nil] a key filter, every key when nil
+      # @param since [Integer] count only the keys last written at or after this sequence
       # @return [Integer]
-      def direct_count(subject = nil)
+      def direct_count(subject = nil, since: 1)
         direct!
-        client.count_messages("KV_#{@name}", "$KV.#{@name}.#{subject || ">"}")
+        client.count_messages("KV_#{@name}", "$KV.#{@name}.#{subject || ">"}", since:)
       end
 
       # The sorted keys matching +subject+, without their values, for paging through a bucket in a stable order.
@@ -192,6 +225,27 @@ module Cosmo
       alias size count
 
       private
+
+      def pairs(messages)
+        messages.filter_map do |msg|
+          header = msg.header
+          [header[NATS::JetStream::Header::SUBJECT].delete_prefix("$KV.#{@name}."), msg.data] unless header["KV-Operation"]
+        end
+      end
+
+      def window(subject, from:, width:)
+        triples(client.direct_messages("KV_#{@name}", "$KV.#{@name}.#{subject || ">"}", limit: width, seq: from))
+      end
+
+      def triples(messages)
+        messages.filter_map do |msg|
+          header = msg.header
+          next if header["KV-Operation"]
+
+          [header[NATS::JetStream::Header::SUBJECT].delete_prefix("$KV.#{@name}."), msg.data,
+           header[NATS::JetStream::Header::SEQUENCE].to_i]
+        end
+      end
 
       def walk(subject, limit:, offset:, meta_only:)
         results = []

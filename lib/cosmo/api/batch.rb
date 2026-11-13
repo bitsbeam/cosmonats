@@ -5,11 +5,38 @@ module Cosmo
     # Read-model over Cosmo::Batch's KV/counter state, for the status API and Web UI.
     class Batch
       LIMIT = 25
+      META = "*.meta"
 
-      # @param limit [Integer, nil] the most batches to return, nil for every one
-      # @return [Array<Batch>]
-      def self.all(limit: LIMIT)
-        kv.keys("*.meta", limit: limit).map { |key| new(key.delete_suffix(".meta")) }
+      # A slice of batches, newest first, with the cursors that lead to its neighbours (nil when there is none).
+      Page = Struct.new(:batches, :newer, :older)
+
+      # One page of batches, newest first. Batch ids are random, so key order says nothing about age; the bucket
+      # keeps writes in creation order, so pages are cursors over its sequences (see {KV#direct_before}) and only a
+      # page's metas are read.
+      #
+      # @param before [Integer, nil] the +older+ cursor of the page above: show the batches written before it
+      # @param after [Integer, nil] the +newer+ cursor of the page below: show the batches written after it
+      # @param limit [Integer] batches per page
+      # @return [Page]
+      def self.page(before: nil, after: nil, limit: LIMIT)
+        entries = after ? kv.direct_after(META, after:, limit:) : kv.direct_before(META, before:, limit:)
+        return Page.new([], nil, nil) if entries.empty?
+
+        newest = entries.first.last
+        oldest = entries.last.last
+        Page.new(entries.map { |key, _| new(key.delete_suffix(".meta")) }, (newest if newer?(newest)), (oldest if older?(oldest)))
+      end
+
+      # @param newest [Integer] the sequence of a page's newest batch
+      # @return [Boolean] whether a batch was created after it
+      def self.newer?(newest)
+        kv.direct_count(META, since: newest + 1).positive?
+      end
+
+      # @param oldest [Integer] the sequence of a page's oldest batch
+      # @return [Boolean] whether a batch was created before it
+      def self.older?(oldest)
+        kv.direct_count(META) > kv.direct_count(META, since: oldest)
       end
 
       # Counts batches by direct gets, reading no further than +limit+.
