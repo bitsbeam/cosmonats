@@ -5,9 +5,11 @@ module Cosmo
 
       def self.enqueue: (::String class_name, Array[untyped] args, Hash[Symbol, untyped] options, ?batch: Batch?) -> ::String?
 
-      def self.enqueue_many: (::String class_name, Array[Array[untyped]] list, Hash[Symbol, untyped] options, ?batch: Batch?) -> Array[::String?]
+      def self.enqueue_many: (::String class_name, Array[Array[untyped]] list, Hash[Symbol, untyped] options, ?batch: Batch?, ?jids: (Array[::String] | ^(Array[untyped]) -> ::String)?) -> Array[::String?]
 
-      def self.publish_chunk: (::String class_name, Array[Array[untyped]] chunk, Hash[Symbol, untyped] options, Batch? batch) -> [Array[::String?], Hash[Integer, StandardError]]
+      def self.publish_chunk: (::String class_name, Array[Array[untyped]] chunk, Hash[Symbol, untyped] options, Batch? batch, ?Array[::String]? jids) -> [Array[::String?], Hash[Integer, StandardError]]
+
+      def self.resolve_jids: (Array[Array[untyped]] list, (Array[::String] | ^(Array[untyped]) -> ::String)? jids) -> Array[::String]?
 
       def self.through_middleware: (::String class_name, Data data) -> [Data, Hash[Symbol, untyped]]?
 
@@ -15,7 +17,7 @@ module Cosmo
 
       def self.collect: (Array[[Data, Hash[Symbol, untyped]]?] jobs, Array[untyped] results) -> [Array[::String?], Hash[Integer, StandardError]]
 
-      def self.pipe: (::String class_name, Data data) -> bool
+      def self.pipe: (::String class_name, Data data) -> NATS::JetStream::PubAck?
 
       def self.publish: (Data data, Hash[Symbol, untyped] payload) -> untyped
     end

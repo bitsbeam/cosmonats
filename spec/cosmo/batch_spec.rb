@@ -153,6 +153,29 @@ RSpec.describe Cosmo::Batch do
     expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 0, succeeded: 0, failed: 0)
   end
 
+  it "counts a job once when it is enqueued again with the same jid" do
+    batch = described_class.new
+    batch.jobs do
+      BatchWorkerJob.set(jid: "once").perform_async("a")
+      BatchWorkerJob.set(jid: "once").perform_async("a")
+    end
+    batch.on(:complete, CompleteCallback, marker: "single-repeat")
+
+    wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
+    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 1, succeeded: 1, failed: 0)
+  end
+
+  it "counts the jobs of a bulk once when it is enqueued again with the same jids" do
+    batch = described_class.new
+    batch.jobs do
+      2.times { BatchWorkerJob.set(jids: %w[x y]).perform_bulk([["x"], ["y"]]) }
+    end
+    batch.on(:complete, CompleteCallback, marker: "bulk-repeat")
+
+    wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
+    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
+  end
+
   it "tracks a scheduled job (perform_at) added inside a batch" do
     batch = described_class.new
     batch.jobs { BatchWorkerJob.perform_at(Time.now - 5, "overdue") }

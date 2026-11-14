@@ -4,6 +4,8 @@ module Cosmo
       OPTIONS: Array[Symbol]
 
       @job_class: ClassMethods
+      @jid: ::String?
+      @jids: (Array[::String] | ^(Array[untyped]) -> ::String)?
       @options: Hash[Symbol, untyped]
 
       def initialize: (ClassMethods job_class, Hash[Symbol, untyped] options) -> void
@@ -15,6 +17,10 @@ module Cosmo
       def perform_at: (Integer | Time timestamp, *untyped args) -> ::String?
 
       def perform_in: (Numeric interval, *untyped args) -> ::String?
+
+      private
+
+      def job_options: () -> Hash[Symbol, untyped]
     end
   end
 end

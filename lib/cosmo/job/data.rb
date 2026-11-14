@@ -8,6 +8,9 @@ module Cosmo
     class Data
       DEFAULTS = { stream: :default, retry: 3, dead: true, limit: nil }.freeze
 
+      # A jid ends up in the +Nats-Msg-Id+ header and in the subject of a delayed job, so it is one NATS subject token.
+      JID_FORMAT = /\A[\w-]{1,128}\z/
+
       # Subjects of delayed jobs, +cosmo.delayed.<underscored_class_name>.<jid>+: one NATS +@at+ schedule per job, kept
       # in the +scheduled+ stream apart from the +jobs.scheduled+ subjects the scheduler consumes and the +cosmo.cron+
       # ones the Crons tab lists. The class in the subject lets one wildcard purge every delayed job of a class.
@@ -22,8 +25,8 @@ module Cosmo
 
       # @param class_name [String]
       # @param args [Array]
-      # @param options [Hash, nil] job options, +stream:+ is required
-      # @raise [ArgumentError] when no stream is given
+      # @param options [Hash, nil] job options, +stream:+ is required, +jid:+ replaces the generated job id
+      # @raise [ArgumentError] when no stream is given, or +jid:+ is not 1-128 letters, digits, +-+ or +_+
       def initialize(class_name, args, options = nil)
         @class_name = class_name
         @args = args
@@ -34,7 +37,7 @@ module Cosmo
         @at ||= Time.now.to_i + @options[:in].to_i if @options[:in]
         @subject = @options[:subject] if @options[:subject]
 
-        @jid = SecureRandom.hex(12)
+        @jid = @options[:jid]&.to_s || SecureRandom.hex(12)
       end
 
       # @return [String, nil] the id of the batch the job belongs to
@@ -98,6 +101,7 @@ module Cosmo
 
       def validate!
         raise ArgumentError, "stream is not provided" unless @options[:stream]
+        raise ArgumentError, "jid must be 1-128 letters, digits, - or _" if @options[:jid] && !@options[:jid].to_s.match?(JID_FORMAT)
       end
 
       def retries
