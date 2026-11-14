@@ -8,6 +8,21 @@ RSpec.describe Cosmo::Job::Data do
     expect(data.jid.size).to eq(24)
   end
 
+  describe "jid option" do
+    it "replaces the generated jid" do
+      data = described_class.new("MyJob", [], stream: "default", jid: "row-7_a")
+
+      expect(data.jid).to eq("row-7_a")
+      expect(data.headers).to include("Nats-Msg-Id" => "row-7_a")
+    end
+
+    it "rejects a jid that is not a single subject token" do
+      ["", "a.b", "a b", "a*", "a>", "x" * 129].each do |jid|
+        expect { described_class.new("MyJob", [], stream: "default", jid: jid) }.to raise_error(Cosmo::ArgumentError, /jid must be/)
+      end
+    end
+  end
+
   it "#stream" do
     expect(data.stream).to eq("default")
   end

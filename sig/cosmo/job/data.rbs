@@ -3,6 +3,7 @@ module Cosmo
     class Data
       DEFAULTS: { stream: Symbol, retry: Integer, dead: bool, limit: nil }
       SUBJECT_PREFIX: ::String
+      JID_FORMAT: Regexp
 
       def self.default_retry: () -> Integer
 

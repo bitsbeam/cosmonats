@@ -99,6 +99,35 @@ RSpec.describe Cosmo::Job do
       expect(data).to include(jid: jid, args: [1, { url: "https://example.com" }], retry: 0, dead: false)
     end
 
+    it "fixes the jid of one job, so enqueueing it again is a no-op" do
+      jids = Array.new(2) { MyJob.set(jid: "report-42").perform_async(1) }
+
+      expect(jids).to eq(%w[report-42 report-42])
+      expect(stream_size("default")).to eq(1)
+    end
+
+    it "fixes the jids of a bulk from a list or a callable" do
+      listed = MyJob.set(jids: %w[a b]).perform_bulk([[1], [2]])
+      derived = MyJob.set(jids: ->(args) { "row-#{args.first}" }).perform_bulk([[3], [4]])
+
+      expect([listed, derived]).to eq([%w[a b], %w[row-3 row-4]])
+      expect(payload("default", 3)[1]).to include(jid: "row-3")
+    end
+
+    it "keeps jid for one job and jids for a bulk" do
+      expect { MyJob.set(jid: "a", jids: %w[a]) }.to raise_error(Cosmo::ArgumentError, /not both/)
+      expect { MyJob.set(jid: "a").perform_bulk([[1]]) }.to raise_error(Cosmo::ArgumentError, /jid: is for one job/)
+      expect { MyJob.set(jids: %w[a]).perform_async(1) }.to raise_error(Cosmo::ArgumentError, /jids: is for perform_bulk/)
+      expect { MyJob.set(jids: %w[a]).perform_in(60, 1) }.to raise_error(Cosmo::ArgumentError, /jids: is for perform_bulk/)
+      expect(stream_size("default")).to eq(0)
+    end
+
+    it "rejects jids that are not one per job" do
+      expect { MyJob.set(jids: %w[a]).perform_bulk([[1], [2]]) }.to raise_error(Cosmo::ArgumentError, /expected 2 jids, got 1/)
+      expect { MyJob.set(jids: ["a b"]).perform_bulk([[1]]) }.to raise_error(Cosmo::ArgumentError, /jid must be/)
+      expect(stream_size("default")).to eq(0)
+    end
+
     it "dispatches a delayed job to the given stream" do
       MyJob.set(stream: :critical).perform_in(60, 1)
       MyJob.set(stream: :critical).perform_at(Time.now + 60, 2)
