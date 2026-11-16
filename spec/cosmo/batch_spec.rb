@@ -94,6 +94,22 @@ RSpec.describe Cosmo::Batch do
     expect(callback_event(:success, batch.bid)).to be_nil
   end
 
+  it "counts a job that raises an Exception that isn't a StandardError as failed" do
+    stub_const("BatchOverflowJob", Class.new do
+      include Cosmo::Job
+
+      options stream: :default, retry: 0, dead: true
+
+      def perform(...) = raise SystemStackError
+    end)
+    batch = described_class.new
+    batch.jobs { BatchOverflowJob.perform_async("a") }
+    batch.on(:complete, CompleteCallback)
+
+    wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
+    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 1, succeeded: 0, failed: 1)
+  end
+
   it "fires immediately for an empty batch" do
     batch = described_class.new
     batch.jobs {}

@@ -170,13 +170,23 @@ module Cosmo
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[error]" }
           Cosmo.handle_error(e, error_context(message, data))
           handle_failure(worker_class, message, data, e)
-        rescue Exception # rubocop:disable Lint/RescueException
+        rescue Exception => e # rubocop:disable Lint/RescueException
           Logger.with(elapsed: sw.elapsed_seconds) { Logger.info "fail[exception]" }
+          settle_exception(worker_class, message, data, e)
           raise
         end
       ensure
         Logger.without(:jid)
         Logger.debug "processed message #{message.inspect}"
+      end
+
+      # An exception that isn't a StandardError, e.g. SystemStackError, still ends the job's attempt: it is retried or
+      # given up on like any failure, before the exception goes on to end the pool's thread.
+      def settle_exception(worker_class, message, data, exception)
+        Cosmo.handle_error(exception, error_context(message, data))
+        handle_failure(worker_class, message, data, exception)
+      rescue NATS::JetStream::Error::MsgAlreadyAckd
+        Logger.info "released[shutdown]"
       end
 
       def build_worker(worker_class, data, message)

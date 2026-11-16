@@ -1039,6 +1039,23 @@ RSpec.describe Cosmo::Job::Processor do
                                             subject: "jobs.default.failing_job", jid: a_kind_of(String))
     end
 
+    it "retries and then dead-letters a job that raises an Exception that isn't a StandardError" do
+      stub_const("StackOverflowJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 1, dead: true
+
+        def perform(...) = raise SystemStackError
+      end)
+      allow(processor).to receive(:default_retry_delay).and_return(0.1)
+      Cosmo.configure { |config| config.error_handlers << ->(error, context) { Results.instance << [error.class, context[:attempt]] } }
+
+      StackOverflowJob.perform_async("trigger")
+      wait_until(timeout: 10) { stream_size("dead") >= 1 }
+
+      expect(results).to eq([[SystemStackError, 1], [SystemStackError, 2]])
+    end
+
     it "hands a message for an unknown job class to the error handlers" do
       Cosmo.configure { |config| config.error_handlers << ->(error, context) { Results.instance << [error.message, context] } }
       payload = Cosmo::Utils::Json.dump({ jid: "ghost-1", class: "GhostJobXYZ", args: [], retry: 0, dead: true })

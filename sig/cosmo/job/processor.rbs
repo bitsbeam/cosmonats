@@ -53,6 +53,8 @@ module Cosmo
 
       def process: (Array[untyped] messages, untyped processor) -> void
 
+      def settle_exception: (untyped worker_class, untyped message, Hash[Symbol, untyped] data, Exception exception) -> void
+
       def build_worker: (untyped worker_class, Hash[Symbol, untyped] data, untyped message) -> Cosmo::Job
 
       def abandon: (untyped message) -> bool
