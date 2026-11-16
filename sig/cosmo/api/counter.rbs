@@ -27,6 +27,8 @@ module Cosmo
 
       def get: (Symbol | ::String key) -> ::Integer
 
+      def get!: (Symbol | ::String key) -> ::Integer
+
       private
 
       def safely: [T] (Symbol | ::String key) { () -> T } -> T?

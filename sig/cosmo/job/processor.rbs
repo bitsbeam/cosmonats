@@ -3,6 +3,8 @@ module Cosmo
     class Processor < ::Cosmo::Processor
       DISPATCH_HEADERS: ::Array[::String]
       ARGS_LIMIT: ::Integer
+      NOTIFY_ATTEMPTS: ::Integer
+      NOTIFY_DELAY: ::Integer
 
       @weights: Array[Symbol]?
       @lanes: Hash[Symbol, Array[untyped]]?
@@ -56,6 +58,8 @@ module Cosmo
       def abandon: (untyped message) -> bool
 
       def notify_batch: (Hash[Symbol, untyped] data, success: bool) -> void
+
+      def report_unnotified: (Hash[Symbol, untyped] data, NATS::IO::Timeout error) -> void
 
       def handle_failure: (untyped worker_class, untyped message, Hash[Symbol, untyped] data, Exception? exception) -> bool
 

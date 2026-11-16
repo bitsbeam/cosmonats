@@ -176,6 +176,82 @@ RSpec.describe Cosmo::Batch do
     expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
   end
 
+  context "when telling the batch a job finished times out" do
+    before { allow(processor).to receive(:sleep) }
+
+    def batch_notice?(options)
+      options.dig(:header, NATS::JetStream::Header::MSG_ID).to_s.start_with?("batch.")
+    end
+
+    it "retries and completes the batch" do
+      failed = false
+      allow(Cosmo::Client.instance).to receive(:publish).and_wrap_original do |original, subject, *args, **options|
+        if batch_notice?(options) && !failed
+          failed = true
+          raise NATS::IO::Timeout
+        end
+
+        original.call(subject, *args, **options)
+      end
+
+      batch = described_class.new
+      batch.jobs { BatchWorkerJob.perform_async("a") }
+      batch.on(:complete, CompleteCallback)
+
+      wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
+      expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 1, succeeded: 1, failed: 0)
+    end
+
+    it "reports the lost notice without failing the job" do
+      Cosmo.configure { |config| config.error_handlers << ->(error, context) { Results.instance << [error.class, context[:source]] } }
+      allow(Cosmo::Client.instance).to receive(:publish).and_wrap_original do |original, subject, *args, **options|
+        raise NATS::IO::Timeout if batch_notice?(options)
+
+        original.call(subject, *args, **options)
+      end
+
+      described_class.new.jobs { BatchWorkerJob.perform_async("a") }
+
+      wait_until(timeout: 5) { results.include?([NATS::IO::Timeout, :batch]) }
+      expect(results.count { _1.is_a?(Hash) && _1[:tag] == "a" }).to eq(1)
+      expect(stream_size("dead")).to eq(0)
+    end
+
+    it "does not complete the batch early when the retried notice was already applied" do
+      stub_const("BatchSlowJob", Class.new do
+        include Cosmo::Job
+
+        options stream: :default, retry: 0
+
+        def perform(tag)
+          sleep 0.5
+          Results.instance << { tag: tag }
+        end
+      end)
+      failed = false
+      allow(Cosmo::Client.instance).to receive(:publish).and_wrap_original do |original, subject, *args, **options|
+        ack = original.call(subject, *args, **options)
+        if batch_notice?(options) && !failed
+          failed = true
+          raise NATS::IO::Timeout
+        end
+
+        ack
+      end
+
+      batch = described_class.new
+      batch.jobs do
+        BatchWorkerJob.perform_async("fast")
+        BatchSlowJob.perform_async("slow")
+      end
+      batch.on(:complete, CompleteCallback)
+
+      wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
+      expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
+      expect(results.index { _1.is_a?(Hash) && _1[:tag] == "slow" }).to be < results.index(callback_event(:complete, batch.bid))
+    end
+  end
+
   it "tracks a scheduled job (perform_at) added inside a batch" do
     batch = described_class.new
     batch.jobs { BatchWorkerJob.perform_at(Time.now - 5, "overdue") }

@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every firing of a cron ran with its template's jid; each firing now gets a jid of its own
 - `KV#direct_values` returns `{}` for no keys instead of sending NATS an empty batched get, which it refuses with
   `408 Empty Request`. The web UI's Jobs page raised it whenever no job was running
+- A batch could wait forever on a job that had already finished, when the worker timed out decrementing the batch's pending counter. The worker now retries, and no longer marks the finished job as failed
+- A repeated decrement of a batch's pending counter no longer completes a batch that still has jobs running
 
 ## [0.10.0] - 2026-11-04
 

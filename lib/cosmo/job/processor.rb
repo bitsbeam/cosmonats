@@ -11,6 +11,8 @@ module Cosmo
       DISPATCH_HEADERS = ["X-Stream", "X-Subject", "X-Execute-At", NATS::JetStream::Header::EXPECTED_STREAM,
                           NATS::JetStream::Header::SCHEDULER, NATS::JetStream::Header::SCHEDULE_NEXT].freeze
       ARGS_LIMIT = 256
+      NOTIFY_ATTEMPTS = 5
+      NOTIFY_DELAY = 1
 
       # @param options [Hash] the CLI options
       # @return [void]
@@ -216,7 +218,23 @@ module Cosmo
       def notify_batch(data, success:)
         return unless data[:batch_id]
 
-        Batch.notify(data[:batch_id], data[:jid], success: success)
+        attempt = 0
+        begin
+          Batch.notify(data[:batch_id], data[:jid], success: success)
+        rescue NATS::IO::Timeout => e
+          attempt += 1
+          return report_unnotified(data, e) if attempt >= NOTIFY_ATTEMPTS
+
+          sleep(NOTIFY_DELAY * (2**(attempt - 1)))
+          retry
+        end
+      end
+
+      # The job's message is acked by now, so its batch can't be told again by a redelivery: log which batch
+      # keeps a slot for it, instead of failing a job that already finished.
+      def report_unnotified(data, error)
+        Logger.error "batch #{data[:batch_id]} was not told job #{data[:jid]} finished, #{error.class}: #{error.message}"
+        Cosmo.handle_error(error, { source: :batch, class: data[:class], jid: data[:jid], batch_id: data[:batch_id] })
       end
 
       # The message is NAK'd with an explicit delay (default backoff, or the job class's own +retry_in+ handler).

@@ -81,9 +81,20 @@ module Cosmo
       # @param key [Symbol, String]
       # @return [Integer] the counter's value, 0 when it was never written or can't be read
       def get(key)
+        get!(key)
+      rescue NATS::JetStream::Error::ServiceUnavailable, NATS::IO::Timeout
+        0
+      end
+
+      # Reads +key+'s counter like {#get}, but raises when it can't be read instead of answering 0.
+      #
+      # @param key [Symbol, String]
+      # @return [Integer] the counter's value, 0 when it was never written
+      # @raise [NATS::JetStream::Error::ServiceUnavailable, NATS::IO::Timeout] when the counter can't be read
+      def get!(key)
         raw = client.get_message(self.class::STREAM_NAME, direct: true, subject: subject(key))
         Utils::Json.parse(raw.data, default: { "val" => 0 })[:val].to_i
-      rescue NATS::JetStream::Error::NotFound, NATS::JetStream::Error::ServiceUnavailable, NATS::IO::Timeout
+      rescue NATS::JetStream::Error::NotFound
         0
       end
 

@@ -13,7 +13,9 @@ module Cosmo
       # we report back.
       def release_pending(bid, by: 1, msg_id: nil)
         pending = counter.decrement!("#{bid}.pending", by: by, msg_id: msg_id)
-        finalize(bid) if pending.to_i.zero?
+        # nil means a deduped repeat of an applied decrement, so read the real count instead of assuming zero
+        pending ||= counter.get!("#{bid}.pending")
+        finalize(bid) if pending.zero?
       end
 
       # Runs once per batch. Has its own "already done" guard, separate from
