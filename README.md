@@ -587,6 +587,41 @@ end
   or dropped after exhausting retries. Both can be registered before or after `#jobs` — a callback
   registered after the batch has already finished still fires.
 
+**Jobs that enqueue a batch and get retried: `jobs(retriable: true)`**
+
+`batch.jobs` keeps the batch open while its block runs, and lets the batch finish when the block ends. If the job
+running the block is stopped halfway, for example by a deploy, and retried, that breaks: the batch finishes after the
+jobs published so far and ignores the ones the retry publishes. Pass `retriable: true` in that case, and give the jobs
+fixed ids so the retry doesn't enqueue the same job twice:
+
+```ruby
+class SliceJob
+  include Cosmo::Job
+  options retry: 3
+
+  def perform(batch_id, rows)
+    batch = Cosmo::Batch.new(bid: batch_id)
+    batch.on(:complete, NotifyUser, user_id: 1)
+
+    batch.jobs(retriable: true) do
+      RowJob.set(jids: rows.map { "#{batch_id}-#{_1}" }).perform_bulk(rows.map { [_1] })
+    end
+  end
+end
+```
+
+Say `SliceJob` has 6 rows, and it is stopped after publishing 3 of them. Then it is retried:
+
+| | `jobs { }` | `jobs(retriable: true) { }` |
+|---|---|---|
+| First run, stopped halfway | the batch finishes once the 3 published jobs are done | the batch stays open |
+| Retry | publishes rows 4-6, but the batch is already finished | skips rows 1-3, publishes rows 4-6 |
+| `:complete` callback | fires once, early, with `total: 3` | fires once, after all 6 rows, with `total: 6` |
+| Jobs 4-6 failing | not counted | counted in `failed` |
+
+The block runs again on every retry, so only use `retriable: true` in jobs that are retried. A block that raises
+without a retry leaves the batch open. Use it for one `jobs` call per batch.
+
 **Nested batches** — a running job can spawn its own sub-batch, which counts as one pending unit
   of its parent and propagates any failure upward as a single failure unit:
 

@@ -141,17 +141,34 @@ module Cosmo
     # once. If the block raises, we still release the placeholder (so the
     # batch isn't stuck) and let the error propagate as normal.
     #
+    # Pass +retriable: true+ when the block can run again for the same batch, such as in a
+    # job that is retried after its worker died. The placeholder is then opened and
+    # released only once, however many times the block runs, and it is kept when the
+    # block raises, so the run that retries it is the one to release it. The block
+    # itself still runs every time: publish its jobs with fixed jids so a rerun does not
+    # duplicate them. Only one retriable block per batch is supported.
+    #
+    #   batch.jobs(retriable: true) { rows.each { RowJob.set(jid: ...).perform_async(_1) } }
+    #
+    # @param retriable [Boolean] whether the block may run more than once
     # @yieldreturn [Object]
     # @return [Object] the block's result
-    def jobs
+    def jobs(retriable: false)
       previous = Thread.current[:cosmo_batch]
+      retriable ? open_once : counter.increment!("#{bid}.pending")
       Thread.current[:cosmo_batch] = self
-      counter.increment!("#{bid}.pending")
+      finished = false
       begin
-        yield
+        result = yield
+        finished = true
+        result
       ensure
         Thread.current[:cosmo_batch] = previous
-        release_pending
+        if !retriable
+          release_pending
+        elsif finished
+          close_once
+        end
       end
     end
 
@@ -193,11 +210,35 @@ module Cosmo
 
     private
 
+    # The counter publish carries a fixed Nats-Msg-Id, which JetStream only remembers for the counters stream's
+    # duplicate_window, so a KV marker written after it makes a later run skip the step for good.
+    def open_once
+      return if kv.get(once_key(:open))
+
+      counter.increment!("#{bid}.pending", msg_id: "batch.#{bid}.open")
+      mark_once(:open)
+    end
+
+    def close_once
+      return if kv.get(once_key(:close))
+
+      release_pending(msg_id: "batch.#{bid}.close")
+      mark_once(:close)
+    end
+
+    def once_key(step) = "#{bid}.retriable.#{step}"
+
+    def mark_once(step)
+      kv.create(once_key(step), "1")
+    rescue NATS::KeyValue::KeyWrongLastSequenceError
+      nil
+    end
+
     # Bridges instance methods to the private class methods Dispatcher adds to Batch
     def counter = self.class.counter
     def kv = self.class.kv
     def link(parent_id) = self.class.send(:link, parent_id)
-    def release_pending(count = 1) = self.class.send(:release_pending, bid, by: count)
+    def release_pending(count = 1, msg_id: nil) = self.class.send(:release_pending, bid, by: count, msg_id:)
     def try_fire(event) = self.class.send(:try_fire, bid, event)
   end
 end

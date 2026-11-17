@@ -192,6 +192,47 @@ RSpec.describe Cosmo::Batch do
     expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
   end
 
+  it "finishes a batch whose #jobs(retriable: true) block is run again after the first run died" do
+    batch = described_class.new
+    batch.on(:complete, CompleteCallback, marker: "retriable-retry")
+
+    expect do
+      batch.jobs(retriable: true) do
+        BatchWorkerJob.set(jid: "row-1").perform_async("a")
+        raise "worker died"
+      end
+    end.to raise_error("worker died")
+
+    described_class.new(bid: batch.bid).jobs(retriable: true) do
+      BatchWorkerJob.set(jid: "row-1").perform_async("a")
+      BatchWorkerJob.set(jid: "row-2").perform_async("b")
+    end
+
+    wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
+    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
+  end
+
+  it "does not finish a batch while a #jobs(retriable: true) block is still waiting for its retry" do
+    batch = described_class.new
+    batch.on(:complete, CompleteCallback, marker: "retriable-held")
+
+    expect do
+      batch.jobs(retriable: true) { BatchWorkerJob.perform_async("a") and raise "worker died" }
+    end.to raise_error("worker died")
+
+    wait_until(timeout: 5) { results.any? { _1.is_a?(Hash) && _1[:tag] == "a" } }
+    sleep 0.5
+    expect(callback_event(:complete, batch.bid)).to be_nil
+  end
+
+  it "does not leave the batch current on the thread when opening it fails" do
+    batch = described_class.new
+    allow(batch.send(:counter)).to receive(:increment!).and_raise(NATS::IO::Timeout)
+
+    expect { batch.jobs { BatchWorkerJob.perform_async("a") } }.to raise_error(NATS::IO::Timeout)
+    expect(described_class.current).to be_nil
+  end
+
   context "when telling the batch a job finished times out" do
     before { allow(processor).to receive(:sleep) }
 
