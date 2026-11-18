@@ -26,7 +26,7 @@ module Cosmo
 
         total = counter.get("#{bid}.total")
         failed = counter.get("#{bid}.failed")
-        stats = { total: total, succeeded: total - failed, failed: failed }
+        stats = { total: total, succeeded: total - failed, failed: failed, finished_at: Time.now.to_i }
         kv.set("#{bid}.ready", Utils::Json.dump(stats))
         purge_counters(bid)
 

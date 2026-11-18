@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The web UI's batches show how long a finished batch took; the finalized snapshot, and so the callbacks' `stats`, now carries `finished_at`
 - `Batch#jobs(retriable: true)` keeps the batch open while its block is re-run, such as by a retried job after its worker died, so the batch neither finishes early nor hangs
 - `set(jid:)`, and `set(jids:)` or `perform_bulk(jids:)` for a bulk, fix a job's id instead of generating one, so enqueueing it again within the stream's `duplicate_window` is a no-op, and a batch counts it once
 - `Cosmo::Batch.new(description:)` takes free text, optionally with links (`a`, `b`, `i`, `em`, `strong`, `code`, `br`; other HTML is escaped), shown on the web UI's batch cards and table rows

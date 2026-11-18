@@ -25,6 +25,10 @@ module Cosmo
 
       def created_at: () -> ::Integer?
 
+      def finished_at: () -> ::Integer?
+
+      def duration: () -> ::Integer?
+
       def ready?: () -> bool
 
       def stats: () -> Hash[Symbol, untyped]

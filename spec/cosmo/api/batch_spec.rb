@@ -82,7 +82,7 @@ RSpec.describe Cosmo::API::Batch do
       entry = described_class.new(batch.bid)
       wait_until(timeout: 5) { entry.ready? }
 
-      expect(entry.stats).to eq(total: 1, pending: 0, succeeded: 1, failed: 0)
+      expect(entry.stats).to include(total: 1, pending: 0, succeeded: 1, failed: 0)
     end
   end
 
@@ -102,6 +102,19 @@ RSpec.describe Cosmo::API::Batch do
 
       expect(described_class.new(batch.bid).description).to eq('Import <a href="https://example.com">#1</a>')
       expect(described_class.new(Cosmo::Batch.new.bid).description).to be_nil
+    end
+
+    it "records when the batch finished and how long it took" do
+      batch = Cosmo::Batch.new
+      batch.jobs { StatusWorkerJob.perform_async("a") }
+
+      entry = described_class.new(batch.bid)
+      expect(entry.finished_at).to be_nil
+      expect(entry.duration).to be_nil
+      wait_until(timeout: 5) { entry.ready? }
+
+      expect(entry.finished_at).to be_within(5).of(Time.now.to_i)
+      expect(entry.duration).to be_between(0, 5)
     end
 
     it "exposes the parent bid for a nested batch" do

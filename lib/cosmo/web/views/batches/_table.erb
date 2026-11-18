@@ -12,7 +12,7 @@
   <% groups.each do |name, batches| -%>
   <div class="eyebrow batch-group"><%= name %> · <%= batches.size %></div>
   <section class="card"><div class="scroll"><div style="min-width:760px">
-    <div class="thead t-batches"><span>Batch</span><span>Status</span><span>Progress</span><span>Succeeded</span><span>Failed</span><span>Pending</span><span>Started</span></div>
+    <div class="thead t-batches"><span>Batch</span><span>Status</span><span>Progress</span><span>Succeeded</span><span>Failed</span><span>Pending</span><span>Started</span><span>Duration</span></div>
     <% batches.each do |b| -%>
       <% stats = b.stats -%>
       <% total = stats[:total].to_i -%>
@@ -39,6 +39,7 @@
         <span class="num" style="color:<%= failed.positive? ? 'var(--err)' : 'var(--faint)' %>"><%= format_numbers(failed) %></span>
         <span class="num"><%= format_numbers(stats[:pending]) %></span>
         <span class="mute"><%= b.created_at ? "#{elapsed(b.created_at)} ago" : '—' %></span>
+        <span class="mute"><%= b.duration ? duration(b.duration * 1000) : '—' %></span>
       </div>
     <% end -%>
   </div></div></section>
@@ -60,7 +61,7 @@
           <div class="stack" style="flex:1;gap:4px">
             <div><%= bid_cell(b) %></div>
             <div class="small-mono ellip">
-              <% if b.parent_id -%>parent <%= h(b.parent_id) %> · <% end -%>started <%= b.created_at ? "#{elapsed(b.created_at)} ago" : '—' %>
+              <% if b.parent_id -%>parent <%= h(b.parent_id) %> · <% end -%>started <%= b.created_at ? "#{elapsed(b.created_at)} ago" : '—' %><% if b.duration -%> · took <%= duration(b.duration * 1000) %><% end -%>
             </div>
             <% if b.description -%><div class="batch-desc"><%= description_html(b.description) %></div><% end -%>
           </div>

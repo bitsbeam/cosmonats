@@ -84,6 +84,18 @@ module Cosmo
         meta[:created_at]
       end
 
+      # @return [Integer, nil] Unix seconds when the batch finished, nil while open or for a batch finished before it was recorded
+      def finished_at
+        Utils::Json.parse(kv.get("#{bid}.ready")&.value)&.dig(:finished_at)
+      end
+
+      # @return [Integer, nil] seconds from creation to finish
+      def duration
+        finished = finished_at
+        created = created_at
+        finished - created if finished && created
+      end
+
       # Whether the batch has been finalized.
       #
       # @return [Boolean]

@@ -65,7 +65,7 @@ RSpec.describe Cosmo::Batch do
     wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
 
     event = callback_event(:complete, batch.bid)
-    expect(event[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
+    expect(event[:stats]).to include(total: 2, succeeded: 2, failed: 0)
     expect(event[:opts]).to eq(user_id: 1)
   end
 
@@ -75,7 +75,7 @@ RSpec.describe Cosmo::Batch do
     batch.on(:success, SuccessCallback)
 
     wait_until(timeout: 5) { callback_event(:success, batch.bid) }
-    expect(callback_event(:success, batch.bid)[:stats]).to eq(total: 1, succeeded: 1, failed: 0)
+    expect(callback_event(:success, batch.bid)[:stats]).to include(total: 1, succeeded: 1, failed: 0)
   end
 
   it "fires :complete but not :success when a job terminally fails (DLQ'd)" do
@@ -88,7 +88,7 @@ RSpec.describe Cosmo::Batch do
     batch.on(:success, SuccessCallback)
 
     wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
-    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 2, succeeded: 1, failed: 1)
+    expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 2, succeeded: 1, failed: 1)
 
     sleep 0.5 # give a spurious :success dispatch a chance to show up, if the bug exists
     expect(callback_event(:success, batch.bid)).to be_nil
@@ -107,7 +107,7 @@ RSpec.describe Cosmo::Batch do
     batch.on(:complete, CompleteCallback)
 
     wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
-    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 1, succeeded: 0, failed: 1)
+    expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 1, succeeded: 0, failed: 1)
   end
 
   it "fires immediately for an empty batch" do
@@ -117,7 +117,7 @@ RSpec.describe Cosmo::Batch do
     batch.on(:success, SuccessCallback)
 
     wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
-    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 0, succeeded: 0, failed: 0)
+    expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 0, succeeded: 0, failed: 0)
     wait_until(timeout: 5) { callback_event(:success, batch.bid) }
   end
 
@@ -166,7 +166,7 @@ RSpec.describe Cosmo::Batch do
     batch.on(:complete, CompleteCallback, marker: "rollback")
 
     wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
-    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 0, succeeded: 0, failed: 0)
+    expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 0, succeeded: 0, failed: 0)
   end
 
   it "counts a job once when it is enqueued again with the same jid" do
@@ -178,7 +178,7 @@ RSpec.describe Cosmo::Batch do
     batch.on(:complete, CompleteCallback, marker: "single-repeat")
 
     wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
-    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 1, succeeded: 1, failed: 0)
+    expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 1, succeeded: 1, failed: 0)
   end
 
   it "counts the jobs of a bulk once when it is enqueued again with the same jids" do
@@ -189,7 +189,7 @@ RSpec.describe Cosmo::Batch do
     batch.on(:complete, CompleteCallback, marker: "bulk-repeat")
 
     wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
-    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
+    expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 2, succeeded: 2, failed: 0)
   end
 
   it "finishes a batch whose #jobs(retriable: true) block is run again after the first run died" do
@@ -209,7 +209,7 @@ RSpec.describe Cosmo::Batch do
     end
 
     wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
-    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
+    expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 2, succeeded: 2, failed: 0)
   end
 
   it "does not finish a batch while a #jobs(retriable: true) block is still waiting for its retry" do
@@ -256,7 +256,7 @@ RSpec.describe Cosmo::Batch do
       batch.on(:complete, CompleteCallback)
 
       wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
-      expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 1, succeeded: 1, failed: 0)
+      expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 1, succeeded: 1, failed: 0)
     end
 
     it "reports the lost notice without failing the job" do
@@ -304,7 +304,7 @@ RSpec.describe Cosmo::Batch do
       batch.on(:complete, CompleteCallback)
 
       wait_until(timeout: 5) { callback_event(:complete, batch.bid) }
-      expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
+      expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 2, succeeded: 2, failed: 0)
       expect(results.index { _1.is_a?(Hash) && _1[:tag] == "slow" }).to be < results.index(callback_event(:complete, batch.bid))
     end
   end
@@ -315,7 +315,7 @@ RSpec.describe Cosmo::Batch do
     batch.on(:complete, CompleteCallback)
 
     wait_until(timeout: 10) { callback_event(:complete, batch.bid) }
-    expect(callback_event(:complete, batch.bid)[:stats]).to eq(total: 1, succeeded: 1, failed: 0)
+    expect(callback_event(:complete, batch.bid)[:stats]).to include(total: 1, succeeded: 1, failed: 0)
   end
 
   it "does not track perform_async calls made outside a #jobs block" do
@@ -335,7 +335,7 @@ RSpec.describe Cosmo::Batch do
 
     expect(batch.bid).to eq("custom-bid")
     wait_until(timeout: 5) { callback_event(:complete, "custom-bid") }
-    expect(callback_event(:complete, "custom-bid")[:stats]).to eq(total: 1, succeeded: 1, failed: 0)
+    expect(callback_event(:complete, "custom-bid")[:stats]).to include(total: 1, succeeded: 1, failed: 0)
   end
 
   context "nested batches" do
@@ -367,7 +367,7 @@ RSpec.describe Cosmo::Batch do
       # total: 1 for NestingJob itself, +1 for the child batch it spawns --
       # the parent only reaches :complete once both are done.
       wait_until(timeout: 5) { callback_event(:complete, parent.bid) }
-      expect(callback_event(:complete, parent.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
+      expect(callback_event(:complete, parent.bid)[:stats]).to include(total: 2, succeeded: 2, failed: 0)
       wait_until(timeout: 5) { callback_event(:success, parent.bid) }
     end
 
@@ -378,7 +378,7 @@ RSpec.describe Cosmo::Batch do
       parent.on(:success, SuccessCallback)
 
       wait_until(timeout: 5) { callback_event(:complete, parent.bid) }
-      expect(callback_event(:complete, parent.bid)[:stats]).to eq(total: 2, succeeded: 1, failed: 1)
+      expect(callback_event(:complete, parent.bid)[:stats]).to include(total: 2, succeeded: 1, failed: 1)
 
       sleep 0.5
       expect(callback_event(:success, parent.bid)).to be_nil
@@ -405,7 +405,7 @@ RSpec.describe Cosmo::Batch do
       # which in turn only completes once NestingJob and its own spawned
       # batch (2 more levels down) both finish.
       wait_until(timeout: 5) { callback_event(:complete, root.bid) }
-      expect(callback_event(:complete, root.bid)[:stats]).to eq(total: 2, succeeded: 2, failed: 0)
+      expect(callback_event(:complete, root.bid)[:stats]).to include(total: 2, succeeded: 2, failed: 0)
     end
   end
 end
