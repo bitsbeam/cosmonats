@@ -2,7 +2,7 @@
 
 module Cosmo
   module Utils
-    # Parses human-friendly duration strings ("20s", "1h", "7d") into seconds, so
+    # Parses human-friendly duration strings ("20s", "1h", "1h30m", "7d") into seconds, so
     # config values don't have to be spelled out as bare, uncommented integers.
     # Numbers pass through unchanged, since existing config already uses plain seconds.
     module Duration
@@ -15,19 +15,19 @@ module Cosmo
         "mo" => 2_592_000, # 30 days
         "y" => 31_536_000
       }.freeze
+      PART = /(\d+)(mo|[smhdwy])/
 
       module_function
 
-      # @param value [Numeric, String] seconds, or a duration such as "20s", "1h", "7d"
+      # @param value [Numeric, String] seconds, or a duration such as "20s", "1h", "1h1m", "7d"
       # @return [Numeric] seconds
       # @raise [ArgumentError] when +value+ is not a valid duration
       def parse(value)
         return value if value.is_a?(Numeric)
 
         str = value.to_s
-        match = str.match(/\A(\d+)(mo|[smhdwy])\z/)
-        return match[1].to_i * UNITS[match[2]] if match
         return str.to_f if str.match?(/\A\d+(\.\d+)?\z/)
+        return str.scan(PART).sum { |n, unit| n.to_i * UNITS[unit] } if str.match?(/\A(?:#{PART})+\z/)
 
         raise ArgumentError, "invalid duration: #{value}"
       end

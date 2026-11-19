@@ -2,6 +2,7 @@ module Cosmo
   module Utils
     module Duration
       UNITS: ::Hash[::String, ::Integer]
+      PART: ::Regexp
 
       def self.parse: (Numeric | ::String value) -> Numeric
 

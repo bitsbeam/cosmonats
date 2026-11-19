@@ -35,7 +35,7 @@ module Cosmo
       #   limit: { duration: 30, concurrency: 3, retry_in: 5 }
       #
       # @option config [Integer, String] :"limit[:duration]" hard execution timeout in seconds, or a duration such as
-      #   +"82m"+ (see {Utils::Duration.parse}). The job thread is
+      #   +"82m"+ or +"1h22m"+ (see {Utils::Duration.parse}). The job thread is
       #   killed after this many seconds and counts as a failed attempt (retried with exponential backoff,
       #   moved to DLQ after retries exhausted).
       # @option config [Integer, Hash] :"limit[:concurrency]" caps how many instances run at once across all

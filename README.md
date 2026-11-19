@@ -654,7 +654,7 @@ end
 
 class CrawlJob
   include Cosmo::Job
-  # Durations take seconds or strings such as "82m" or "2h" (also for limit retry_in).
+  # Durations take seconds or strings such as "82m", "2h" or "1h22m" (also for limit retry_in).
   options limit: { duration: "82m" }
 end
 
