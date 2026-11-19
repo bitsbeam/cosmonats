@@ -55,28 +55,32 @@ module Cosmo
         end
 
         # @param millis [Numeric, nil]
-        # @return [String] e.g. "340 ms", "1.25 s", "2m 3s", or "—" without a value
+        # @return [String] e.g. "340 ms", "1.25 s", "2m 3s", "2h 41m", or "—" without a value
         def duration(millis)
           return "—" unless millis
           return "#{millis.round} ms" if millis < 1_000
           return "#{(millis / 1_000.0).round(2)} s" if millis < 60_000
 
-          "#{(millis / 60_000).floor}m #{((millis % 60_000) / 1_000).round}s"
+          span((millis / 1_000).round)
         end
 
         # @param value [Time, Integer, String] the start, as a Time or Unix seconds
         # @return [String] the time since then, e.g. "45s", "3m 10s", "2h 5m", "1d 4h"
         def elapsed(value)
-          elapsed = Time.now.to_i - value.to_i
+          span(Time.now.to_i - value.to_i)
+        end
 
-          if elapsed < 60
-            "#{elapsed}s"
-          elsif elapsed < 3600
-            "#{elapsed / 60}m #{elapsed % 60}s"
-          elsif elapsed < 86_400
-            "#{elapsed / 3600}h #{(elapsed % 3600) / 60}m"
+        # @param seconds [Integer]
+        # @return [String] the two largest units, e.g. "45s", "3m 10s", "2h 5m", "1d 4h"
+        def span(seconds)
+          if seconds < 60
+            "#{seconds}s"
+          elsif seconds < 3600
+            "#{seconds / 60}m #{seconds % 60}s"
+          elsif seconds < 86_400
+            "#{seconds / 3600}h #{(seconds % 3600) / 60}m"
           else
-            "#{elapsed / 86_400}d #{(elapsed % 86_400) / 3600}h"
+            "#{seconds / 86_400}d #{(seconds % 86_400) / 3600}h"
           end
         end
 

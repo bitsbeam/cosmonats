@@ -24,6 +24,8 @@ module Cosmo
 
         def elapsed: (untyped value) -> ::String
 
+        def span: (::Integer seconds) -> ::String
+
         def last_message: (untyped state) -> ::String
 
         def time_until: (untyped value) -> ::String
