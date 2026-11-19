@@ -655,7 +655,7 @@ end
 class CrawlJob
   include Cosmo::Job
   # Durations take seconds or strings such as "82m", "2h" or "1h22m" (also for limit retry_in).
-  options limit: { duration: "82m" }
+  options limit: { duration: "1h22m" }
 end
 
 class PerAccountSyncJob

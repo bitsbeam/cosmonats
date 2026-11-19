@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lanes: N` on a job consumer splits its stream between N consumers polled in turn, so one batch's jobs no longer hold back the rest
 - The web UI's Crons page describes each schedule in plain English
 - The web UI's Scheduled tab can enqueue a delayed job now, delete it, purge every delayed job of its class, or purge them all
+- Durations in config and job options can combine units, such as `1h1m` or `1d12h`
 
 ### Changed
 
