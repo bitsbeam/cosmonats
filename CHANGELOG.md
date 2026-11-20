@@ -103,7 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.0] - 2026-10-08
 
-Upgrading needs a few manual NATS steps: see [docs/upgrading.md](docs/upgrading.md).
+Upgrading needs a few manual NATS steps: see [docs/21-upgrading.md](docs/21-upgrading.md).
 
 ### Added
 

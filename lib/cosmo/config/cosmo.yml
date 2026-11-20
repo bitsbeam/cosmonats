@@ -55,7 +55,7 @@ consumers:
     default:
       <<: *consumer_config
       priority: 15         # relative polling weight among job streams
-#      lanes: 4            # split the stream between 4 consumers polled in turn, see README "Lanes"
+#      lanes: 4            # split the stream between 4 consumers polled in turn, see docs/8-priority-queues-and-lanes.md
 #    critical:
 #      <<: *consumer_config
 #      priority: 50

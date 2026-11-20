@@ -10,6 +10,13 @@ config.active_job.queue_adapter = :cosmonats
 
 That's it. The Railtie that ships with `cosmonats` registers the `:cosmonats` adapter and autoloads `config/cosmo.yml`.
 
+Outside Rails, require the adapter and set it yourself:
+
+```ruby
+require "cosmo/active_job"
+ActiveJob::Base.queue_adapter = Cosmo::ActiveJobAdapter::Adapter.new
+```
+
 ## Queues
 
 Use `queue_as` exactly as you would with any other ActiveJob backend:
@@ -33,52 +40,30 @@ stream_config: &stream_config
   duplicate_window: 120
   discard: new
   allow_direct: true
-  subjects:
-    - jobs.%{name}.>
+  subjects: ["jobs.%{name}.>"]
 
 consumer_config: &consumer_config
   ack_policy: explicit
-  max_deliver: 10
+  max_deliver: 30
   max_ack_pending: 20
   ack_wait: 60
   subject: jobs.%{name}.>
 
-consumers:
-  jobs:
-    default:
-      <<: *consumer_config
-    critical:
-      <<: *consumer_config
-      priority: 5       # polled more often than default
-    mailers:
-      <<: *consumer_config
-    scheduled:          # required for set(wait:) / set(wait_until:) and for cron firings
-      <<: *consumer_config
-      max_deliver: 5      # >1: the scheduler naks a not-yet-due job and any transient dispatch error, both of which need a redelivery
-      max_ack_pending: 100
-      ack_wait: 10
-
 setup:
   jobs:
-    default:
-      <<: *stream_config
-    critical:
-      <<: *stream_config
-    mailers:
-      <<: *stream_config
-    scheduled:
-      <<: *stream_config
-      discard: old
-    dead:               # dead-letter queue
-      <<: *stream_config
-      discard: old
-      retention: limits
-      max_msgs: 10000
-      max_age: 604800   # 7 days
+    default: { <<: *stream_config }
+    critical: { <<: *stream_config }
+    mailers: { <<: *stream_config }
 
-production:
-  concurrency: 10
+consumers:
+  jobs:
+    default: { <<: *consumer_config, priority: 15 }
+    critical: { <<: *consumer_config, priority: 50 }
+    mailers: { <<: *consumer_config, priority: 10 }
 ```
+
+The `scheduled` and `dead` streams are Cosmo's own: `cosmo --setup` creates them, and they're tuned in
+`Cosmo.configure` rather than in `cosmo.yml` (see [Configuration](6-configuration.md#service-streams)).
 
 Provision streams (safe to run on every deploy):
 
@@ -88,8 +73,8 @@ cosmo -S
 
 ## Delayed jobs
 
-`set(wait:)` and `set(wait_until:)` are fully supported via the built-in `:scheduled` stream.
-No extra configuration is needed beyond declaring the stream above.
+`set(wait:)` and `set(wait_until:)` are fully supported via the built-in `scheduled` stream, with no extra
+configuration:
 
 ```ruby
 ProcessPaymentJob.set(wait: 5.minutes).perform_later(order.id)
@@ -116,6 +101,7 @@ end
 | `retry:`  | `3`            | How many times Cosmonats retries the job at the NATS level before giving up |
 | `dead:`   | `true`         | Move the message to the dead-letter stream after retries are exhausted      |
 | `stream:` | _(queue_name)_ | Override the NATS stream regardless of `queue_as`                           |
+| `retry_in:` | _(backoff)_  | `->(count, exception) { seconds }`, see [Retry delay](12-error-handling.md#retry-delay) |
 
 Options are inherited and can be overridden in subclasses:
 

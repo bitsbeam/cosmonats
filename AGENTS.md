@@ -90,7 +90,7 @@ CLI → Engine → ThreadPool
   CAS, auto-expired by `Nats-TTL`.
 - **`Cosmo::ActiveJobAdapter`** (`lib/cosmo/active_job/`) — `config.active_job.queue_adapter = :cosmonats`; the
   ActiveJob queue name maps to a Cosmo stream. Wired up automatically inside Rails by `Cosmo::Railtie`. See
-  `docs/active_job.md`.
+  `docs/15-active-job.md`.
 - **Server middleware** (`Config#server_middleware`, `lib/cosmo/middleware/`) — a `Middleware::Chain`, registered via
   `Cosmo.configure { |config| config.server_middleware { |chain| ... } }`, that `Job::Processor#process` invokes as
   `call(job, data, message)` around `perform_job` (`job` is nil when the worker can't load the class, which
@@ -274,3 +274,4 @@ docker compose up nats
 | CLI entrypoint | `lib/cosmo/cli.rb` |
 | Monitoring Rack app | `lib/cosmo/web.rb` |
 | RBS type signatures | `sig/` |
+| User docs (rendered at cosmonats.bitsbeam.com/docs by the website repo) | `docs/<n>-<slug>.md` |
